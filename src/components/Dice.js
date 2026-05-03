@@ -565,18 +565,14 @@ class Dice {
 
     const forcedFaceValue = Dice.getForcedFaceValue(die)
     if(forcedFaceValue !== undefined) {
-      if(!Dice.lockForcedResult(die, scene)) {
-        throw new Error(`Unable to resolve target face ${forcedFaceValue} for ${die.dieType}.`)
-      }
-
-      const resolvedFaceValue = Dice.readTopFaceValue(die, scene)
+      let resolvedFaceValue = Dice.readTopFaceValue(die, scene)
       if(Number(resolvedFaceValue) !== Number(forcedFaceValue)) {
         if(!Dice.lockForcedResult(die, scene)) {
           throw new Error(`Unable to correct ${die.dieType} to requested face ${forcedFaceValue}.`)
         }
-        const correctedFaceValue = Dice.readTopFaceValue(die, scene)
-        if(Number(correctedFaceValue) !== Number(forcedFaceValue)) {
-          throw new Error(`Resolved ${die.dieType} face ${correctedFaceValue} does not match requested face ${forcedFaceValue}.`)
+        resolvedFaceValue = Dice.readTopFaceValue(die, scene)
+        if(Number(resolvedFaceValue) !== Number(forcedFaceValue)) {
+          throw new Error(`Resolved ${die.dieType} face ${resolvedFaceValue} does not match requested face ${forcedFaceValue}.`)
         }
       }
     }

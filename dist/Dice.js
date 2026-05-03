@@ -4734,21 +4734,21 @@ class se {
     s && s.addPendingData(A), A.url = e, A.generateMipMaps = !t, A.samplingMode = r, A.invertY = i, A._useSRGBBuffer = this._getUseSRGBBuffer(!!b, t), this._doNotHandleContextLost || (A._buffer = c);
     let G = null;
     n && !u && (G = A.onLoadedObservable.add(n)), u || this._internalTexturesCache.push(A);
-    const ue = (te, he) => {
-      s && s.removePendingData(A), e === x ? (G && A.onLoadedObservable.remove(G), J.UseFallbackTexture && this._createTextureBase(J.FallbackTexture, t, A.invertY, s, r, null, a, o, h, c, A), te = (te || "Unknown error") + (J.UseFallbackTexture ? " - Fallback texture was used" : ""), A.onErrorObservable.notifyObservers({ message: te, exception: he }), a && a(te, he)) : (S.Warn(`Failed to load ${e}, falling back to ${x}`), this._createTextureBase(x, t, A.invertY, s, r, n, a, o, h, c, A, d, g, f, m, b));
+    const ue = (te, oe) => {
+      s && s.removePendingData(A), e === x ? (G && A.onLoadedObservable.remove(G), J.UseFallbackTexture && this._createTextureBase(J.FallbackTexture, t, A.invertY, s, r, null, a, o, h, c, A), te = (te || "Unknown error") + (J.UseFallbackTexture ? " - Fallback texture was used" : ""), A.onErrorObservable.notifyObservers({ message: te, exception: oe }), a && a(te, oe)) : (S.Warn(`Failed to load ${e}, falling back to ${x}`), this._createTextureBase(x, t, A.invertY, s, r, n, a, o, h, c, A, d, g, f, m, b));
     };
     if (D) {
-      const te = (he) => {
-        D.loadData(he, A, ($, Se, xe, we, Me, Re) => {
+      const te = (oe) => {
+        D.loadData(oe, A, ($, Se, xe, we, Me, Re) => {
           Re ? ue("TextureLoader failed to load data") : o(A, E, s, { width: $, height: Se }, A.invertY, !xe, we, () => (Me(), !1), r);
         }, m);
       };
-      c ? c instanceof ArrayBuffer ? te(new Uint8Array(c)) : ArrayBuffer.isView(c) ? te(c) : a && a("Unable to load: only ArrayBuffer or ArrayBufferView is supported", null) : this._loadFile(e, (he) => te(new Uint8Array(he)), void 0, s ? s.offlineProvider : void 0, !0, (he, $) => {
-        ue("Unable to load " + (he && he.responseURL, $));
+      c ? c instanceof ArrayBuffer ? te(new Uint8Array(c)) : ArrayBuffer.isView(c) ? te(c) : a && a("Unable to load: only ArrayBuffer or ArrayBufferView is supported", null) : this._loadFile(e, (oe) => te(new Uint8Array(oe)), void 0, s ? s.offlineProvider : void 0, !0, (oe, $) => {
+        ue("Unable to load " + (oe && oe.responseURL, $));
       });
     } else {
-      const te = (he) => {
-        M && !this._doNotHandleContextLost && (A._buffer = he), o(A, E, s, he, A.invertY, t, !1, h, r);
+      const te = (oe) => {
+        M && !this._doNotHandleContextLost && (A._buffer = oe), o(A, E, s, oe, A.invertY, t, !1, h, r);
       };
       !T || v ? c && (typeof c.decoding == "string" || c.close) ? te(c) : se._FileToolsLoadImage(e, te, ue, s ? s.offlineProvider : null, f, A.invertY && this._features.needsInvertingBitmap ? { imageOrientation: "flipY" } : void 0) : typeof c == "string" || c instanceof ArrayBuffer || ArrayBuffer.isView(c) || c instanceof Blob ? se._FileToolsLoadImage(c, te, ue, s ? s.offlineProvider : null, f, A.invertY && this._features.needsInvertingBitmap ? { imageOrientation: "flipY" } : void 0) : c && te(c);
     }
@@ -9717,23 +9717,23 @@ class p {
     const G = D;
     E.copyFrom(M).subtractInPlace(s), p.CrossToRef(x, E, y), D = p.Dot(y, h);
     const ue = D, te = N.Vector3[10];
-    let he, $;
-    V > 0 && G < 0 ? (te.copyFrom(n), he = t, $ = i) : G > 0 && ue < 0 ? (te.copyFrom(o), he = i, $ = s) : (te.copyFrom(a).scaleInPlace(-1), he = s, $ = t);
+    let oe, $;
+    V > 0 && G < 0 ? (te.copyFrom(n), oe = t, $ = i) : G > 0 && ue < 0 ? (te.copyFrom(o), oe = i, $ = s) : (te.copyFrom(a).scaleInPlace(-1), oe = s, $ = t);
     const Se = N.Vector3[9], xe = N.Vector3[4];
-    if (he.subtractToRef(M, y), $.subtractToRef(M, Se), p.CrossToRef(y, Se, xe), !(p.Dot(xe, h) < 0))
+    if (oe.subtractToRef(M, y), $.subtractToRef(M, Se), p.CrossToRef(y, Se, xe), !(p.Dot(xe, h) < 0))
       return r.copyFrom(M), Math.abs(m * b);
     const Me = N.Vector3[5];
     p.CrossToRef(te, xe, Me), Me.normalize();
     const Re = N.Vector3[9];
-    Re.copyFrom(he).subtractInPlace(M);
+    Re.copyFrom(oe).subtractInPlace(M);
     const Ke = Re.length();
     if (Ke < Te)
-      return r.copyFrom(he), p.Distance(e, he);
+      return r.copyFrom(oe), p.Distance(e, oe);
     Re.normalizeFromLength(Ke);
     const Ve = p.Dot(Me, Re), Qe = N.Vector3[7];
-    Qe.copyFrom(M).addInPlace(Me.scaleInPlace(Ke * Ve)), y.copyFrom(Qe).subtractInPlace(he), m = te.length(), te.normalizeFromLength(m);
+    Qe.copyFrom(M).addInPlace(Me.scaleInPlace(Ke * Ve)), y.copyFrom(Qe).subtractInPlace(oe), m = te.length(), te.normalizeFromLength(m);
     let _t = p.Dot(y, te) / Math.max(m, Te);
-    return _t = X.Clamp(_t, 0, 1), Qe.copyFrom(he).addInPlace(te.scaleInPlace(_t * m)), r.copyFrom(Qe), p.Distance(e, Qe);
+    return _t = X.Clamp(_t, 0, 1), Qe.copyFrom(oe).addInPlace(te.scaleInPlace(_t * m)), r.copyFrom(Qe), p.Distance(e, Qe);
   }
   /**
    * Returns a new Vector3 located at the center between "value1" and "value2"
@@ -11327,10 +11327,10 @@ class R {
   invertToRef(e) {
     if (this._isIdentity === !0)
       return R.IdentityToRef(e), e;
-    const t = this._m, i = t[0], s = t[1], r = t[2], n = t[3], a = t[4], o = t[5], h = t[6], c = t[7], u = t[8], d = t[9], g = t[10], f = t[11], m = t[12], b = t[13], T = t[14], M = t[15], v = g * M - T * f, A = d * M - b * f, x = d * T - b * g, y = u * M - m * f, E = u * T - g * m, D = u * b - m * d, V = +(o * v - h * A + c * x), G = -(a * v - h * y + c * E), ue = +(a * A - o * y + c * D), te = -(a * x - o * E + h * D), he = i * V + s * G + r * ue + n * te;
-    if (he === 0)
+    const t = this._m, i = t[0], s = t[1], r = t[2], n = t[3], a = t[4], o = t[5], h = t[6], c = t[7], u = t[8], d = t[9], g = t[10], f = t[11], m = t[12], b = t[13], T = t[14], M = t[15], v = g * M - T * f, A = d * M - b * f, x = d * T - b * g, y = u * M - m * f, E = u * T - g * m, D = u * b - m * d, V = +(o * v - h * A + c * x), G = -(a * v - h * y + c * E), ue = +(a * A - o * y + c * D), te = -(a * x - o * E + h * D), oe = i * V + s * G + r * ue + n * te;
+    if (oe === 0)
       return e.copyFrom(this), e;
-    const $ = 1 / he, Se = h * M - T * c, xe = o * M - b * c, we = o * T - b * h, Me = a * M - m * c, Re = a * T - m * h, Ke = a * b - m * o, Ve = h * f - g * c, Qe = o * f - d * c, _t = o * g - d * h, Xt = a * f - u * c, Yt = a * g - u * h, qt = a * d - u * o, ui = -(s * v - r * A + n * x), di = +(i * v - r * y + n * E), fi = -(i * A - s * y + n * D), _i = +(i * x - s * E + r * D), gi = +(s * Se - r * xe + n * we), pi = -(i * Se - r * Me + n * Re), it = +(i * xe - s * Me + n * Ke), st = -(i * we - s * Re + r * Ke), rt = -(s * Ve - r * Qe + n * _t), nt = +(i * Ve - r * Xt + n * Yt), ps = -(i * Qe - s * Xt + n * qt), ms = +(i * _t - s * Yt + r * qt);
+    const $ = 1 / oe, Se = h * M - T * c, xe = o * M - b * c, we = o * T - b * h, Me = a * M - m * c, Re = a * T - m * h, Ke = a * b - m * o, Ve = h * f - g * c, Qe = o * f - d * c, _t = o * g - d * h, Xt = a * f - u * c, Yt = a * g - u * h, qt = a * d - u * o, ui = -(s * v - r * A + n * x), di = +(i * v - r * y + n * E), fi = -(i * A - s * y + n * D), _i = +(i * x - s * E + r * D), gi = +(s * Se - r * xe + n * we), pi = -(i * Se - r * Me + n * Re), it = +(i * xe - s * Me + n * Ke), st = -(i * we - s * Re + r * Ke), rt = -(s * Ve - r * Qe + n * _t), nt = +(i * Ve - r * Xt + n * Yt), ps = -(i * Qe - s * Xt + n * qt), ms = +(i * _t - s * Yt + r * qt);
     return R.FromValuesToRef(V * $, ui * $, gi * $, rt * $, G * $, di * $, pi * $, nt * $, ue * $, fi * $, it * $, ps * $, te * $, _i * $, st * $, ms * $, e), e;
   }
   /**
@@ -11460,8 +11460,8 @@ class R {
    * @returns the current matrix
    */
   multiplyToArray(e, t, i) {
-    const s = this._m, r = e.m, n = s[0], a = s[1], o = s[2], h = s[3], c = s[4], u = s[5], d = s[6], g = s[7], f = s[8], m = s[9], b = s[10], T = s[11], M = s[12], v = s[13], A = s[14], x = s[15], y = r[0], E = r[1], D = r[2], V = r[3], G = r[4], ue = r[5], te = r[6], he = r[7], $ = r[8], Se = r[9], xe = r[10], we = r[11], Me = r[12], Re = r[13], Ke = r[14], Ve = r[15];
-    return t[i] = n * y + a * G + o * $ + h * Me, t[i + 1] = n * E + a * ue + o * Se + h * Re, t[i + 2] = n * D + a * te + o * xe + h * Ke, t[i + 3] = n * V + a * he + o * we + h * Ve, t[i + 4] = c * y + u * G + d * $ + g * Me, t[i + 5] = c * E + u * ue + d * Se + g * Re, t[i + 6] = c * D + u * te + d * xe + g * Ke, t[i + 7] = c * V + u * he + d * we + g * Ve, t[i + 8] = f * y + m * G + b * $ + T * Me, t[i + 9] = f * E + m * ue + b * Se + T * Re, t[i + 10] = f * D + m * te + b * xe + T * Ke, t[i + 11] = f * V + m * he + b * we + T * Ve, t[i + 12] = M * y + v * G + A * $ + x * Me, t[i + 13] = M * E + v * ue + A * Se + x * Re, t[i + 14] = M * D + v * te + A * xe + x * Ke, t[i + 15] = M * V + v * he + A * we + x * Ve, this;
+    const s = this._m, r = e.m, n = s[0], a = s[1], o = s[2], h = s[3], c = s[4], u = s[5], d = s[6], g = s[7], f = s[8], m = s[9], b = s[10], T = s[11], M = s[12], v = s[13], A = s[14], x = s[15], y = r[0], E = r[1], D = r[2], V = r[3], G = r[4], ue = r[5], te = r[6], oe = r[7], $ = r[8], Se = r[9], xe = r[10], we = r[11], Me = r[12], Re = r[13], Ke = r[14], Ve = r[15];
+    return t[i] = n * y + a * G + o * $ + h * Me, t[i + 1] = n * E + a * ue + o * Se + h * Re, t[i + 2] = n * D + a * te + o * xe + h * Ke, t[i + 3] = n * V + a * oe + o * we + h * Ve, t[i + 4] = c * y + u * G + d * $ + g * Me, t[i + 5] = c * E + u * ue + d * Se + g * Re, t[i + 6] = c * D + u * te + d * xe + g * Ke, t[i + 7] = c * V + u * oe + d * we + g * Ve, t[i + 8] = f * y + m * G + b * $ + T * Me, t[i + 9] = f * E + m * ue + b * Se + T * Re, t[i + 10] = f * D + m * te + b * xe + T * Ke, t[i + 11] = f * V + m * oe + b * we + T * Ve, t[i + 12] = M * y + v * G + A * $ + x * Me, t[i + 13] = M * E + v * ue + A * Se + x * Re, t[i + 14] = M * D + v * te + A * xe + x * Ke, t[i + 15] = M * V + v * oe + A * we + x * Ve, this;
   }
   /**
    * Check equality between this matrix and a second one
@@ -14214,9 +14214,9 @@ F([
   B()
 ], de.prototype, "_midtonesExposure", void 0);
 le._ColorCurvesParser = de.Parse;
-class oe {
+class ae {
   constructor() {
-    this.colorCurves = new de(), this._colorCurvesEnabled = !1, this._colorGradingEnabled = !1, this._colorGradingWithGreenDepth = !0, this._colorGradingBGR = !0, this._exposure = 1, this._toneMappingEnabled = !1, this._toneMappingType = oe.TONEMAPPING_STANDARD, this._contrast = 1, this.vignetteStretch = 0, this.vignetteCenterX = 0, this.vignetteCenterY = 0, this.vignetteWeight = 1.5, this.vignetteColor = new Be(0, 0, 0, 0), this.vignetteCameraFov = 0.5, this._vignetteBlendMode = oe.VIGNETTEMODE_MULTIPLY, this._vignetteEnabled = !1, this._ditheringEnabled = !1, this._ditheringIntensity = 1 / 255, this._skipFinalColorClamp = !1, this._applyByPostProcess = !1, this._isEnabled = !0, this.onUpdateParameters = new w();
+    this.colorCurves = new de(), this._colorCurvesEnabled = !1, this._colorGradingEnabled = !1, this._colorGradingWithGreenDepth = !0, this._colorGradingBGR = !0, this._exposure = 1, this._toneMappingEnabled = !1, this._toneMappingType = ae.TONEMAPPING_STANDARD, this._contrast = 1, this.vignetteStretch = 0, this.vignetteCenterX = 0, this.vignetteCenterY = 0, this.vignetteWeight = 1.5, this.vignetteColor = new Be(0, 0, 0, 0), this.vignetteCameraFov = 0.5, this._vignetteBlendMode = ae.VIGNETTEMODE_MULTIPLY, this._vignetteEnabled = !1, this._ditheringEnabled = !1, this._ditheringIntensity = 1 / 255, this._skipFinalColorClamp = !1, this._applyByPostProcess = !1, this._isEnabled = !0, this.onUpdateParameters = new w();
   }
   /**
    * Gets whether the color curves effect is enabled.
@@ -14473,8 +14473,8 @@ class oe {
       e.VIGNETTE = !1, e.TONEMAPPING = !1, e.TONEMAPPING_ACES = !1, e.CONTRAST = !1, e.EXPOSURE = !1, e.COLORCURVES = !1, e.COLORGRADING = !1, e.COLORGRADING3D = !1, e.DITHER = !1, e.IMAGEPROCESSING = !1, e.SKIPFINALCOLORCLAMP = this.skipFinalColorClamp, e.IMAGEPROCESSINGPOSTPROCESS = this.applyByPostProcess && this._isEnabled;
       return;
     }
-    switch (e.VIGNETTE = this.vignetteEnabled, e.VIGNETTEBLENDMODEMULTIPLY = this.vignetteBlendMode === oe._VIGNETTEMODE_MULTIPLY, e.VIGNETTEBLENDMODEOPAQUE = !e.VIGNETTEBLENDMODEMULTIPLY, e.TONEMAPPING = this.toneMappingEnabled, this._toneMappingType) {
-      case oe.TONEMAPPING_ACES:
+    switch (e.VIGNETTE = this.vignetteEnabled, e.VIGNETTEBLENDMODEMULTIPLY = this.vignetteBlendMode === ae._VIGNETTEMODE_MULTIPLY, e.VIGNETTEBLENDMODEOPAQUE = !e.VIGNETTEBLENDMODEMULTIPLY, e.TONEMAPPING = this.toneMappingEnabled, this._toneMappingType) {
+      case ae.TONEMAPPING_ACES:
         e.TONEMAPPING_ACES = !0;
         break;
       default:
@@ -14528,7 +14528,7 @@ class oe {
    * @returns The cloned image processing
    */
   clone() {
-    return le.Clone(() => new oe(), this);
+    return le.Clone(() => new ae(), this);
   }
   /**
    * Serializes the current image processing instance to a json representation.
@@ -14543,7 +14543,7 @@ class oe {
    * @returns The parsed image processing
    */
   static Parse(e) {
-    const t = le.Parse(() => new oe(), e, null, null);
+    const t = le.Parse(() => new ae(), e, null, null);
     return e.vignetteCentreX !== void 0 && (t.vignetteCenterX = e.vignetteCentreX), e.vignetteCentreY !== void 0 && (t.vignetteCenterY = e.vignetteCentreY), t;
   }
   /**
@@ -14559,80 +14559,80 @@ class oe {
     return this._VIGNETTEMODE_OPAQUE;
   }
 }
-oe.TONEMAPPING_STANDARD = 0;
-oe.TONEMAPPING_ACES = 1;
-oe._VIGNETTEMODE_MULTIPLY = 0;
-oe._VIGNETTEMODE_OPAQUE = 1;
+ae.TONEMAPPING_STANDARD = 0;
+ae.TONEMAPPING_ACES = 1;
+ae._VIGNETTEMODE_MULTIPLY = 0;
+ae._VIGNETTEMODE_OPAQUE = 1;
 F([
   ir()
-], oe.prototype, "colorCurves", void 0);
+], ae.prototype, "colorCurves", void 0);
 F([
   B()
-], oe.prototype, "_colorCurvesEnabled", void 0);
+], ae.prototype, "_colorCurvesEnabled", void 0);
 F([
   tr("colorGradingTexture")
-], oe.prototype, "_colorGradingTexture", void 0);
+], ae.prototype, "_colorGradingTexture", void 0);
 F([
   B()
-], oe.prototype, "_colorGradingEnabled", void 0);
+], ae.prototype, "_colorGradingEnabled", void 0);
 F([
   B()
-], oe.prototype, "_colorGradingWithGreenDepth", void 0);
+], ae.prototype, "_colorGradingWithGreenDepth", void 0);
 F([
   B()
-], oe.prototype, "_colorGradingBGR", void 0);
+], ae.prototype, "_colorGradingBGR", void 0);
 F([
   B()
-], oe.prototype, "_exposure", void 0);
+], ae.prototype, "_exposure", void 0);
 F([
   B()
-], oe.prototype, "_toneMappingEnabled", void 0);
+], ae.prototype, "_toneMappingEnabled", void 0);
 F([
   B()
-], oe.prototype, "_toneMappingType", void 0);
+], ae.prototype, "_toneMappingType", void 0);
 F([
   B()
-], oe.prototype, "_contrast", void 0);
+], ae.prototype, "_contrast", void 0);
 F([
   B()
-], oe.prototype, "vignetteStretch", void 0);
+], ae.prototype, "vignetteStretch", void 0);
 F([
   B()
-], oe.prototype, "vignetteCenterX", void 0);
+], ae.prototype, "vignetteCenterX", void 0);
 F([
   B()
-], oe.prototype, "vignetteCenterY", void 0);
+], ae.prototype, "vignetteCenterY", void 0);
 F([
   B()
-], oe.prototype, "vignetteWeight", void 0);
+], ae.prototype, "vignetteWeight", void 0);
 F([
   sr()
-], oe.prototype, "vignetteColor", void 0);
+], ae.prototype, "vignetteColor", void 0);
 F([
   B()
-], oe.prototype, "vignetteCameraFov", void 0);
+], ae.prototype, "vignetteCameraFov", void 0);
 F([
   B()
-], oe.prototype, "_vignetteBlendMode", void 0);
+], ae.prototype, "_vignetteBlendMode", void 0);
 F([
   B()
-], oe.prototype, "_vignetteEnabled", void 0);
+], ae.prototype, "_vignetteEnabled", void 0);
 F([
   B()
-], oe.prototype, "_ditheringEnabled", void 0);
+], ae.prototype, "_ditheringEnabled", void 0);
 F([
   B()
-], oe.prototype, "_ditheringIntensity", void 0);
+], ae.prototype, "_ditheringIntensity", void 0);
 F([
   B()
-], oe.prototype, "_skipFinalColorClamp", void 0);
+], ae.prototype, "_skipFinalColorClamp", void 0);
 F([
   B()
-], oe.prototype, "_applyByPostProcess", void 0);
+], ae.prototype, "_applyByPostProcess", void 0);
 F([
   B()
-], oe.prototype, "_isEnabled", void 0);
-le._ImageProcessingConfigurationParser = oe.Parse;
+], ae.prototype, "_isEnabled", void 0);
+le._ImageProcessingConfigurationParser = ae.Parse;
 se.prototype.createUniformBuffer = function(l) {
   const e = this._gl.createBuffer();
   if (!e)
@@ -18286,7 +18286,7 @@ class Q extends Li {
       virtual: !1,
       ...t
     };
-    this._engine = e || J.LastCreatedEngine, i.virtual ? this._engine._virtualScenes.push(this) : (J._LastCreatedScene = this, this._engine.scenes.push(this)), this._uid = null, this._renderingManager = new De(this), Gi && (this.postProcessManager = new Gi(this)), Ce() && this.attachControl(), this._createUbo(), oe && (this._imageProcessingConfiguration = new oe()), this.setDefaultCandidateProviders(), i.useGeometryUniqueIdsMap && (this._geometriesByUniqueId = {}), this.useMaterialMeshMap = i.useMaterialMeshMap, this.useClonedMeshMap = i.useClonedMeshMap, (!t || !t.virtual) && this._engine.onNewSceneAddedObservable.notifyObservers(this);
+    this._engine = e || J.LastCreatedEngine, i.virtual ? this._engine._virtualScenes.push(this) : (J._LastCreatedScene = this, this._engine.scenes.push(this)), this._uid = null, this._renderingManager = new De(this), Gi && (this.postProcessManager = new Gi(this)), Ce() && this.attachControl(), this._createUbo(), ae && (this._imageProcessingConfiguration = new ae()), this.setDefaultCandidateProviders(), i.useGeometryUniqueIdsMap && (this._geometriesByUniqueId = {}), this.useMaterialMeshMap = i.useMaterialMeshMap, this.useClonedMeshMap = i.useClonedMeshMap, (!t || !t.virtual) && this._engine.onNewSceneAddedObservable.notifyObservers(this);
   }
   /**
    * Gets a string identifying the name of the class
@@ -24891,14 +24891,14 @@ class q {
    * @param options.depthSortedFacets
    */
   static ComputeNormals(e, t, i, s) {
-    let r = 0, n = 0, a = 0, o = 0, h = 0, c = 0, u = 0, d = 0, g = 0, f = 0, m = 0, b = 0, T = 0, M = 0, v = 0, A = 0, x = 0, y = 0, E = 0, D = 0, V = !1, G = !1, ue = !1, te = !1, he = 1, $ = 0, Se = null;
-    s && (V = !!s.facetNormals, G = !!s.facetPositions, ue = !!s.facetPartitioning, he = s.useRightHandedSystem === !0 ? -1 : 1, $ = s.ratio || 0, te = !!s.depthSort, Se = s.distanceTo, te && Se === void 0 && (Se = p.Zero()));
+    let r = 0, n = 0, a = 0, o = 0, h = 0, c = 0, u = 0, d = 0, g = 0, f = 0, m = 0, b = 0, T = 0, M = 0, v = 0, A = 0, x = 0, y = 0, E = 0, D = 0, V = !1, G = !1, ue = !1, te = !1, oe = 1, $ = 0, Se = null;
+    s && (V = !!s.facetNormals, G = !!s.facetPositions, ue = !!s.facetPartitioning, oe = s.useRightHandedSystem === !0 ? -1 : 1, $ = s.ratio || 0, te = !!s.depthSort, Se = s.distanceTo, te && Se === void 0 && (Se = p.Zero()));
     let xe = 0, we = 0, Me = 0, Re = 0;
     for (ue && s && s.bbSize && (xe = s.subDiv.X * $ / s.bbSize.x, we = s.subDiv.Y * $ / s.bbSize.y, Me = s.subDiv.Z * $ / s.bbSize.z, Re = s.subDiv.max * s.subDiv.max, s.facetPartitioning.length = 0), r = 0; r < e.length; r++)
       i[r] = 0;
     const Ke = t.length / 3 | 0;
     for (r = 0; r < Ke; r++) {
-      if (b = t[r * 3] * 3, T = b + 1, M = b + 2, v = t[r * 3 + 1] * 3, A = v + 1, x = v + 2, y = t[r * 3 + 2] * 3, E = y + 1, D = y + 2, n = e[b] - e[v], a = e[T] - e[A], o = e[M] - e[x], h = e[y] - e[v], c = e[E] - e[A], u = e[D] - e[x], d = he * (a * u - o * c), g = he * (o * h - n * u), f = he * (n * c - a * h), m = Math.sqrt(d * d + g * g + f * f), m = m === 0 ? 1 : m, d /= m, g /= m, f /= m, V && s && (s.facetNormals[r].x = d, s.facetNormals[r].y = g, s.facetNormals[r].z = f), G && s && (s.facetPositions[r].x = (e[b] + e[v] + e[y]) / 3, s.facetPositions[r].y = (e[T] + e[A] + e[E]) / 3, s.facetPositions[r].z = (e[M] + e[x] + e[D]) / 3), ue && s) {
+      if (b = t[r * 3] * 3, T = b + 1, M = b + 2, v = t[r * 3 + 1] * 3, A = v + 1, x = v + 2, y = t[r * 3 + 2] * 3, E = y + 1, D = y + 2, n = e[b] - e[v], a = e[T] - e[A], o = e[M] - e[x], h = e[y] - e[v], c = e[E] - e[A], u = e[D] - e[x], d = oe * (a * u - o * c), g = oe * (o * h - n * u), f = oe * (n * c - a * h), m = Math.sqrt(d * d + g * g + f * f), m = m === 0 ? 1 : m, d /= m, g /= m, f /= m, V && s && (s.facetNormals[r].x = d, s.facetNormals[r].y = g, s.facetNormals[r].z = f), G && s && (s.facetPositions[r].x = (e[b] + e[v] + e[y]) / 3, s.facetPositions[r].y = (e[T] + e[A] + e[E]) / 3, s.facetPositions[r].z = (e[M] + e[x] + e[D]) / 3), ue && s) {
         const Ve = Math.floor((s.facetPositions[r].x - s.bInfo.minimum.x * $) * xe), Qe = Math.floor((s.facetPositions[r].y - s.bInfo.minimum.y * $) * we), _t = Math.floor((s.facetPositions[r].z - s.bInfo.minimum.z * $) * Me), Xt = Math.floor((e[b] - s.bInfo.minimum.x * $) * xe), Yt = Math.floor((e[T] - s.bInfo.minimum.y * $) * we), qt = Math.floor((e[M] - s.bInfo.minimum.z * $) * Me), ui = Math.floor((e[v] - s.bInfo.minimum.x * $) * xe), di = Math.floor((e[A] - s.bInfo.minimum.y * $) * we), fi = Math.floor((e[x] - s.bInfo.minimum.z * $) * Me), _i = Math.floor((e[y] - s.bInfo.minimum.x * $) * xe), gi = Math.floor((e[E] - s.bInfo.minimum.y * $) * we), pi = Math.floor((e[D] - s.bInfo.minimum.z * $) * Me), it = Xt + s.subDiv.max * Yt + Re * qt, st = ui + s.subDiv.max * di + Re * fi, rt = _i + s.subDiv.max * gi + Re * pi, nt = Ve + s.subDiv.max * Qe + Re * _t;
         s.facetPartitioning[nt] = s.facetPartitioning[nt] ? s.facetPartitioning[nt] : new Array(), s.facetPartitioning[it] = s.facetPartitioning[it] ? s.facetPartitioning[it] : new Array(), s.facetPartitioning[st] = s.facetPartitioning[st] ? s.facetPartitioning[st] : new Array(), s.facetPartitioning[rt] = s.facetPartitioning[rt] ? s.facetPartitioning[rt] : new Array(), s.facetPartitioning[it].push(r), st != it && s.facetPartitioning[st].push(r), rt == st || rt == it || s.facetPartitioning[rt].push(r), nt == it || nt == st || nt == rt || s.facetPartitioning[nt].push(r);
       }
@@ -33168,7 +33168,7 @@ const Pr = {
   lights: [],
   rollId: null,
   scene: null
-}, ae = class ae {
+}, he = class he {
   constructor(e, t) {
     // mesh = null
     Ut(this, "value", 0);
@@ -33230,10 +33230,10 @@ const Pr = {
     this.config = { ...this.config, ...e };
   }
   static setVector3(e, t, i) {
-    return ae.vector3.set(e, t, i);
+    return he.vector3.set(e, t, i);
   }
   static getVector3() {
-    return ae.vector3;
+    return he.vector3;
   }
   static getForcedFaceValue(e) {
     var t, i;
@@ -33241,7 +33241,7 @@ const Pr = {
   }
   static getForcedValue(e) {
     var t;
-    return ((t = e.config) == null ? void 0 : t.forcedValue) ?? ae.getForcedFaceValue(e);
+    return ((t = e.config) == null ? void 0 : t.forcedValue) ?? he.getForcedFaceValue(e);
   }
   static getFaceNormal(e, t) {
     const i = e.getVerticesData("position"), s = e.getVerticesData("normal"), r = e.getIndices(), n = Number(t) * 3, a = (d) => r ? r[n + d] : n + d, o = (d) => {
@@ -33286,7 +33286,7 @@ const Pr = {
     for (const [n, a] of Object.entries(t)) {
       if (Number(a) !== Number(i))
         continue;
-      const o = ae.getFaceNormal(e, n);
+      const o = he.getFaceNormal(e, n);
       o && (s.addInPlace(o), r++);
     }
     return r > 0 ? s.normalize() : null;
@@ -33296,7 +33296,7 @@ const Pr = {
     for (const [r, n] of Object.entries(t)) {
       if (Number(n) !== Number(i))
         continue;
-      const a = ae.getFaceNormal(e, r);
+      const a = he.getFaceNormal(e, r);
       a && s.push({ faceId: Number(r), normal: a });
     }
     return s;
@@ -33309,15 +33309,15 @@ const Pr = {
     return W.Dot(e, t) < 0 ? t.scale(-1) : t;
   }
   static buildForcedTargetQuaternion(e, t, i) {
-    const s = t.applyRotationQuaternion ? t.applyRotationQuaternion(e).normalize() : ae.transformNormalByQuaternion(t, e), n = W.FromUnitVectorsToRef(s, i, W.Identity()).multiply(e).normalize();
-    return ae.chooseShortestQuaternion(e, n);
+    const s = t.applyRotationQuaternion ? t.applyRotationQuaternion(e).normalize() : he.transformNormalByQuaternion(t, e), n = W.FromUnitVectorsToRef(s, i, W.Identity()).multiply(e).normalize();
+    return he.chooseShortestQuaternion(e, n);
   }
   static pickTopFaceValue(e, t, i, s, r, n) {
     const a = i.createInstance(`${i.name}-sync-candidate-${e.id}-${Date.now()}`);
     a.isPickable = !0, a.isVisible = !0, a.setEnabled(!0), a.position.copyFrom(e.mesh.position), a.rotationQuaternion = r.clone(), a.computeWorldMatrix(!0);
     try {
-      ae.ray.direction = n, ae.ray.origin = e.mesh.position;
-      const o = t.pickWithRay(ae.ray, (c) => c === a), h = o == null ? void 0 : o.faceId;
+      he.ray.direction = n, he.ray.origin = e.mesh.position;
+      const o = t.pickWithRay(he.ray, (c) => c === a), h = o == null ? void 0 : o.faceId;
       return {
         faceId: h,
         value: h !== void 0 ? s[h] : void 0
@@ -33327,29 +33327,29 @@ const Pr = {
     }
   }
   static resolveForcedTargetQuaternion(e, t, i, s, r, n, a) {
-    const o = ae.getMatchingFaceNormals(i, s, r);
+    const o = he.getMatchingFaceNormals(i, s, r);
     let h = null;
     for (const u of o) {
-      const d = ae.buildForcedTargetQuaternion(n, u.normal, a), g = ae.pickTopFaceValue(e, t, i, s, d, a);
+      const d = he.buildForcedTargetQuaternion(n, u.normal, a), g = he.pickTopFaceValue(e, t, i, s, d, a);
       if (Number(g.value) !== Number(r))
         continue;
-      const f = ae.transformNormalByQuaternion(u.normal, d), m = p.Dot(f, a);
+      const f = he.transformNormalByQuaternion(u.normal, d), m = p.Dot(f, a);
       (!h || m > h.score) && (h = { quaternion: d, score: m });
     }
     if (h)
       return h.quaternion;
-    const c = ae.getMappedFaceNormal(i, s, r);
-    return c ? ae.buildForcedTargetQuaternion(n, c, a) : null;
+    const c = he.getMappedFaceNormal(i, s, r);
+    return c ? he.buildForcedTargetQuaternion(n, c, a) : null;
   }
   static getForcedTargetQuaternion(e, t) {
     var u, d;
-    const i = ae.getForcedFaceValue(e);
+    const i = he.getForcedFaceValue(e);
     if (i === void 0 || !((u = e.mesh) != null && u.rotationQuaternion))
       return null;
     const s = e.config.parentMesh || e.config.meshName, r = t.themeData[s], n = (d = r == null ? void 0 : r.colliderFaceMap) == null ? void 0 : d[e.dieType], a = t.getMeshByName(`${s}_${e.dieType}_collider`);
     if (!n || !a)
       return null;
-    const o = e.dieType === "d4" && (r != null && r.d4FaceDown) ? new p(0, -1, 0) : new p(0, 1, 0), h = (e.__rawRotationQuaternion || e.mesh.rotationQuaternion).clone().normalize(), c = ae.resolveForcedTargetQuaternion(
+    const o = e.dieType === "d4" && (r != null && r.d4FaceDown) ? new p(0, -1, 0) : new p(0, 1, 0), h = (e.__rawRotationQuaternion || e.mesh.rotationQuaternion).clone().normalize(), c = he.resolveForcedTargetQuaternion(
       e,
       t,
       a,
@@ -33372,11 +33372,11 @@ const Pr = {
       throw new Error(`No collider mesh found for ${e.dieType}`);
     const o = a.createInstance(`${i}_${e.dieType}-hitbox-${e.id}-${Date.now()}`);
     o.isPickable = !0, o.isVisible = !0, o.setEnabled(!0), o.position.copyFrom(e.mesh.position), o.rotationQuaternion = e.mesh.rotationQuaternion, o.computeWorldMatrix(!0);
-    let h = ae.setVector3(0, 1, 0);
-    e.dieType === "d4" && n && (h = ae.setVector3(0, -1, 0));
+    let h = he.setVector3(0, 1, 0);
+    e.dieType === "d4" && n && (h = he.setVector3(0, -1, 0));
     try {
-      ae.ray.direction = h, ae.ray.origin = e.mesh.position;
-      const c = t.pickWithRay(ae.ray, (d) => d === o), u = (c == null ? void 0 : c.faceId) !== void 0 ? r[e.dieType][c.faceId] : void 0;
+      he.ray.direction = h, he.ray.origin = e.mesh.position;
+      const c = t.pickWithRay(he.ray, (d) => d === o), u = (c == null ? void 0 : c.faceId) !== void 0 ? r[e.dieType][c.faceId] : void 0;
       if (u === void 0)
         throw new Error(`colliderFaceMap error: no value found for ${e.dieType} mesh face ${c == null ? void 0 : c.faceId}`);
       return Number(u);
@@ -33386,14 +33386,14 @@ const Pr = {
   }
   static lockForcedResult(e, t) {
     var r, n, a, o;
-    const i = ae.getForcedTargetQuaternion(e, t);
+    const i = he.getForcedTargetQuaternion(e, t);
     if (!i)
       return !1;
     const { targetQuaternion: s } = i;
     return (r = e.mesh.rotationQuaternion) != null && r.copyFrom ? e.mesh.rotationQuaternion.copyFrom(s) : e.mesh.rotationQuaternion = s, (a = (n = e.mesh).computeWorldMatrix) == null || a.call(n, !0), (o = t.render) == null || o.call(t), !0;
   }
   static smoothForcedResult(e, t, i = 1, s = !1, r = !1) {
-    const n = ae.getForcedTargetQuaternion(e, t);
+    const n = he.getForcedTargetQuaternion(e, t);
     if (!n)
       return !1;
     const { sourceQuaternion: a, targetQuaternion: o } = n, h = Math.max(0, Math.min(1, i)), c = W.Slerp(a, o, h).normalize(), u = r ? e.mesh.rotationQuaternion.clone().normalize() : a, d = (b) => {
@@ -33424,26 +33424,23 @@ const Pr = {
     var r;
     if (!e.mesh)
       return e.value;
-    const i = ae.getForcedFaceValue(e);
+    const i = he.getForcedFaceValue(e);
     if (i !== void 0) {
-      if (!ae.lockForcedResult(e, t))
-        throw new Error(`Unable to resolve target face ${i} for ${e.dieType}.`);
-      const n = ae.readTopFaceValue(e, t);
+      let n = he.readTopFaceValue(e, t);
       if (Number(n) !== Number(i)) {
-        if (!ae.lockForcedResult(e, t))
+        if (!he.lockForcedResult(e, t))
           throw new Error(`Unable to correct ${e.dieType} to requested face ${i}.`);
-        const a = ae.readTopFaceValue(e, t);
-        if (Number(a) !== Number(i))
-          throw new Error(`Resolved ${e.dieType} face ${a} does not match requested face ${i}.`);
+        if (n = he.readTopFaceValue(e, t), Number(n) !== Number(i))
+          throw new Error(`Resolved ${e.dieType} face ${n} does not match requested face ${i}.`);
       }
     }
-    (r = e.config) != null && r.forcedDiscarded && ae.fadeDiscarded(e), e.value = ae.readTopFaceValue(e, t);
-    const s = ae.getForcedValue(e);
+    (r = e.config) != null && r.forcedDiscarded && he.fadeDiscarded(e), e.value = he.readTopFaceValue(e, t);
+    const s = he.getForcedValue(e);
     return s !== void 0 && Number.isFinite(Number(s)) && (e.value = Number(s)), e.value;
   }
 };
-Ut(ae, "ray", new ie(p.Zero(), p.Zero(), 1)), Ut(ae, "vector3", p.Zero());
-let is = ae;
+Ut(he, "ray", new ie(p.Zero(), p.Zero(), 1)), Ut(he, "vector3", p.Zero());
+let is = he;
 export {
   Br as $,
   ci as A,
@@ -33485,7 +33482,7 @@ export {
   fe as a8,
   I as a9,
   mt as aa,
-  oe as ab,
+  ae as ab,
   Or as ac,
   K as ad,
   R as b,

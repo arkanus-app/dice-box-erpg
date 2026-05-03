@@ -35,61 +35,61 @@ const defaultOptions = {
 let config = {...defaultOptions}
 
 const forcedGuideOptions = {
-	minElapsed: 320,
-	timeoutWindow: 1200,
+	minElapsed: 120,
+	timeoutWindow: 1600,
 	speedThreshold: 1.6,
 	tiltThreshold: 1.4,
-	duration: 700,
-	angleThreshold: 0.035,
-	initialBias: .18,
-	angularStrength: 8.5,
-	maxAngularVelocity: 9,
-	motorBlend: .35,
-	linearDampingStart: .96,
-	linearDampingEnd: .7,
-	angularDampingStart: .94,
-	angularDampingEnd: .55,
-	centerPull: .018,
-	centerMaxVelocity: .7,
+	duration: 1350,
+	angleThreshold: 0.028,
+	initialBias: .34,
+	angularStrength: 3.2,
+	maxAngularVelocity: 3.8,
+	motorBlend: .12,
+	linearDampingStart: .99,
+	linearDampingEnd: .82,
+	angularDampingStart: .985,
+	angularDampingEnd: .78,
+	centerPull: .01,
+	centerMaxVelocity: .42,
 	maxLockHeight: 2.4
 }
 
 const forcedGuideByDieType = {
 	d4: {
-		minElapsed: 420,
-		duration: 850,
-		angularStrength: 6.8,
-		maxAngularVelocity: 7.2,
-		initialBias: .12,
-		centerPull: .024
+		minElapsed: 160,
+		duration: 1500,
+		angularStrength: 2.8,
+		maxAngularVelocity: 3.2,
+		initialBias: .26,
+		centerPull: .014
 	},
 	d6: {
-		minElapsed: 360,
-		duration: 760,
-		angularStrength: 7.2,
-		maxAngularVelocity: 7.6,
-		initialBias: .16
+		minElapsed: 140,
+		duration: 1420,
+		angularStrength: 2.9,
+		maxAngularVelocity: 3.3,
+		initialBias: .3
 	},
 	d10: {
-		minElapsed: 300,
-		duration: 660,
-		angularStrength: 9.4,
-		maxAngularVelocity: 9.6,
-		initialBias: .2
+		minElapsed: 110,
+		duration: 1280,
+		angularStrength: 3.5,
+		maxAngularVelocity: 4.1,
+		initialBias: .36
 	},
 	d100: {
-		minElapsed: 300,
-		duration: 660,
-		angularStrength: 9.4,
-		maxAngularVelocity: 9.6,
-		initialBias: .2
+		minElapsed: 110,
+		duration: 1280,
+		angularStrength: 3.5,
+		maxAngularVelocity: 4.1,
+		initialBias: .36
 	},
 	d20: {
-		minElapsed: 280,
-		duration: 620,
-		angularStrength: 10,
-		maxAngularVelocity: 10.5,
-		initialBias: .22
+		minElapsed: 90,
+		duration: 1220,
+		angularStrength: 3.8,
+		maxAngularVelocity: 4.5,
+		initialBias: .4
 	}
 }
 
@@ -578,6 +578,11 @@ const clamp = (value, min, max) => {
 	return Math.max(min, Math.min(max, value))
 }
 
+const smoothStep = (value) => {
+	const clamped = clamp(value, 0, 1)
+	return clamped * clamped * (3 - 2 * clamped)
+}
+
 const normalizeQuaternion = (q) => {
 	const length = Math.hypot(q.x, q.y, q.z, q.w) || 1
 	return {
@@ -735,7 +740,11 @@ const applyAngularMotor = (body, currentQuaternion, guide, profile, progress) =>
 		y: error.y / sinHalfAngle,
 		z: error.z / sinHalfAngle
 	}
-	const desiredSpeed = Math.min(profile.maxAngularVelocity, angle * profile.angularStrength)
+	const easedProgress = smoothStep(progress)
+	const desiredSpeed = Math.min(
+		profile.maxAngularVelocity,
+		angle * profile.angularStrength * lerp(.38, 1, easedProgress)
+	)
 	const desired = {
 		x: axis.x * desiredSpeed,
 		y: axis.y * desiredSpeed,
@@ -743,7 +752,7 @@ const applyAngularMotor = (body, currentQuaternion, guide, profile, progress) =>
 	}
 	const current = body.getAngularVelocity()
 	const angularDamping = lerp(profile.angularDampingStart, profile.angularDampingEnd, progress)
-	const blend = clamp(profile.motorBlend + progress * .35, 0, .9)
+	const blend = clamp(profile.motorBlend + easedProgress * .24, 0, .44)
 
 	body.setAngularVelocity(setVector3(
 		lerp(current.x() * angularDamping, desired.x, blend),
@@ -760,6 +769,7 @@ const finalizeGuidedBody = (body) => {
 	body.setLinearVelocity(emptyVector)
 	body.setAngularVelocity(emptyVector)
 	body.guidedTarget.complete = true
+	body.guidedFinalFrameSynced = false
 	body.guidedTarget.state = 'complete'
 }
 
@@ -769,7 +779,7 @@ const shouldStartGuidance = (body, speed, tilt) => {
 		return false
 	}
 
-	return body.timeout <= profile.timeoutWindow || (speed < profile.speedThreshold && tilt < profile.tiltThreshold)
+	return true
 }
 
 const applyGuidance = (body, delta, speed, tilt) => {
@@ -778,7 +788,7 @@ const applyGuidance = (body, delta, speed, tilt) => {
 		return
 	}
 
-	if(guide.complete) {
+	if(guide.complete && body.guidedFinalFrameSynced) {
 		body.guidedSleepReady = true
 		return
 	}
@@ -808,7 +818,7 @@ const applyGuidance = (body, delta, speed, tilt) => {
 
 	const nearFloor = getBodyPositionY(body) <= profile.maxLockHeight
 	const canLock = nearFloor && (body.hasGroundContact || progress >= .7 || body.timeout < 80)
-	if(canLock && (angle < profile.angleThreshold || progress >= 1 || body.timeout < 80)) {
+	if(canLock && (angle < profile.angleThreshold || body.timeout < 80)) {
 		finalizeGuidedBody(body)
 	}
 }
@@ -834,6 +844,27 @@ const setGuidedTarget = (body, quaternion, dieType = body.dieType) => {
 
 const guideDie = ({id, quaternion, dieType}) => {
 	setGuidedTarget(findBody(id), quaternion, dieType)
+}
+
+const writeBodyTransformToBuffer = (body, bufferIndex) => {
+	const ms = body.getMotionState()
+	if(!ms) {
+		return false
+	}
+
+	ms.getWorldTransform(tmpBtTrans)
+	let p = tmpBtTrans.getOrigin()
+	let q = tmpBtTrans.getRotation()
+
+	diceBufferView[bufferIndex] = body.id
+	diceBufferView[bufferIndex + 1] = p.x()
+	diceBufferView[bufferIndex + 2] = p.y()
+	diceBufferView[bufferIndex + 3] = p.z()
+	diceBufferView[bufferIndex + 4] = q.x()
+	diceBufferView[bufferIndex + 5] = q.y()
+	diceBufferView[bufferIndex + 6] = q.z()
+	diceBufferView[bufferIndex + 7] = q.w()
+	return true
 }
 
 const clearDice = () => {
@@ -943,6 +974,14 @@ const update = (delta) => {
 		const speed = rb.getLinearVelocity().length()
 		const tilt = rb.getAngularVelocity().length()
 
+		if(rb.guidedTarget?.complete && !rb.guidedFinalFrameSynced) {
+			if(writeBodyTransformToBuffer(rb, (i * 8) + 1)) {
+				rb.guidedFinalFrameSynced = true
+				rb.timeout -= delta
+				continue
+			}
+		}
+
 		if(rb.guidedSleepReady || (!rb.guidedTarget && (speed < .01 && tilt < .005 || rb.timeout < 0))) {
 			// flag the second param for this body so it can be processed in World, first param will be the roll.id
 			diceBufferView[(i*8) + 1] = rb.id
@@ -958,22 +997,7 @@ const update = (delta) => {
 		}
 		// tick down the movement timeout on this die
 		rb.timeout -= delta
-		const ms = rb.getMotionState()
-		if (ms) {
-			ms.getWorldTransform(tmpBtTrans)
-			let p = tmpBtTrans.getOrigin()
-			let q = tmpBtTrans.getRotation()
-			let j = i*8 + 1
-
-			diceBufferView[j] = rb.id
-			diceBufferView[j+1] = p.x()
-			diceBufferView[j+2] = p.y()
-			diceBufferView[j+3] = p.z()
-			diceBufferView[j+4] = q.x()
-			diceBufferView[j+5] = q.y()
-			diceBufferView[j+6] = q.z()
-			diceBufferView[j+7] = q.w()
-		}
+		writeBodyTransformToBuffer(rb, (i * 8) + 1)
 	}
 }
 
