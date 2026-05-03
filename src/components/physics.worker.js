@@ -45,6 +45,8 @@ const forcedGuideOptions = {
 	angleThreshold: 0.035,
 	finalLockDuration: 220,
 	initialBias: .28,
+	launchSpinBias: .18,
+	launchAlignmentStrength: 1.35,
 	angularStrength: 5.2,
 	maxAngularVelocity: 6.4,
 	motorBlend: .14,
@@ -65,6 +67,8 @@ const forcedGuideByDieType = {
 		angularStrength: 4.2,
 		maxAngularVelocity: 5.2,
 		initialBias: .2,
+		launchSpinBias: .12,
+		launchAlignmentStrength: 1.05,
 		centerPull: .014
 	},
 	d6: {
@@ -73,7 +77,9 @@ const forcedGuideByDieType = {
 		duration: 1320,
 		angularStrength: 4.8,
 		maxAngularVelocity: 5.8,
-		initialBias: .24
+		initialBias: .24,
+		launchSpinBias: .15,
+		launchAlignmentStrength: 1.2
 	},
 	d10: {
 		minElapsed: 520,
@@ -81,7 +87,9 @@ const forcedGuideByDieType = {
 		duration: 1200,
 		angularStrength: 5.6,
 		maxAngularVelocity: 7,
-		initialBias: .3
+		initialBias: .3,
+		launchSpinBias: .2,
+		launchAlignmentStrength: 1.45
 	},
 	d100: {
 		minElapsed: 520,
@@ -89,7 +97,9 @@ const forcedGuideByDieType = {
 		duration: 1200,
 		angularStrength: 5.6,
 		maxAngularVelocity: 7,
-		initialBias: .3
+		initialBias: .3,
+		launchSpinBias: .2,
+		launchAlignmentStrength: 1.45
 	},
 	d20: {
 		minElapsed: 480,
@@ -97,7 +107,9 @@ const forcedGuideByDieType = {
 		duration: 1160,
 		angularStrength: 6.1,
 		maxAngularVelocity: 7.6,
-		initialBias: .34
+		initialBias: .34,
+		launchSpinBias: .22,
+		launchAlignmentStrength: 1.6
 	}
 }
 
@@ -568,6 +580,7 @@ const rollDie = (die) => {
 	// console.log('scale', scale)
 	
 	die.applyImpulse(force, setVector3(scale, scale, scale))
+	applyLaunchGuidance(die, spinny)
 
 }
 
@@ -668,6 +681,29 @@ const conjugateQuaternion = (q) => {
 	}
 }
 
+const getQuaternionCorrection = (currentQuaternion, targetQuaternion) => {
+	const target = getShortestTargetQuaternion(currentQuaternion, targetQuaternion)
+	let error = multiplyQuaternion(target, conjugateQuaternion(currentQuaternion))
+	if(error.w < 0) {
+		error = {x: -error.x, y: -error.y, z: -error.z, w: -error.w}
+	}
+
+	const angle = 2 * Math.acos(clamp(error.w, -1, 1))
+	if(angle < 0.0001) {
+		return null
+	}
+
+	const sinHalfAngle = Math.sqrt(Math.max(0.000001, 1 - error.w * error.w))
+	return {
+		angle,
+		axis: {
+			x: error.x / sinHalfAngle,
+			y: error.y / sinHalfAngle,
+			z: error.z / sinHalfAngle
+		}
+	}
+}
+
 const randomQuaternion = () => {
 	const x = lerp(-1.5, 1.5, Math.random())
 	const y = lerp(-1.5, 1.5, Math.random())
@@ -714,6 +750,42 @@ const getBodyQuaternion = (body) => {
 		z: q.z(),
 		w: q.w()
 	})
+}
+
+const applyLaunchGuidance = (body, spin) => {
+	const guide = body.guidedTarget
+	const profile = body.guidanceProfile || guide?.profile
+	if(!guide?.quaternion || !profile?.launchSpinBias) {
+		return
+	}
+
+	const currentQuaternion = getBodyQuaternion(body)
+	if(!currentQuaternion) {
+		return
+	}
+
+	const correction = getQuaternionCorrection(currentQuaternion, guide.quaternion)
+	if(!correction) {
+		return
+	}
+
+	const current = body.getAngularVelocity()
+	const blend = clamp(profile.launchSpinBias, 0, .35)
+	const targetSpeed = Math.min(
+		profile.maxAngularVelocity * .75,
+		Math.max(spin * 18, correction.angle * profile.launchAlignmentStrength)
+	)
+	const desired = {
+		x: correction.axis.x * targetSpeed,
+		y: correction.axis.y * targetSpeed,
+		z: correction.axis.z * targetSpeed
+	}
+
+	body.setAngularVelocity(setVector3(
+		lerp(current.x(), desired.x, blend),
+		lerp(current.y(), desired.y, blend),
+		lerp(current.z(), desired.z, blend)
+	))
 }
 
 const getBodyPositionY = (body) => {
@@ -774,33 +846,21 @@ const getGuideAssistProgress = (progress) => {
 }
 
 const applyAngularMotor = (body, currentQuaternion, guide, profile, progress) => {
-	const target = getShortestTargetQuaternion(currentQuaternion, guide.quaternion)
-	let error = multiplyQuaternion(target, conjugateQuaternion(currentQuaternion))
-	if(error.w < 0) {
-		error = {x: -error.x, y: -error.y, z: -error.z, w: -error.w}
+	const correction = getQuaternionCorrection(currentQuaternion, guide.quaternion)
+	if(!correction) {
+		return 0
 	}
 
-	const angle = 2 * Math.acos(clamp(error.w, -1, 1))
-	if(angle < 0.0001) {
-		return angle
-	}
-
-	const sinHalfAngle = Math.sqrt(Math.max(0.000001, 1 - error.w * error.w))
-	const axis = {
-		x: error.x / sinHalfAngle,
-		y: error.y / sinHalfAngle,
-		z: error.z / sinHalfAngle
-	}
 	const easedProgress = smoothStep(progress)
 	const assistProgress = getGuideAssistProgress(progress)
 	const desiredSpeed = Math.min(
 		profile.maxAngularVelocity,
-		angle * profile.angularStrength * lerp(.24, 1, easedProgress)
+		correction.angle * profile.angularStrength * lerp(.24, 1, easedProgress)
 	)
 	const desired = {
-		x: axis.x * desiredSpeed,
-		y: axis.y * desiredSpeed,
-		z: axis.z * desiredSpeed
+		x: correction.axis.x * desiredSpeed,
+		y: correction.axis.y * desiredSpeed,
+		z: correction.axis.z * desiredSpeed
 	}
 	const current = body.getAngularVelocity()
 	const angularDamping = lerp(profile.angularDampingStart, profile.angularDampingEnd, assistProgress)
@@ -812,7 +872,7 @@ const applyAngularMotor = (body, currentQuaternion, guide, profile, progress) =>
 		lerp(current.z() * angularDamping, desired.z, blend)
 	))
 
-	return angle
+	return correction.angle
 }
 
 const finalizeGuidedBody = (body) => {
