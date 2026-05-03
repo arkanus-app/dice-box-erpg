@@ -273,8 +273,19 @@ class WorldOnscreen {
 	
 		// for d100's we need to add an additional d10 and pair it up with the d100 just created
 		if(options.sides === 100 && options.data !== 'single') {
+			const forcedValue = Number(options.forcedValue)
+			const forcedD100Value = Number.isFinite(forcedValue) ? Math.max(1, Math.min(100, Math.trunc(forcedValue))) : undefined
+			const forcedD10FaceValue = forcedD100Value === undefined ? undefined : forcedD100Value - Math.floor((forcedD100Value - 1) / 10) * 10
 			// assign the new die to a property on the d100 - spread the options in order to pass a matching theme
-			newDie.d10Instance = await Dice.loadDie({...diceOptions, dieType: 'd10', sides: 10, id: newDie.id + 10000}, this.#scene).then( response =>  {
+			newDie.d10Instance = await Dice.loadDie({
+				...diceOptions,
+				dieType: 'd10',
+				sides: 10,
+				id: newDie.id + 10000,
+				forcedValue: forcedD10FaceValue,
+				forcedFaceValue: forcedD10FaceValue,
+				forcedDiscarded: options.forcedDiscarded
+			}, this.#scene).then( response =>  {
 				const d10Instance = new Dice(response, this.#scene)
 				// identify the parent of this d10 so we can calculate the roll result later
 				d10Instance.dieParent = newDie
@@ -363,7 +374,20 @@ class WorldOnscreen {
 			const qw = this.diceBufferView[bufferIndex + 7]
 
 			die.mesh.position.set(px, py, pz)
-			die.mesh.rotationQuaternion.set(qx, qy, qz, qw)
+			const hasForcedFace = die.config.forcedFaceValue !== undefined || die.config.forcedValue !== undefined
+			if(!(die.asleep && hasForcedFace)) {
+				die.mesh.rotationQuaternion.set(qx, qy, qz, qw)
+			}
+			die.__rawRotationQuaternion = die.mesh.rotationQuaternion.clone()
+			if(hasForcedFace) {
+				const frames = (die.__forcedSyncFrames = (die.__forcedSyncFrames || 0) + 1)
+				const isCube = die.dieType === 'd6'
+				const delay = isCube ? 24 : 18
+				const duration = isCube ? 90 : 70
+				const maxProgress = isCube ? 0.16 : 0.42
+				const progress = Math.min(maxProgress, Math.max(0, (frames - delay) / duration * maxProgress))
+				Dice.smoothForcedResult(die, this.#scene, progress)
+			}
 		}
 
 		bufferIndex = bufferIndex + 8

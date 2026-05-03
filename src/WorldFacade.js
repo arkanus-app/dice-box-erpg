@@ -601,6 +601,9 @@ class WorldFacade {
 				let rollId = notation.rollId !== undefined ? notation.rollId : this.#rollIndex++
 				let id = notation.id !== undefined ? notation.id : this.#idIndex++
 				index = hasGroupId ? notation.groupId : this.#groupIndex
+				let forcedValue = Array.isArray(notation.values) ? notation.values[i] : notation.value
+				let forcedFaceValue = Array.isArray(notation.faceValues) ? notation.faceValues[i] : forcedValue
+				const forcedDiscarded = Array.isArray(notation.discarded) ? notation.discarded[i] : notation.discarded
 
         // when a roll object is passed in, notation.sides could be an integer - convert the die type to include the "d" prefix so it will match the model names
 				const dieType = Number.isInteger(notation.sides) ? `d${notation.sides}` : notation.sides
@@ -609,6 +612,12 @@ class WorldFacade {
         if(/^d[1-9]{1}[0-9]{0,1}0?$/.test(notation.sides)){
           notation.sides =  parseInt(notation.sides.replace('d', ''))
         }
+
+				if(notation.sides === 100 && Number.isFinite(Number(forcedValue))) {
+					const d100Value = Math.max(1, Math.min(100, Math.trunc(Number(forcedValue))))
+					forcedValue = d100Value
+					forcedFaceValue = Math.floor((d100Value - 1) / 10) * 10
+				}
 
 				const roll = {
 					sides: notation.sides,
@@ -620,7 +629,10 @@ class WorldFacade {
 					id,
 					theme,
 					themeColor,
-					meshName
+					meshName,
+					forcedValue,
+					forcedFaceValue,
+					forcedDiscarded
 				}
 
 				rolls[rollId] = roll
