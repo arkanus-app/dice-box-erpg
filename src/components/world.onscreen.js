@@ -351,6 +351,42 @@ class WorldOnscreen {
 
 	this.onDieRemoved(data.rollId)
 }
+
+	#usesPhysicsForcedResult(die) {
+		const hasForcedFace = die.config.forcedFaceValue !== undefined || die.config.forcedValue !== undefined
+		return hasForcedFace && die.config.forcedResultMode !== 'visual'
+	}
+
+	#guideForcedDie(die) {
+		if(die.__forcedPhysicsGuided || die.__forcedPhysicsGuideFailed) {
+			return
+		}
+
+		const frames = die.__forcedSyncFrames || 0
+		if(frames < 14) {
+			return
+		}
+
+		const resolvedTarget = Dice.getForcedTargetQuaternion(die, this.#scene)
+		if(!resolvedTarget) {
+			die.__forcedPhysicsGuideFailed = true
+			die.config.forcedResultMode = 'visual'
+			return
+		}
+
+		const { targetQuaternion } = resolvedTarget
+		die.__forcedPhysicsGuided = true
+		this.#physicsWorkerPort.postMessage({
+			action: "guideDie",
+			id: die.id,
+			quaternion: {
+				x: targetQuaternion.x,
+				y: targetQuaternion.y,
+				z: targetQuaternion.z,
+				w: targetQuaternion.w
+			}
+		})
+	}
 	
 	updatesFromPhysics(buffer) {
 		this.diceBufferView = new Float32Array(buffer)
@@ -383,17 +419,21 @@ class WorldOnscreen {
 			rawRotationQuaternion.set(qx, qy, qz, qw)
 			die.__rawRotationQuaternion = rawRotationQuaternion
 			const hasForcedFace = die.config.forcedFaceValue !== undefined || die.config.forcedValue !== undefined
-			if(!(die.asleep && hasForcedFace)) {
+			if(!die.asleep) {
 				die.mesh.rotationQuaternion.set(qx, qy, qz, qw)
 			}
 			if(hasForcedFace) {
 				const frames = (die.__forcedSyncFrames = (die.__forcedSyncFrames || 0) + 1)
-				const isCube = die.dieType === 'd6'
-				const delay = isCube ? 24 : 18
-				const duration = isCube ? 90 : 70
-				const maxProgress = isCube ? 0.16 : 0.42
-				const progress = Math.min(maxProgress, Math.max(0, (frames - delay) / duration * maxProgress))
-				Dice.smoothForcedResult(die, this.#scene, progress)
+				if(this.#usesPhysicsForcedResult(die)) {
+					this.#guideForcedDie(die)
+				} else {
+					const isCube = die.dieType === 'd6'
+					const delay = isCube ? 24 : 18
+					const duration = isCube ? 90 : 70
+					const maxProgress = isCube ? 0.16 : 0.42
+					const progress = Math.min(maxProgress, Math.max(0, (frames - delay) / duration * maxProgress))
+					Dice.smoothForcedResult(die, this.#scene, progress)
+				}
 			}
 		}
 

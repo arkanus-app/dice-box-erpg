@@ -5,8 +5,8 @@ This fork keeps the public `@3d-dice/dice-box` source as the base and adds ERPG-
 ## Changes
 
 - Accept resolved dice values through roll notation (`value`, `values`, `faceValues`, `discarded`).
-- Synchronize the visual top face with externally resolved roll values.
-- Smooth the final correction instead of snapping the die at the end of the simulation.
+- Synchronize the top face with externally resolved roll values.
+- Guide the physics body toward the resolved value by default (`forcedResultMode: 'physics'`), with the older visual correction available through `forcedResultMode: 'visual'`.
 - Fade discarded dice toward grayscale for keep/drop notation such as `kh` and `kl`.
 - Remove the install-time asset copy prompt so CI and Cloudflare builds can run unattended.
 

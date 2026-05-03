@@ -397,10 +397,10 @@ class Dice {
       : null
   }
 
-  static smoothForcedResult(die, scene, amount = 1, animate = false, animateFromCurrent = false) {
+  static getForcedTargetQuaternion(die, scene) {
     const forcedFaceValue = Dice.getForcedFaceValue(die)
     if(forcedFaceValue === undefined || !die.mesh?.rotationQuaternion) {
-      return false
+      return null
     }
 
     const meshName = die.config.parentMesh || die.config.meshName
@@ -408,7 +408,7 @@ class Dice {
     const faceMap = themeData?.colliderFaceMap?.[die.dieType]
     const collider = scene.getMeshByName(`${meshName}_${die.dieType}_collider`)
     if(!faceMap || !collider) {
-      return false
+      return null
     }
 
     const topVector = die.dieType === 'd4' && themeData?.d4FaceDown
@@ -426,8 +426,23 @@ class Dice {
     )
 
     if(!targetQuaternion) {
+      return null
+    }
+
+    return {
+      sourceQuaternion,
+      targetQuaternion
+    }
+  }
+
+  static smoothForcedResult(die, scene, amount = 1, animate = false, animateFromCurrent = false) {
+    const resolvedTarget = Dice.getForcedTargetQuaternion(die, scene)
+
+    if(!resolvedTarget) {
       return false
     }
+
+    const { sourceQuaternion, targetQuaternion } = resolvedTarget
     const clampedAmount = Math.max(0, Math.min(1, amount))
     const amountTargetQuaternion = Quaternion.Slerp(sourceQuaternion, targetQuaternion, clampedAmount).normalize()
     const animationSourceQuaternion = animateFromCurrent
@@ -521,7 +536,7 @@ class Dice {
 			d.value = picked?.faceId !== undefined ? meshFaceIds[d.dieType][picked.faceId] : undefined
       const forcedFaceValue = Dice.getForcedFaceValue(d)
       const forcedValue = Dice.getForcedValue(d)
-      if(forcedFaceValue !== undefined) {
+      if(forcedFaceValue !== undefined && !d.__forcedPhysicsGuided) {
         Dice.smoothForcedResult(d, scene, 1, true, true)
       }
       if(d.config?.forcedDiscarded) {

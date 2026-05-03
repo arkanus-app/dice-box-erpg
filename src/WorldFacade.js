@@ -19,7 +19,8 @@ const defaultOptions = {
 	// origin: location.origin,
 	origin: typeof window !== "undefined" ? window.location.origin : "",
 	suspendSimulation: false,
-	maxDice: 999
+	maxDice: 999,
+	forcedResultMode: 'physics'
 }
 
 class WorldFacade {
@@ -471,7 +472,7 @@ class WorldFacade {
 	}
 
 	// TODO: pass data with roll - such as roll name. Passed back at the end in the results
-	roll(notation, {theme = this.config.theme, themeColor = this.config.themeColor, newStartPoint = true} = {}) {
+	roll(notation, {theme = this.config.theme, themeColor = this.config.themeColor, newStartPoint = true, forcedResultMode = this.config.forcedResultMode} = {}) {
 		// note: to add to a roll on screen use .add method
 		// reset the offscreen worker and physics worker with each new roll
 		this.clear()
@@ -482,7 +483,8 @@ class WorldFacade {
 			notation,
 			theme,
 			themeColor,
-			newStartPoint
+			newStartPoint,
+			forcedResultMode
 		})
 
 		this.#startRoll(collectionId)
@@ -491,7 +493,7 @@ class WorldFacade {
 		return this.rollCollectionData[collectionId].promise
 	}
 
-  add(notation, {theme = this.config.theme, themeColor = this.config.themeColor, newStartPoint = true} = {}) {
+  add(notation, {theme = this.config.theme, themeColor = this.config.themeColor, newStartPoint = true, forcedResultMode = this.config.forcedResultMode} = {}) {
 
 		const collectionId = this.#collectionIndex++
 
@@ -500,7 +502,8 @@ class WorldFacade {
 			notation,
 			theme,
 			themeColor,
-			newStartPoint
+			newStartPoint,
+			forcedResultMode
 		})
 		
 		this.#startRoll(collectionId)
@@ -619,6 +622,7 @@ class WorldFacade {
 			}
 			let theme = notation.theme || collection.theme || this.config.theme
 			const themeColor = notation.themeColor || collection.themeColor || this.config.themeColor
+			const forcedResultMode = notation.forcedResultMode || collection.forcedResultMode || this.config.forcedResultMode
 			const rolls = {}
 			const hasGroupId = notation.groupId !== undefined
 			let index
@@ -656,6 +660,7 @@ class WorldFacade {
 				notation,
 				theme,
 				themeColor,
+				forcedResultMode,
 				meshName,
 				diceAvailable,
 				diceExtra,
@@ -707,6 +712,7 @@ class WorldFacade {
 					id,
 					theme,
 					themeColor,
+					forcedResultMode: prepared.forcedResultMode,
 					meshName,
 					forcedValue,
 					forcedFaceValue,

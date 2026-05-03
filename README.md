@@ -59,6 +59,8 @@ diceBox.init().then(() => {
 
 Dice-Box can only accept simple dice notations and a modifier such as `2d20` or `2d6+4` It returns a result object once the dice have stopped rolling. For more advanced rolling features you'll want to look at adding [dice-parser-interface](https://github.com/3d-dice/dice-parser-interface) which supports the full [Roll20 Dice Specification](https://help.roll20.net/hc/en-us/articles/360037773133-Dice-Reference#DiceReference-RollTemplates).
 
+This ERPG fork also accepts resolved values in roll objects. When `value`, `values`, or `faceValues` are provided, `forcedResultMode: "physics"` guides the physics body toward that result by default. Use `forcedResultMode: "visual"` to keep the older final visual correction behavior.
+
 ### Configuration Options
 See [Configuration Options](https://fantasticdice.games/docs/usage/config#configuration-options) on the docs site
 

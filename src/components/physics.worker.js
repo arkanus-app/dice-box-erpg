@@ -34,6 +34,15 @@ const defaultOptions = {
 
 let config = {...defaultOptions}
 
+const forcedGuideOptions = {
+	minElapsed: 320,
+	timeoutWindow: 1200,
+	speedThreshold: 1.6,
+	tiltThreshold: 1.4,
+	duration: 700,
+	angleThreshold: 0.035
+}
+
 let emptyVector
 let diceBufferView
 
@@ -91,6 +100,9 @@ self.onmessage = (e) => {
             break;
 					case "removeDie":
 						removeDie(e.data.id)
+						break;
+					case "guideDie":
+						guideDie(e.data)
 						break;
           case "stopSimulation":
             stopLoop = true
@@ -450,6 +462,7 @@ const addDie = (options) => {
 	})
 	newDie.id = id
 	newDie.timeout = config.settleTimeout
+	newDie.elapsed = 0
 	newDie.mass = mass
 	physicsWorld.addRigidBody(newDie)
 	bodies.push(newDie)
@@ -498,6 +511,159 @@ const removeDie = (id) => {
 
 	// step the animation forward
 	// requestAnimationFrame(loop)
+}
+
+const findBody = (id) => {
+	return bodies.find(die => die.id === id) || sleepingBodies.find(die => die.id === id)
+}
+
+const normalizeQuaternion = (q) => {
+	const length = Math.hypot(q.x, q.y, q.z, q.w) || 1
+	return {
+		x: q.x / length,
+		y: q.y / length,
+		z: q.z / length,
+		w: q.w / length
+	}
+}
+
+const dotQuaternion = (a, b) => {
+	return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w
+}
+
+const getShortestTargetQuaternion = (source, target) => {
+	return dotQuaternion(source, target) < 0
+		? {x: -target.x, y: -target.y, z: -target.z, w: -target.w}
+		: target
+}
+
+const lerpQuaternion = (source, target, amount) => {
+	const shortestTarget = getShortestTargetQuaternion(source, target)
+	return normalizeQuaternion({
+		x: lerp(source.x, shortestTarget.x, amount),
+		y: lerp(source.y, shortestTarget.y, amount),
+		z: lerp(source.z, shortestTarget.z, amount),
+		w: lerp(source.w, shortestTarget.w, amount)
+	})
+}
+
+const quaternionAngle = (source, target) => {
+	const shortestTarget = getShortestTargetQuaternion(source, target)
+	const dot = Math.min(1, Math.abs(dotQuaternion(source, shortestTarget)))
+	return 2 * Math.acos(dot)
+}
+
+const getBodyQuaternion = (body) => {
+	const ms = body.getMotionState()
+	if(!ms) {
+		return null
+	}
+
+	ms.getWorldTransform(tmpBtTrans)
+	const q = tmpBtTrans.getRotation()
+	return normalizeQuaternion({
+		x: q.x(),
+		y: q.y(),
+		z: q.z(),
+		w: q.w()
+	})
+}
+
+const setBodyQuaternion = (body, quaternion) => {
+	const ms = body.getMotionState()
+	if(!ms) {
+		return
+	}
+
+	ms.getWorldTransform(tmpBtTrans)
+	tmpBtTrans.setRotation(new Ammo.btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w))
+	body.setWorldTransform(tmpBtTrans)
+	ms.setWorldTransform(tmpBtTrans)
+}
+
+const scaleBodyVelocity = (body, amount) => {
+	const linear = body.getLinearVelocity()
+	body.setLinearVelocity(setVector3(
+		linear.x() * amount,
+		linear.y() * amount,
+		linear.z() * amount
+	))
+
+	const angular = body.getAngularVelocity()
+	body.setAngularVelocity(setVector3(
+		angular.x() * amount,
+		angular.y() * amount,
+		angular.z() * amount
+	))
+}
+
+const finalizeGuidedBody = (body) => {
+	setBodyQuaternion(body, body.guidedTarget.quaternion)
+	body.setLinearVelocity(emptyVector)
+	body.setAngularVelocity(emptyVector)
+	body.guidedTarget.complete = true
+}
+
+const shouldStartGuidance = (body, speed, tilt) => {
+	if(body.elapsed < forcedGuideOptions.minElapsed) {
+		return false
+	}
+
+	return body.timeout <= forcedGuideOptions.timeoutWindow || (speed < forcedGuideOptions.speedThreshold && tilt < forcedGuideOptions.tiltThreshold)
+}
+
+const applyGuidance = (body, delta, speed, tilt) => {
+	const guide = body.guidedTarget
+	if(!guide) {
+		return
+	}
+
+	if(guide.complete) {
+		body.guidedSleepReady = true
+		return
+	}
+
+	if(!guide.active) {
+		if(!shouldStartGuidance(body, speed, tilt)) {
+			return
+		}
+		guide.active = true
+		guide.elapsed = 0
+	}
+
+	guide.elapsed += delta
+	const progress = Math.min(1, guide.elapsed / guide.duration)
+	const damping = lerp(.92, .48, progress)
+	scaleBodyVelocity(body, damping)
+
+	const currentQuaternion = getBodyQuaternion(body)
+	if(!currentQuaternion) {
+		return
+	}
+
+	const step = Math.min(.42, Math.max(.08, delta / 170))
+	const nextQuaternion = lerpQuaternion(currentQuaternion, guide.quaternion, step)
+	setBodyQuaternion(body, nextQuaternion)
+
+	if(quaternionAngle(nextQuaternion, guide.quaternion) < forcedGuideOptions.angleThreshold || progress >= 1 || body.timeout < 80) {
+		finalizeGuidedBody(body)
+	}
+}
+
+const guideDie = ({id, quaternion}) => {
+	const body = findBody(id)
+	if(!body || !quaternion) {
+		return
+	}
+
+	body.guidedTarget = {
+		quaternion: normalizeQuaternion(quaternion),
+		active: false,
+		complete: false,
+		elapsed: 0,
+		duration: forcedGuideOptions.duration
+	}
+	body.guidedSleepReady = false
 }
 
 const clearDice = () => {
@@ -593,10 +759,12 @@ const update = (delta) => {
 	// looping backwards since bodies are removed as they are put to sleep
 	for (let i = bodies.length - 1; i >= 0; i--) {
 		const rb = bodies[i]
+		rb.elapsed = (rb.elapsed || 0) + delta
+		applyGuidance(rb, delta, rb.getLinearVelocity().length(), rb.getAngularVelocity().length())
 		const speed = rb.getLinearVelocity().length()
 		const tilt = rb.getAngularVelocity().length()
 
-		if(speed < .01 && tilt < .005 || rb.timeout < 0) {
+		if(rb.guidedSleepReady || (!rb.guidedTarget && (speed < .01 && tilt < .005 || rb.timeout < 0))) {
 			// flag the second param for this body so it can be processed in World, first param will be the roll.id
 			diceBufferView[(i*8) + 1] = rb.id
 			diceBufferView[(i*8) + 2] = -1
