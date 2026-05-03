@@ -18,7 +18,16 @@ self.onmessage = async (e) => {
 			WorldOffscreen.addNonDie(e.data.options)
       break
 		case "loadTheme":
-			await WorldOffscreen.loadTheme(e.data.options).catch(error => console.error(error))
+			try {
+				await WorldOffscreen.loadTheme(e.data.options)
+			} catch(error) {
+				self.postMessage({
+					action: "theme-load-error",
+					id: e.data.options.theme,
+					message: error?.message || String(error),
+					stack: error?.stack
+				})
+			}
 			break
     case "clearDice":
 			WorldOffscreen.clear()

@@ -126,32 +126,28 @@ class ThemeLoader {
     const level = type + 'Level'
     const textureKey = type + 'Texture'
     // const power = type + 'Power'
-    try {        
-      switch (type) {
-        case "diffuse":
+    switch (type) {
+      case "diffuse":
+        texture = await this.importTextureAsync(`${basePath}/${matParams[textureKey]}`, theme)
+        if(matParams[level]) {
+          texture.level = matParams[level]
+        }
+        break;
+      case "bump":
+        texture = await this.importTextureAsync(`${basePath}/${matParams[textureKey]}`, theme)
+        if(matParams[level]) {
+          texture.level = matParams[level]
+        }
+        break;
+      case "specular":    
           texture = await this.importTextureAsync(`${basePath}/${matParams[textureKey]}`, theme)
-          if(matParams[level]) {
-            texture.level = matParams[level]
+          if(matParams.specularPower){
+            texture.specularPower = matParams.specularPower
           }
-          break;
-        case "bump":
-          texture = await this.importTextureAsync(`${basePath}/${matParams[textureKey]}`, theme)
-          if(matParams[level]) {
-            texture.level = matParams[level]
-          }
-          break;
-        case "specular":    
-            texture = await this.importTextureAsync(`${basePath}/${matParams[textureKey]}`, theme)
-            if(matParams.specularPower){
-              texture.specularPower = matParams.specularPower
-            }
-          break;
-      
-        default:
-          throw new Error(`Texture type: ${type} is not supported`)
-      }
-    } catch (error) {
-      console.error(error)
+        break;
+    
+      default:
+        throw new Error(`Texture type: ${type} is not supported`)
     }
     return texture
   }
@@ -166,9 +162,9 @@ class ThemeLoader {
           true, // invertY?: boolean
           undefined, // samplingMode?: number
           () => resolve(texture), // onLoad?: Nullable<() => void>
-          () => reject(`Unable to load texture '${fileName[2]}' for theme: '${theme}'. Check that your assetPath is configured correctly and that the files exist at path: '${fileName[1]}'`) // onError?: Nullable<(message?: string
+          () => reject(new Error(`Unable to load texture '${fileName[2]}' for theme: '${theme}'. Check that your assetPath is configured correctly and that the files exist at path: '${fileName[1]}'`)) // onError?: Nullable<(message?: string
         )
-    }).catch(error => console.error(error))
+    })
   }
 
   async load(options){
@@ -185,7 +181,7 @@ class ThemeLoader {
     //   await this.loadSemiTransparentMaterial(options)
     // }
     else {
-      console.error(`Material type: ${material.type} not supported`)
+      throw new Error(`Material type: ${material.type} not supported`)
     }
   }
 }

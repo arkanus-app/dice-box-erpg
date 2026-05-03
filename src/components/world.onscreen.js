@@ -24,7 +24,7 @@ class WorldOnscreen {
 	#physicsWorkerPort
 	#meshList = {}
 	noop = () => {}
-	diceBufferView = new Float32Array(8000)
+	diceBufferView = new Float32Array(1)
 
 	constructor(options){
 		this.onInitComplete = options.onInitComplete || this.noop
@@ -43,6 +43,7 @@ class WorldOnscreen {
 	
 		// set the config from World
 		this.config = config.options
+		this.diceBufferView = this.#createDiceBuffer()
 	
 		// setup babylonJS scene
 		this.#engine  = createEngine(this.#canvas )
@@ -125,6 +126,10 @@ class WorldOnscreen {
 			this.#lights.directional.intensity = .65 * this.config.lightIntensity
 			this.#lights.hemispheric.intensity = .4 * this.config.lightIntensity
 		}
+	}
+
+	#createDiceBuffer() {
+		return new Float32Array(1 + this.config.maxDice * 8)
 	}
 
 	// all this does is start the render engine.

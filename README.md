@@ -31,7 +31,7 @@ Install the library using:
 npm install @3d-dice/dice-box
 ```
 
-When installing the library, the terminal will ask you to identify your destination for static assets. This defaults to `/public/assets` and will timeout after 10 seconds. You can always manually move these files. They can be found in the `@3d-dice/dice-box/src/assets` folder. Copy everything from this folder to your local static assets or public folder.
+This ERPG fork does not run an install-time asset copy prompt. Serve the bundled dice-box assets from your app's public assets directory and point `assetPath` at that location.
 
 This is an ES module intended to be part of a build system. To import the module into your project use:
 

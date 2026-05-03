@@ -49,7 +49,16 @@ class WorldOffScreen {
 					break;
 				case "theme-loaded":
 					if(e.data.id){
-						this.pendingThemePromises[e.data.id](e.data.id)
+						this.pendingThemePromises[e.data.id]?.resolve(e.data.id)
+						delete this.pendingThemePromises[e.data.id]
+					}
+					break;
+				case "theme-load-error":
+					if(e.data.id){
+						const error = new Error(e.data.message || `Unable to load theme '${e.data.id}'`)
+						error.stack = e.data.stack || error.stack
+						this.pendingThemePromises[e.data.id]?.reject(error)
+						delete this.pendingThemePromises[e.data.id]
 					}
 					break;
 				case 'roll-result':
@@ -89,14 +98,19 @@ class WorldOffScreen {
 
 	async loadTheme(options) {
 		// prevent multiple requests of the same theme
-		return new Promise((resolve, reject) => {
-			if(Object.keys(this.pendingThemePromises).includes(options.theme)) {
-				return resolve()
-			}
+		if(this.pendingThemePromises[options.theme]) {
+			return this.pendingThemePromises[options.theme].promise
+		}
 
-			this.pendingThemePromises[options.theme] = resolve
+		const pending = {}
+		pending.promise = new Promise((resolve, reject) => {
+			pending.resolve = resolve
+			pending.reject = reject
 			this.#OffscreenWorker.postMessage({action: "loadTheme", options})
-		}).catch(error => console.error(error))
+		})
+		this.pendingThemePromises[options.theme] = pending
+
+		return pending.promise
 	}
 
 	clear(){

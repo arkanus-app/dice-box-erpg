@@ -18,7 +18,8 @@ const defaultOptions = {
 	assetPath: '/assets/dice-box/', // path to 'ammo', 'themes' folders and web workers
 	// origin: location.origin,
 	origin: typeof window !== "undefined" ? window.location.origin : "",
-	suspendSimulation: false
+	suspendSimulation: false,
+	maxDice: 999
 }
 
 class WorldFacade {
@@ -56,6 +57,7 @@ class WorldFacade {
 
 		// extend defaults with options
 		this.config = {...defaultOptions, ...boxOptions}
+		this.config.maxDice = this.#normalizeMaxDice(this.config.maxDice)
 
 		// assign callback functions
 		this.onBeforeRoll = options.onBeforeRoll || this.noop
@@ -259,9 +261,9 @@ class WorldFacade {
 		
 		// queue load of other defined themes
 
-		this.config.preloadThemes.forEach(async function(theme) {
+		for(const theme of this.config.preloadThemes) {
 			await this.loadThemeQueue.push(() => this.loadTheme(theme))
-		}.bind(this))
+		}
 
 
 		//TODO: this should probably return a promise
@@ -295,7 +297,7 @@ class WorldFacade {
 			} else {
 				throw new Error(`Unable to fetch config file for theme: '${theme}'. Request rejected with status ${resp.status}: ${resp.statusText}`)
 			}
-		}).catch(error => console.error(error))
+		})
 
 		if(!themeData){
 			throw new Error("No theme config data to work with.")
@@ -320,7 +322,7 @@ class WorldFacade {
 		// example: diceOfRolling-fate extends diceOfRolling. You can now roll 3dfate with the theme: 'diceOfRolling'
 
 		if(themeData.hasOwnProperty("extends")){
-			const target = await this.loadTheme(themeData.extends).catch(error => console.error(error))
+			const target = await this.loadTheme(themeData.extends)
 
 			// can not extend a theme that extends another theme
 			if(target.hasOwnProperty("extends")){
@@ -361,24 +363,33 @@ class WorldFacade {
 		}
 		// console.log(`${theme} is loading ...`)
 
-		// fetch and save the themeData for later
-		const themeConfig = this.themesLoadedData[theme] = await this.getThemeConfig(theme).catch(error => console.error(error))
-		this.onThemeConfigLoaded(themeConfig)
+		try {
+			// fetch and save the themeData for later
+			const themeConfig = await this.getThemeConfig(theme)
+			this.themesLoadedData[theme] = themeConfig
+			this.onThemeConfigLoaded(themeConfig)
 
-		if(!themeConfig) return
+			if(!themeConfig) return
 
-		// pass config onto DiceWorld to load - the theme loader needs 'scene' from DiceWorld
-		await this.#DiceWorld.loadTheme(themeConfig).catch(error => console.error(error))
+			// pass config onto DiceWorld to load - the theme loader needs 'scene' from DiceWorld
+			await this.#DiceWorld.loadTheme(themeConfig)
 
-		this.onThemeLoaded(themeConfig)
+			this.onThemeLoaded(themeConfig)
 
-		return themeConfig
+			return themeConfig
+		} catch(error) {
+			delete this.themesLoadedData[theme]
+			throw error
+		}
 	}
 
 	// TODO: use getter and setter
 	// change config options
 	async updateConfig(options) {
 		const newConfig = {...this.config,...options}
+		if(options.maxDice !== undefined) {
+			newConfig.maxDice = this.#normalizeMaxDice(options.maxDice)
+		}
 		// console.log('newConfig', newConfig)
 		// const config = await this.loadThemeQueue.push(() => this.loadTheme(newConfig.theme))
 		// const themeData = config.at(-1) //get the last entry returned from the queue
@@ -474,8 +485,7 @@ class WorldFacade {
 			newStartPoint
 		})
 
-		const parsedNotation = this.createNotationArray(notation, this.themesLoadedData[theme].diceAvailable)
-		this.#makeRoll(parsedNotation, collectionId)
+		this.#startRoll(collectionId)
 
 		// returns a Promise that is resolved in onRollComplete
 		return this.rollCollectionData[collectionId].promise
@@ -493,8 +503,7 @@ class WorldFacade {
 			newStartPoint
 		})
 		
-		const parsedNotation = this.createNotationArray(notation, this.themesLoadedData[theme].diceAvailable)
-		this.#makeRoll(parsedNotation, collectionId)
+		this.#startRoll(collectionId)
 
 		// returns a Promise that is resolved in onRollComplete
 		return this.rollCollectionData[collectionId].promise
@@ -547,6 +556,54 @@ class WorldFacade {
 		return this.rollCollectionData[collectionId].promise
 	}
 
+	#startRoll(collectionId) {
+		const collection = this.rollCollectionData[collectionId]
+
+		;(async () => {
+			await this.loadThemeQueue.push(() => this.loadTheme(collection.theme))
+			const themeData = this.themesLoadedData[collection.theme]
+			const parsedNotation = this.createNotationArray(collection.notation, themeData?.diceAvailable || [])
+			await this.#makeRoll(parsedNotation, collectionId)
+		})().catch(error => {
+			const activeCollection = this.rollCollectionData[collectionId]
+			if(activeCollection) {
+				activeCollection.reject(error)
+			}
+		})
+	}
+
+	#normalizeMaxDice(value) {
+		const maxDice = Number(value)
+		if(!Number.isInteger(maxDice) || maxDice < 1) {
+			throw new Error('Config option "maxDice" must be a positive integer.')
+		}
+		return maxDice
+	}
+
+	#getRollBodyCount(roll) {
+		return roll.sides === 100 && roll.data !== 'single' ? 2 : 1
+	}
+
+	#getActiveBodyCount() {
+		return Object.values(this.rollDiceData).reduce((total, roll) => {
+			return total + this.#getRollBodyCount(roll)
+		}, 0)
+	}
+
+	#validateMaxDice(preparedNotations) {
+		const requestedBodies = preparedNotations.reduce((total, { notation }) => {
+			const qty = Number(notation.qty) || 0
+			const sides = notation.sides === 'd100' ? 100 : notation.sides
+			return total + qty * this.#getRollBodyCount({sides, data: notation.data})
+		}, 0)
+		const activeBodies = this.#getActiveBodyCount()
+		const totalBodies = activeBodies + requestedBodies
+
+		if(totalBodies > this.config.maxDice) {
+			throw new Error(`Roll exceeds maxDice (${this.config.maxDice}). Requested ${requestedBodies} dice bodies with ${activeBodies} already active.`)
+		}
+	}
+
 	// used by both .add and .roll - .roll clears the box and .add does not
 	async #makeRoll(parsedNotation, collectionId){
 
@@ -554,9 +611,9 @@ class WorldFacade {
 
 		const collection = this.rollCollectionData[collectionId]
 		let newStartPoint = collection.newStartPoint
+		const preparedNotations = []
 
-		// loop through the number of dice in the group and roll each one
-		parsedNotation.forEach(async notation => {
+		for(const notation of parsedNotation) {
 			if(!notation.sides) {
 				throw new Error("Improper dice notation or unable to parse notation")
 			}
@@ -581,7 +638,7 @@ class WorldFacade {
 			if(diceExtra && diceExtra.includes(notation.sides)){
 				theme = diceExtended[notation.sides]
 				const loadExtendedTheme = () => this.loadTheme(theme)
-				this.loadThemeQueue.push(loadExtendedTheme)
+				await this.loadThemeQueue.push(loadExtendedTheme)
 				meshName = this.themesLoadedData[theme].meshName
 				diceAvailable = this.themesLoadedData[theme]?.diceAvailable
 				materialType = this.themesLoadedData[theme]?.material?.type
@@ -594,6 +651,27 @@ class WorldFacade {
 				// dat.gui uses HSB(a.k.a HSV) brightness greater than .5 and saturation less than .5
 				colorSuffix = ((color.r*0.299 + color.g*0.587 + color.b*0.114) > 175) ? '_dark' : '_light'
 			}
+
+			preparedNotations.push({
+				notation,
+				theme,
+				themeColor,
+				meshName,
+				diceAvailable,
+				diceExtra,
+				diceExtended,
+				colorSuffix,
+				hasGroupId
+			})
+		}
+
+		this.#validateMaxDice(preparedNotations)
+
+		// loop through the number of dice in the group and roll each one
+		for(const prepared of preparedNotations) {
+			const { notation, theme, themeColor, meshName, diceAvailable, diceExtra, diceExtended, colorSuffix, hasGroupId } = prepared
+			const rolls = {}
+			let index
 
 			// TODO: should I validate that added dice are only joining groups of the same "sides" value - e.g.: d6's can only be added to groups when sides: 6? Probably.
 			for (var i = 0, len = notation.qty; i < len; i++) {
@@ -686,7 +764,7 @@ class WorldFacade {
 				this.rollGroupData[index] = notation
 				++this.#groupIndex
 			}
-		})
+		}
 	}
 
 	// accepts simple notations eg: 4d6

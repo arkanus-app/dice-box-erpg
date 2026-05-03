@@ -1,14 +1,14 @@
-var qt = Object.defineProperty;
-var Jt = (c, e, t) => e in c ? qt(c, e, { enumerable: !0, configurable: !0, writable: !0, value: t }) : c[e] = t;
-var xe = (c, e, t) => (Jt(c, typeof e != "symbol" ? e + "" : e, t), t), _t = (c, e, t) => {
+var ei = Object.defineProperty;
+var ti = (c, e, t) => e in c ? ei(c, e, { enumerable: !0, configurable: !0, writable: !0, value: t }) : c[e] = t;
+var xe = (c, e, t) => (ti(c, typeof e != "symbol" ? e + "" : e, t), t), gt = (c, e, t) => {
   if (!e.has(c))
     throw TypeError("Cannot " + t);
 };
-var C = (c, e, t) => (_t(c, e, "read from private field"), t ? t.call(c) : e.get(c)), te = (c, e, t) => {
+var C = (c, e, t) => (gt(c, e, "read from private field"), t ? t.call(c) : e.get(c)), J = (c, e, t) => {
   if (e.has(c))
     throw TypeError("Cannot add the same private member more than once");
   e instanceof WeakSet ? e.add(c) : e.set(c, t);
-}, ie = (c, e, t, i) => (_t(c, e, "write to private field"), i ? i.call(c, t) : e.set(c, t), t);
+}, ie = (c, e, t, i) => (gt(c, e, "write to private field"), i ? i.call(c, t) : e.set(c, t), t);
 var we = (c, e, t, i) => ({
   set _(r) {
     ie(c, e, r, t);
@@ -16,10 +16,10 @@ var we = (c, e, t, i) => ({
   get _() {
     return C(c, e, i);
   }
-}), Nt = (c, e, t) => (_t(c, e, "access private method"), t);
-import { E as W, O as Y, a as bt, M as Ye, S as lt, C as Xe, b as F, V as M, _ as u, c as se, d as $e, Q as Ie, e as Oe, T as le, A as Ct, s as ht, f as S, g as ei, N as He, h as he, U as ti, i as tt, j as Q, L as ee, k as De, l as U, G as Pt, m as ue, R as ii, n as Ue, o as yt, p as ri, I as si, P as ni, q as ze, r as We, t as Ze, u as Le, v as kt, w as rt, x, y as ai, z as B, B as Dt, F as ve, H as Ge, J as oi, K as Rt, W as Ht, X as li, Y as It, Z as hi, $ as di, a0 as L, a1 as dt, a2 as Gt, a3 as ft, a4 as fi, a5 as ci, a6 as st, a7 as ke, a8 as ui, a9 as nt, aa as Ee, ab as gt, ac as Je, ad as pi, D as be } from "./Dice.js";
-import { d as mi } from "./dice-box.es.js";
-class Lt {
+}), vt = (c, e, t) => (gt(c, e, "access private method"), t);
+import { E as W, O as Y, a as Dt, M as Ye, S as ht, C as Xe, b as F, V as M, _ as u, c as se, d as $e, Q as Ie, e as Oe, T as le, A as It, s as dt, f as S, g as ii, N as He, h as he, U as ri, i as tt, j as Q, L as te, k as De, l as U, G as Lt, m as ue, R as si, n as Ue, o as Ut, p as ni, I as ai, P as oi, q as ze, r as We, t as Ze, u as Le, v as Ht, w as rt, x, y as li, z as B, B as Ft, F as ve, H as Ge, J as hi, K as bt, W as Gt, X as di, Y as Pt, Z as fi, $ as ci, a0 as L, a1 as ft, a2 as Yt, a3 as ct, a4 as ui, a5 as pi, a6 as st, a7 as ke, a8 as mi, a9 as nt, aa as Ee, ab as Et, ac as Je, ad as _i, D as be } from "./Dice.js";
+import { d as gi } from "./dice-box.es.js";
+class wt {
   /**
    * Creates a new instance
    * @param externalProperties list of external properties to inject into the object
@@ -177,7 +177,7 @@ class Lt {
     return e;
   }
 }
-function _i(c) {
+function vi(c) {
   return new W(c, !0, {
     preserveDrawingBuffer: !0,
     stencil: !0
@@ -208,7 +208,7 @@ class Te {
     this.priority = e;
   }
 }
-class vt extends Te {
+class St extends Te {
   /**
    * Gets a string describing the action executed by the current optimization
    * @returns description string
@@ -243,7 +243,7 @@ class vt extends Te {
     return i;
   }
 }
-class Ut extends Te {
+class Bt extends Te {
   /**
    * Gets a string describing the action executed by the current optimization
    * @returns description string
@@ -270,7 +270,7 @@ class Ut extends Te {
     return this._currentScale === -1 && (this._currentScale = e.getEngine().getHardwareScalingLevel(), this._currentScale > this.maximumScale && (this._directionOffset = -1)), this._currentScale += this._directionOffset * this.step, e.getEngine().setHardwareScalingLevel(this._currentScale), this._directionOffset === 1 ? this._currentScale >= this.maximumScale : this._currentScale <= this.maximumScale;
   }
 }
-class Et extends Te {
+class Tt extends Te {
   /**
    * Gets a string describing the action executed by the current optimization
    * @returns description string
@@ -288,7 +288,7 @@ class Et extends Te {
     return e.shadowsEnabled = t.isInImprovementMode, !0;
   }
 }
-class St extends Te {
+class xt extends Te {
   /**
    * Gets a string describing the action executed by the current optimization
    * @returns description string
@@ -306,7 +306,7 @@ class St extends Te {
     return e.postProcessesEnabled = t.isInImprovementMode, !0;
   }
 }
-class Tt extends Te {
+class Mt extends Te {
   /**
    * Gets a string describing the action executed by the current optimization
    * @returns description string
@@ -324,7 +324,7 @@ class Tt extends Te {
     return e.lensFlaresEnabled = t.isInImprovementMode, !0;
   }
 }
-class gi extends Te {
+class Ei extends Te {
   /**
    * Gets a string describing the action executed by the current optimization
    * @returns description string
@@ -342,7 +342,7 @@ class gi extends Te {
     return this.onApply ? this.onApply(e, t) : !0;
   }
 }
-class xt extends Te {
+class At extends Te {
   /**
    * Gets a string describing the action executed by the current optimization
    * @returns description string
@@ -360,7 +360,7 @@ class xt extends Te {
     return e.particlesEnabled = t.isInImprovementMode, !0;
   }
 }
-class Bt extends Te {
+class Vt extends Te {
   /**
    * Gets a string describing the action executed by the current optimization
    * @returns description string
@@ -457,7 +457,7 @@ class Pe {
    * @returns the current SceneOptimizerOptions
    */
   addCustomOptimization(e, t, i = 0) {
-    const r = new gi(i);
+    const r = new Ei(i);
     return r.onApply = e, r.onGetDescription = t, this.optimizations.push(r), this;
   }
   /**
@@ -468,7 +468,7 @@ class Pe {
   static LowDegradationAllowed(e) {
     const t = new Pe(e);
     let i = 0;
-    return t.addOptimization(new Ae(i)), t.addOptimization(new Et(i)), t.addOptimization(new Tt(i)), i++, t.addOptimization(new St(i)), t.addOptimization(new xt(i)), i++, t.addOptimization(new vt(i, 1024)), t;
+    return t.addOptimization(new Ae(i)), t.addOptimization(new Tt(i)), t.addOptimization(new Mt(i)), i++, t.addOptimization(new xt(i)), t.addOptimization(new At(i)), i++, t.addOptimization(new St(i, 1024)), t;
   }
   /**
    * Creates a list of pre-defined optimizations aimed to have a moderate impact on the scene visual
@@ -478,7 +478,7 @@ class Pe {
   static ModerateDegradationAllowed(e) {
     const t = new Pe(e);
     let i = 0;
-    return t.addOptimization(new Ae(i)), t.addOptimization(new Et(i)), t.addOptimization(new Tt(i)), i++, t.addOptimization(new St(i)), t.addOptimization(new xt(i)), i++, t.addOptimization(new vt(i, 512)), i++, t.addOptimization(new Bt(i)), i++, t.addOptimization(new Ut(i, 2)), t;
+    return t.addOptimization(new Ae(i)), t.addOptimization(new Tt(i)), t.addOptimization(new Mt(i)), i++, t.addOptimization(new xt(i)), t.addOptimization(new At(i)), i++, t.addOptimization(new St(i, 512)), i++, t.addOptimization(new Vt(i)), i++, t.addOptimization(new Bt(i, 2)), t;
   }
   /**
    * Creates a list of pre-defined optimizations aimed to have a big impact on the scene visual
@@ -488,10 +488,10 @@ class Pe {
   static HighDegradationAllowed(e) {
     const t = new Pe(e);
     let i = 0;
-    return t.addOptimization(new Ae(i)), t.addOptimization(new Et(i)), t.addOptimization(new Tt(i)), i++, t.addOptimization(new St(i)), t.addOptimization(new xt(i)), i++, t.addOptimization(new vt(i, 256)), i++, t.addOptimization(new Bt(i)), i++, t.addOptimization(new Ut(i, 4)), t;
+    return t.addOptimization(new Ae(i)), t.addOptimization(new Tt(i)), t.addOptimization(new Mt(i)), i++, t.addOptimization(new xt(i)), t.addOptimization(new At(i)), i++, t.addOptimization(new St(i, 256)), i++, t.addOptimization(new Vt(i)), i++, t.addOptimization(new Bt(i, 4)), t;
   }
 }
-class Ft {
+class Ot {
   /**
    * Gets or sets a boolean indicating if the optimizer is in improvement mode
    */
@@ -556,7 +556,7 @@ class Ft {
       for (const n of this._options.optimizations)
         n.priority = s++;
     }
-    this._improvementMode = r, this._scene = e || bt.LastCreatedScene, this._sceneDisposeObserver = this._scene.onDisposeObservable.add(() => {
+    this._improvementMode = r, this._scene = e || Dt.LastCreatedScene, this._sceneDisposeObserver = this._scene.onDisposeObservable.add(() => {
       this._sceneDisposeObserver = null, this.dispose();
     });
   }
@@ -621,7 +621,7 @@ class Ft {
    * @returns the new SceneOptimizer object
    */
   static OptimizeAsync(e, t, i, r) {
-    const s = new Ft(e, t || Pe.ModerateDegradationAllowed(), !1);
+    const s = new Ot(e, t || Pe.ModerateDegradationAllowed(), !1);
     return i && s.onSuccessObservable.add(() => {
       i();
     }), r && s.onFailureObservable.add(() => {
@@ -629,11 +629,11 @@ class Ft {
     }), s.start(), s;
   }
 }
-function vi(c) {
-  const { engine: e } = c, t = new lt(e);
+function Si(c) {
+  const { engine: e } = c, t = new ht(e);
   t.clearColor = new Xe(0, 0, 0, 0), t.pointerMovePredicate = () => !1, t.pointerDownPredicate = () => !1, t.pointerUpPredicate = () => !1, t.clearCachedVertexData(), t.themeData = {};
   const i = Pe.LowDegradationAllowed();
-  return i.optimizations = i.optimizations.splice(1), i.targetFrameRate = 60, Ft.OptimizeAsync(t, i), t;
+  return i.optimizations = i.optimizations.splice(1), i.targetFrameRate = 60, Ot.OptimizeAsync(t, i), t;
 }
 class j extends se {
   /**
@@ -765,7 +765,7 @@ class j extends se {
   }
   /** @internal */
   _getViewMatrix() {
-    return this.lockedTarget && this.setTarget(this._getLockedTargetPosition()), this._updateCameraRotationMatrix(), this.rotationQuaternion && this._cachedQuaternionRotationZ != this.rotationQuaternion.z ? (this._rotateUpVectorWithCameraRotationMatrix(), this._cachedQuaternionRotationZ = this.rotationQuaternion.z) : this._cachedRotationZ !== this.rotation.z && (this._rotateUpVectorWithCameraRotationMatrix(), this._cachedRotationZ = this.rotation.z), M.TransformCoordinatesToRef(this._referencePoint, this._cameraRotationMatrix, this._transformedReferencePoint), this.position.addToRef(this._transformedReferencePoint, this._currentTarget), this.updateUpVectorFromRotation && (this.rotationQuaternion ? Ct.Y.rotateByQuaternionToRef(this.rotationQuaternion, this.upVector) : (Ie.FromEulerVectorToRef(this.rotation, this._tmpQuaternion), Ct.Y.rotateByQuaternionToRef(this._tmpQuaternion, this.upVector))), this._computeViewMatrix(this.position, this._currentTarget, this.upVector), this._viewMatrix;
+    return this.lockedTarget && this.setTarget(this._getLockedTargetPosition()), this._updateCameraRotationMatrix(), this.rotationQuaternion && this._cachedQuaternionRotationZ != this.rotationQuaternion.z ? (this._rotateUpVectorWithCameraRotationMatrix(), this._cachedQuaternionRotationZ = this.rotationQuaternion.z) : this._cachedRotationZ !== this.rotation.z && (this._rotateUpVectorWithCameraRotationMatrix(), this._cachedRotationZ = this.rotation.z), M.TransformCoordinatesToRef(this._referencePoint, this._cameraRotationMatrix, this._transformedReferencePoint), this.position.addToRef(this._transformedReferencePoint, this._currentTarget), this.updateUpVectorFromRotation && (this.rotationQuaternion ? It.Y.rotateByQuaternionToRef(this.rotationQuaternion, this.upVector) : (Ie.FromEulerVectorToRef(this.rotation, this._tmpQuaternion), It.Y.rotateByQuaternionToRef(this._tmpQuaternion, this.upVector))), this._computeViewMatrix(this.position, this._currentTarget, this.upVector), this._viewMatrix;
   }
   _computeViewMatrix(e, t, i) {
     if (this.ignoreParentScaling) {
@@ -832,15 +832,15 @@ j._RigCamTransformMatrix = new F();
 j._TargetTransformMatrix = new F();
 j._TargetFocalPoint = new M();
 u([
-  ht()
+  dt()
 ], j.prototype, "rotation", void 0);
 u([
   S()
 ], j.prototype, "speed", void 0);
 u([
-  ei("lockedTargetId")
+  ii("lockedTargetId")
 ], j.prototype, "lockedTarget", void 0);
-function Ei(c) {
+function Ti(c) {
   const { scene: e } = c;
   let t;
   const i = 36.5;
@@ -972,7 +972,7 @@ class D extends He {
    * @param scene The scene the light belongs too
    */
   constructor(e, t) {
-    super(e, t), this.diffuse = new he(1, 1, 1), this.specular = new he(1, 1, 1), this.falloffType = D.FALLOFF_DEFAULT, this.intensity = 1, this._range = Number.MAX_VALUE, this._inverseSquaredRange = 0, this._photometricScale = 1, this._intensityMode = D.INTENSITYMODE_AUTOMATIC, this._radius = 1e-5, this.renderPriority = 0, this._shadowEnabled = !0, this._excludeWithLayerMask = 0, this._includeOnlyWithLayerMask = 0, this._lightmapMode = 0, this._shadowGenerators = null, this._excludedMeshesIds = new Array(), this._includedOnlyMeshesIds = new Array(), this._isLight = !0, this.getScene().addLight(this), this._uniformBuffer = new ti(this.getScene().getEngine(), void 0, void 0, e), this._buildUniformLayout(), this.includedOnlyMeshes = new Array(), this.excludedMeshes = new Array(), this._resyncMeshes();
+    super(e, t), this.diffuse = new he(1, 1, 1), this.specular = new he(1, 1, 1), this.falloffType = D.FALLOFF_DEFAULT, this.intensity = 1, this._range = Number.MAX_VALUE, this._inverseSquaredRange = 0, this._photometricScale = 1, this._intensityMode = D.INTENSITYMODE_AUTOMATIC, this._radius = 1e-5, this.renderPriority = 0, this._shadowEnabled = !0, this._excludeWithLayerMask = 0, this._includeOnlyWithLayerMask = 0, this._lightmapMode = 0, this._shadowGenerators = null, this._excludedMeshesIds = new Array(), this._includedOnlyMeshesIds = new Array(), this._isLight = !0, this.getScene().addLight(this), this._uniformBuffer = new ri(this.getScene().getEngine(), void 0, void 0, e), this._buildUniformLayout(), this.includedOnlyMeshes = new Array(), this.excludedMeshes = new Array(), this._resyncMeshes();
   }
   /**
    * Sets the passed Effect "effect" with the Light textures.
@@ -1152,7 +1152,7 @@ class D extends He {
     const r = Q.Parse(i, e, t);
     if (e.excludedMeshesIds && (r._excludedMeshesIds = e.excludedMeshesIds), e.includedOnlyMeshesIds && (r._includedOnlyMeshesIds = e.includedOnlyMeshesIds), e.parentId !== void 0 && (r._waitingParentId = e.parentId), e.parentInstanceIndex !== void 0 && (r._waitingParentInstanceIndex = e.parentInstanceIndex), e.falloffType !== void 0 && (r.falloffType = e.falloffType), e.lightmapMode !== void 0 && (r.lightmapMode = e.lightmapMode), e.animations) {
       for (let s = 0; s < e.animations.length; s++) {
-        const n = e.animations[s], a = Pt("BABYLON.Animation");
+        const n = e.animations[s], a = Lt("BABYLON.Animation");
         a && r.animations.push(a.Parse(n));
       }
       He.ParseAnimationRanges(r, e, t);
@@ -1256,22 +1256,22 @@ class D extends He {
     this._renderPriority != 0 && (e.requireLightSorting = !0), this.getScene().sortLightsByPriority();
   }
 }
-D.FALLOFF_DEFAULT = ee.FALLOFF_DEFAULT;
-D.FALLOFF_PHYSICAL = ee.FALLOFF_PHYSICAL;
-D.FALLOFF_GLTF = ee.FALLOFF_GLTF;
-D.FALLOFF_STANDARD = ee.FALLOFF_STANDARD;
-D.LIGHTMAP_DEFAULT = ee.LIGHTMAP_DEFAULT;
-D.LIGHTMAP_SPECULAR = ee.LIGHTMAP_SPECULAR;
-D.LIGHTMAP_SHADOWSONLY = ee.LIGHTMAP_SHADOWSONLY;
-D.INTENSITYMODE_AUTOMATIC = ee.INTENSITYMODE_AUTOMATIC;
-D.INTENSITYMODE_LUMINOUSPOWER = ee.INTENSITYMODE_LUMINOUSPOWER;
-D.INTENSITYMODE_LUMINOUSINTENSITY = ee.INTENSITYMODE_LUMINOUSINTENSITY;
-D.INTENSITYMODE_ILLUMINANCE = ee.INTENSITYMODE_ILLUMINANCE;
-D.INTENSITYMODE_LUMINANCE = ee.INTENSITYMODE_LUMINANCE;
-D.LIGHTTYPEID_POINTLIGHT = ee.LIGHTTYPEID_POINTLIGHT;
-D.LIGHTTYPEID_DIRECTIONALLIGHT = ee.LIGHTTYPEID_DIRECTIONALLIGHT;
-D.LIGHTTYPEID_SPOTLIGHT = ee.LIGHTTYPEID_SPOTLIGHT;
-D.LIGHTTYPEID_HEMISPHERICLIGHT = ee.LIGHTTYPEID_HEMISPHERICLIGHT;
+D.FALLOFF_DEFAULT = te.FALLOFF_DEFAULT;
+D.FALLOFF_PHYSICAL = te.FALLOFF_PHYSICAL;
+D.FALLOFF_GLTF = te.FALLOFF_GLTF;
+D.FALLOFF_STANDARD = te.FALLOFF_STANDARD;
+D.LIGHTMAP_DEFAULT = te.LIGHTMAP_DEFAULT;
+D.LIGHTMAP_SPECULAR = te.LIGHTMAP_SPECULAR;
+D.LIGHTMAP_SHADOWSONLY = te.LIGHTMAP_SHADOWSONLY;
+D.INTENSITYMODE_AUTOMATIC = te.INTENSITYMODE_AUTOMATIC;
+D.INTENSITYMODE_LUMINOUSPOWER = te.INTENSITYMODE_LUMINOUSPOWER;
+D.INTENSITYMODE_LUMINOUSINTENSITY = te.INTENSITYMODE_LUMINOUSINTENSITY;
+D.INTENSITYMODE_ILLUMINANCE = te.INTENSITYMODE_ILLUMINANCE;
+D.INTENSITYMODE_LUMINANCE = te.INTENSITYMODE_LUMINANCE;
+D.LIGHTTYPEID_POINTLIGHT = te.LIGHTTYPEID_POINTLIGHT;
+D.LIGHTTYPEID_DIRECTIONALLIGHT = te.LIGHTTYPEID_DIRECTIONALLIGHT;
+D.LIGHTTYPEID_SPOTLIGHT = te.LIGHTTYPEID_SPOTLIGHT;
+D.LIGHTTYPEID_HEMISPHERICLIGHT = te.LIGHTTYPEID_HEMISPHERICLIGHT;
 u([
   De()
 ], D.prototype, "diffuse", void 0);
@@ -1417,7 +1417,7 @@ class et extends D {
    */
   getRotation() {
     this.direction.normalize();
-    const e = M.Cross(this.direction, Ct.Y), t = M.Cross(e, this.direction);
+    const e = M.Cross(this.direction, It.Y), t = M.Cross(e, this.direction);
     return M.RotationFromAxis(e, t, this.direction);
   }
   /**
@@ -1488,10 +1488,10 @@ class et extends D {
   }
 }
 u([
-  ht()
+  dt()
 ], et.prototype, "position", null);
 u([
-  ht()
+  dt()
 ], et.prototype, "direction", null);
 u([
   S()
@@ -1714,8 +1714,8 @@ u([
 u([
   S("orthoBottom")
 ], _e.prototype, "_orthoBottom", void 0);
-He.AddNodeConstructor("Light_Type_3", (c, e) => () => new ct(c, M.Zero(), e));
-class ct extends D {
+He.AddNodeConstructor("Light_Type_3", (c, e) => () => new ut(c, M.Zero(), e));
+class ut extends D {
   /**
    * Creates a HemisphericLight object in the scene according to the passed direction (Vector3).
    * The HemisphericLight simulates the ambient environment light, so the passed direction is the light reflection direction, not the incoming direction.
@@ -1793,10 +1793,10 @@ class ct extends D {
 }
 u([
   De()
-], ct.prototype, "groundColor", void 0);
+], ut.prototype, "groundColor", void 0);
 u([
-  ht()
-], ct.prototype, "direction", void 0);
+  dt()
+], ut.prototype, "direction", void 0);
 class Se {
   /**
    * Creates a Size object from the given width and height (floats).
@@ -1918,7 +1918,7 @@ class Se {
     return new Se(r, s);
   }
 }
-class wt {
+class Nt {
   /**
    * | Value | Type               | Description |
    * | ----- | ------------------ | ----------- |
@@ -1996,7 +1996,7 @@ class wt {
    * @param internalTexture Define the internalTexture to wrap. You can also pass a RenderTargetWrapper, in which case the texture will be the render target's texture
    */
   constructor(e) {
-    this._wrapU = 1, this._wrapV = 1, this.wrapR = 1, this.anisotropicFilteringLevel = 4, this.delayLoadState = 0, this._texture = null, this._engine = null, this._cachedSize = Se.Zero(), this._cachedBaseSize = Se.Zero(), this._initialSamplingMode = 2, this._texture = wt._IsRenderTargetWrapper(e) ? e.texture : e, this._texture && (this._engine = this._texture.getEngine());
+    this._wrapU = 1, this._wrapV = 1, this.wrapR = 1, this.anisotropicFilteringLevel = 4, this.delayLoadState = 0, this._texture = null, this._engine = null, this._cachedSize = Se.Zero(), this._cachedBaseSize = Se.Zero(), this._initialSamplingMode = 2, this._texture = Nt._IsRenderTargetWrapper(e) ? e.texture : e, this._texture && (this._engine = this._texture.getEngine());
   }
   /**
    * Get if the texture is ready to be used (downloaded, converted, mip mapped...).
@@ -2084,7 +2084,7 @@ class wt {
     this._texture && (this.releaseInternalTexture(), this._engine = null);
   }
 }
-class z extends wt {
+class z extends Nt {
   /**
    * Define if the texture is having a usable alpha value (can be use for transparency or glossiness for instance).
    */
@@ -2272,7 +2272,7 @@ class z extends wt {
    * Define the unique id of the texture in the scene.
    */
   get uid() {
-    return this._uid || (this._uid = ii()), this._uid;
+    return this._uid || (this._uid = si()), this._uid;
   }
   /**
    * Return a string representation of the texture.
@@ -2323,7 +2323,7 @@ class z extends wt {
    * @param internalTexture Define the internal texture associated with the texture
    */
   constructor(e, t = null) {
-    super(null), this.metadata = null, this.reservedDataStore = null, this._hasAlpha = !1, this._getAlphaFromRGB = !1, this.level = 1, this._coordinatesIndex = 0, this.optimizeUVAllocation = !0, this._coordinatesMode = 0, this.wrapR = 1, this.anisotropicFilteringLevel = z.DEFAULT_ANISOTROPIC_FILTERING_LEVEL, this._isCube = !1, this._gammaSpace = !0, this.invertZ = !1, this.lodLevelInAlpha = !1, this.isRenderTarget = !1, this._prefiltered = !1, this._forceSerialize = !1, this.animations = new Array(), this.onDisposeObservable = new Y(), this._onDisposeObserver = null, this._scene = null, this._uid = null, this._parentContainer = null, this._loadingError = !1, e ? z._IsScene(e) ? this._scene = e : this._engine = e : this._scene = bt.LastCreatedScene, this._scene && (this.uniqueId = this._scene.getUniqueId(), this._scene.addTexture(this), this._engine = this._scene.getEngine()), this._texture = t, this._uid = null;
+    super(null), this.metadata = null, this.reservedDataStore = null, this._hasAlpha = !1, this._getAlphaFromRGB = !1, this.level = 1, this._coordinatesIndex = 0, this.optimizeUVAllocation = !0, this._coordinatesMode = 0, this.wrapR = 1, this.anisotropicFilteringLevel = z.DEFAULT_ANISOTROPIC_FILTERING_LEVEL, this._isCube = !1, this._gammaSpace = !0, this.invertZ = !1, this.lodLevelInAlpha = !1, this.isRenderTarget = !1, this._prefiltered = !1, this._forceSerialize = !1, this.animations = new Array(), this.onDisposeObservable = new Y(), this._onDisposeObserver = null, this._scene = null, this._uid = null, this._parentContainer = null, this._loadingError = !1, e ? z._IsScene(e) ? this._scene = e : this._engine = e : this._scene = Dt.LastCreatedScene, this._scene && (this.uniqueId = this._scene.getUniqueId(), this._scene.addTexture(this), this._engine = this._scene.getEngine()), this._texture = t, this._uid = null;
   }
   /**
    * Get the scene the texture belongs to.
@@ -2607,7 +2607,7 @@ u([
 u([
   S()
 ], z.prototype, "isRenderTarget", void 0);
-function Yt(c, e, t = !1) {
+function $t(c, e, t = !1) {
   const i = e.width, r = e.height;
   if (c instanceof Float32Array) {
     let l = c.byteLength / c.BYTES_PER_ELEMENT;
@@ -2632,19 +2632,19 @@ function Yt(c, e, t = !1) {
   }
   return s.toDataURL("image/png");
 }
-function Si(c, e = 0, t = 0) {
+function xi(c, e = 0, t = 0) {
   const i = c.getInternalTexture();
   if (!i)
     return null;
   const r = c._readPixelsSync(e, t);
-  return r ? Yt(r, c.getSize(), i.invertY) : null;
+  return r ? $t(r, c.getSize(), i.invertY) : null;
 }
-async function Ti(c, e = 0, t = 0) {
+async function Mi(c, e = 0, t = 0) {
   const i = c.getInternalTexture();
   if (!i)
     return null;
   const r = await c.readPixels(e, t);
-  return r ? Yt(r, c.getSize(), i.invertY) : null;
+  return r ? $t(r, c.getSize(), i.invertY) : null;
 }
 class v extends z {
   /**
@@ -2712,12 +2712,12 @@ class v extends z {
     }
     if (this._texture = N ?? this._getFromCache(this.url, O, s, this._invertY, y), this._texture)
       if (this._texture.isReady)
-        yt.SetImmediate(() => re());
+        Ut.SetImmediate(() => re());
       else {
         const q = this._texture.onLoadedObservable.add(re);
         this._texture.onErrorObservable.add((pe) => {
-          var mt;
-          de(pe.message, pe.exception), (mt = this._texture) === null || mt === void 0 || mt.onLoadedObservable.remove(q);
+          var _t;
+          de(pe.message, pe.exception), (_t = this._texture) === null || _t === void 0 || _t.onLoadedObservable.remove(q);
         });
       }
     else if (!ge || !ge.useDelayedTextureLoading) {
@@ -2748,7 +2748,7 @@ class v extends z {
     if (this.delayLoadState !== 4)
       return;
     const e = this.getScene();
-    e && (this.delayLoadState = 1, this._texture = this._getFromCache(this.url, this._noMipmap, this.samplingMode, this._invertY, this._useSRGBBuffer), this._texture ? this._delayedOnLoad && (this._texture.isReady ? yt.SetImmediate(this._delayedOnLoad) : this._texture.onLoadedObservable.add(this._delayedOnLoad)) : (this._texture = e.getEngine().createTexture(this.url, this._noMipmap, this._invertY, e, this.samplingMode, this._delayedOnLoad, this._delayedOnError, this._buffer, null, this._format, this._forcedExtension, this._mimeType, this._loaderOptions, this._creationFlags, this._useSRGBBuffer), this._deleteBuffer && (this._buffer = null)), this._delayedOnLoad = null, this._delayedOnError = null);
+    e && (this.delayLoadState = 1, this._texture = this._getFromCache(this.url, this._noMipmap, this.samplingMode, this._invertY, this._useSRGBBuffer), this._texture ? this._delayedOnLoad && (this._texture.isReady ? Ut.SetImmediate(this._delayedOnLoad) : this._texture.onLoadedObservable.add(this._delayedOnLoad)) : (this._texture = e.getEngine().createTexture(this.url, this._noMipmap, this._invertY, e, this.samplingMode, this._delayedOnLoad, this._delayedOnError, this._buffer, null, this._format, this._forcedExtension, this._mimeType, this._loaderOptions, this._creationFlags, this._useSRGBBuffer), this._deleteBuffer && (this._buffer = null)), this._delayedOnLoad = null, this._delayedOnError = null);
   }
   _prepareRowForTextureGeneration(e, t, i, r) {
     e *= this._cachedUScale, t *= this._cachedVScale, e -= this.uRotationCenter * this._cachedUScale, t -= this.vRotationCenter * this._cachedVScale, i -= this.wRotationCenter, M.TransformCoordinatesFromFloatsToRef(e, t, i, this._rowGenerationMatrix, r), r.x += this.uRotationCenter * this._cachedUScale + this._cachedUOffset, r.y += this.vRotationCenter * this._cachedVScale + this._cachedVOffset, r.z += this.wRotationCenter;
@@ -2836,7 +2836,7 @@ class v extends z {
     const i = this.name;
     v.SerializeBuffers || this.name.startsWith("data:") && (this.name = ""), this.name.startsWith("data:") && this.url === this.name && (this.url = "");
     const r = super.serialize(v._SerializeInternalTextureUniqueId);
-    return r ? ((v.SerializeBuffers || v.ForceSerializeBuffers) && (typeof this._buffer == "string" && this._buffer.substr(0, 5) === "data:" ? (r.base64String = this._buffer, r.name = r.name.replace("data:", "")) : this.url && this.url.startsWith("data:") && this._buffer instanceof Uint8Array ? r.base64String = "data:image/png;base64," + ri(this._buffer) : (v.ForceSerializeBuffers || this.url && this.url.startsWith("blob:") || this._forceSerialize) && (r.base64String = !this._engine || this._engine._features.supportSyncTextureRead ? Si(this) : Ti(this))), r.invertY = this._invertY, r.samplingMode = this.samplingMode, r._creationFlags = this._creationFlags, r._useSRGBBuffer = this._useSRGBBuffer, v._SerializeInternalTextureUniqueId && (r.internalTextureUniqueId = (t = (e = this._texture) === null || e === void 0 ? void 0 : e.uniqueId) !== null && t !== void 0 ? t : void 0), this.name = i, r) : null;
+    return r ? ((v.SerializeBuffers || v.ForceSerializeBuffers) && (typeof this._buffer == "string" && this._buffer.substr(0, 5) === "data:" ? (r.base64String = this._buffer, r.name = r.name.replace("data:", "")) : this.url && this.url.startsWith("data:") && this._buffer instanceof Uint8Array ? r.base64String = "data:image/png;base64," + ni(this._buffer) : (v.ForceSerializeBuffers || this.url && this.url.startsWith("blob:") || this._forceSerialize) && (r.base64String = !this._engine || this._engine._features.supportSyncTextureRead ? xi(this) : Mi(this))), r.invertY = this._invertY, r.samplingMode = this.samplingMode, r._creationFlags = this._creationFlags, r._useSRGBBuffer = this._useSRGBBuffer, v._SerializeInternalTextureUniqueId && (r.internalTextureUniqueId = (t = (e = this._texture) === null || e === void 0 ? void 0 : e.uniqueId) !== null && t !== void 0 ? t : void 0), this.name = i, r) : null;
   }
   /**
    * Get the current class name of the texture useful for serialization or dynamic coding.
@@ -2860,7 +2860,7 @@ class v extends z {
    */
   static Parse(e, t, i) {
     if (e.customType) {
-      const l = si.Instantiate(e.customType).Parse(e, t, i);
+      const l = ai.Instantiate(e.customType).Parse(e, t, i);
       return e.samplingMode && l.updateSamplingMode && l._samplingMode && l._samplingMode !== e.samplingMode && l.updateSamplingMode(e.samplingMode), l;
     }
     if (e.isCube && !e.isRenderTarget)
@@ -2885,7 +2885,7 @@ class v extends z {
       }
       if (o && e.animations)
         for (let d = 0; d < e.animations.length; d++) {
-          const h = e.animations[d], f = Pt("BABYLON.Animation");
+          const h = e.animations[d], f = Lt("BABYLON.Animation");
           f && o.animations.push(f.Parse(h));
         }
       r && !s && ((l = o == null ? void 0 : o._texture) === null || l === void 0 || l._setUniqueId(e.internalTextureUniqueId));
@@ -2895,7 +2895,7 @@ class v extends z {
       let h = !0;
       if (e.noMipmap && (h = !1), e.mirrorPlane) {
         const f = v._CreateMirror(e.name, e.renderTargetSize, t, h);
-        return f._waitingRenderList = e.renderList, f.mirrorPlane = ni.FromArray(e.mirrorPlane), n(f), f;
+        return f._waitingRenderList = e.renderList, f.mirrorPlane = oi.FromArray(e.mirrorPlane), n(f), f;
       } else if (e.isRenderTarget) {
         let f = null;
         if (e.isCube) {
@@ -3051,7 +3051,7 @@ u([
 ], v.prototype, "isBlocking", null);
 We("BABYLON.Texture", v);
 Q._TextureParser = v.Parse;
-class xi {
+class Ai {
   /**
    * Gets the depth/stencil texture (if created by a createDepthStencilTexture() call)
    */
@@ -3320,7 +3320,7 @@ class xi {
     e || ((t = this._depthStencilTexture) === null || t === void 0 || t.dispose(), this._depthStencilTexture = null, this.releaseTextures()), this._engine._releaseRenderTargetWrapper(this);
   }
 }
-class Mi extends xi {
+class Ci extends Ai {
   constructor(e, t, i, r, s) {
     super(e, t, i, r), this._framebuffer = null, this._depthStencilBuffer = null, this._MSAAFramebuffer = null, this._colorTextureArray = null, this._depthStencilTextureArray = null, this._context = s;
   }
@@ -3404,7 +3404,7 @@ class Mi extends xi {
   }
 }
 Le.prototype._createHardwareRenderTargetWrapper = function(c, e, t) {
-  const i = new Mi(c, e, t, this, this._gl);
+  const i = new Ci(c, e, t, this, this._gl);
   return this._renderTargetWrapperCache.push(i), i;
 };
 Le.prototype.createRenderTargetTexture = function(c, e) {
@@ -3423,7 +3423,7 @@ Le.prototype.createDepthStencilTexture = function(c, e, t) {
     return this._createDepthStencilTexture(c, e, t);
 };
 Le.prototype._createDepthStencilTexture = function(c, e, t) {
-  const i = this._gl, r = c.layers || 0, s = r !== 0 ? i.TEXTURE_2D_ARRAY : i.TEXTURE_2D, n = new kt(this, Ze.DepthStencil);
+  const i = this._gl, r = c.layers || 0, s = r !== 0 ? i.TEXTURE_2D_ARRAY : i.TEXTURE_2D, n = new Ht(this, Ze.DepthStencil);
   if (!this._caps.depthTextureExtension)
     return rt.Error("Depth texture is not supported by your browser or hardware."), n;
   const a = {
@@ -3484,7 +3484,7 @@ Le.prototype.createRenderTargetCubeTexture = function(c, e) {
     ...e
   };
   i.generateStencilBuffer = i.generateDepthBuffer && i.generateStencilBuffer, (i.type === 1 && !this._caps.textureFloatLinearFiltering || i.type === 2 && !this._caps.textureHalfFloatLinearFiltering) && (i.samplingMode = 1);
-  const r = this._gl, s = new kt(this, Ze.RenderTarget);
+  const r = this._gl, s = new Ht(this, Ze.RenderTarget);
   this._bindTextureDirectly(r.TEXTURE_CUBE_MAP, s, !0);
   const n = this._getSamplingParameters(i.samplingMode, i.generateMipMaps);
   i.type === 1 && !this._caps.textureFloat && (i.type = 0, rt.Warn("Float textures are not supported. Cube render target forced to TEXTURETYPE_UNESIGNED_BYTE type")), r.texParameteri(r.TEXTURE_CUBE_MAP, r.TEXTURE_MAG_FILTER, n.mag), r.texParameteri(r.TEXTURE_CUBE_MAP, r.TEXTURE_MIN_FILTER, n.min), r.texParameteri(r.TEXTURE_CUBE_MAP, r.TEXTURE_WRAP_S, r.CLAMP_TO_EDGE), r.texParameteri(r.TEXTURE_CUBE_MAP, r.TEXTURE_WRAP_T, r.CLAMP_TO_EDGE);
@@ -3493,7 +3493,7 @@ Le.prototype.createRenderTargetCubeTexture = function(c, e) {
   const a = r.createFramebuffer();
   return this._bindUnboundFramebuffer(a), t._depthStencilBuffer = this._setupFramebufferDepthAttachments(i.generateStencilBuffer, i.generateDepthBuffer, c, c), i.generateMipMaps && r.generateMipmap(r.TEXTURE_CUBE_MAP), this._bindTextureDirectly(r.TEXTURE_CUBE_MAP, null), this._bindUnboundFramebuffer(null), t._framebuffer = a, t._generateDepthBuffer = i.generateDepthBuffer, t._generateStencilBuffer = i.generateStencilBuffer, s.width = c, s.height = c, s.isReady = !0, s.isCube = !0, s.samples = 1, s.generateMipMaps = i.generateMipMaps, s.samplingMode = i.samplingMode, s.type = i.type, s.format = i.format, this._internalTexturesCache.push(s), t.setTextures(s), t;
 };
-const Ai = "postprocessVertexShader", Ci = `attribute vec2 position;
+const Ri = "postprocessVertexShader", Ii = `attribute vec2 position;
 uniform vec2 scale;
 varying vec2 vUV;
 const vec2 madd=vec2(0.5,0.5);
@@ -3504,21 +3504,21 @@ vUV=(position*madd+madd)*scale;
 gl_Position=vec4(position,0.0,1.0);
 #define CUSTOM_VERTEX_MAIN_END
 }`;
-x.ShadersStore[Ai] = Ci;
-const Mt = {
+x.ShadersStore[Ri] = Ii;
+const Ct = {
   positions: [1, 1, -1, 1, -1, -1, 1, -1],
   indices: [0, 1, 2, 0, 2, 3]
 };
-class Ri {
+class bi {
   /**
    * Creates an effect renderer
    * @param engine the engine to use for rendering
    * @param options defines the options of the effect renderer
    */
-  constructor(e, t = Mt) {
+  constructor(e, t = Ct) {
     var i, r;
-    this._fullscreenViewport = new ai(0, 0, 1, 1);
-    const s = (i = t.positions) !== null && i !== void 0 ? i : Mt.positions, n = (r = t.indices) !== null && r !== void 0 ? r : Mt.indices;
+    this._fullscreenViewport = new li(0, 0, 1, 1);
+    const s = (i = t.positions) !== null && i !== void 0 ? i : Ct.positions, n = (r = t.indices) !== null && r !== void 0 ? r : Ct.indices;
     this.engine = e, this._vertexBuffers = {
       [B.PositionKind]: new B(e, s, B.PositionKind, !1, !1, 2)
     }, this._indexBuffer = e.createIndexBuffer(n), this._onContextRestoredObserver = e.onContextRestoredObservable.add(() => {
@@ -3585,7 +3585,7 @@ class Ri {
     e && (e.dispose(), delete this._vertexBuffers[B.PositionKind]), this._indexBuffer && this.engine._releaseBuffer(this._indexBuffer), this._onContextRestoredObserver && (this.engine.onContextRestoredObservable.remove(this._onContextRestoredObserver), this._onContextRestoredObserver = null);
   }
 }
-class Ii {
+class Pi {
   /**
    * The underlying effect
    */
@@ -3616,7 +3616,7 @@ class Ii {
     }));
     const r = e.defines ? e.defines.join(`
 `) : "";
-    this._drawWrapper = new Dt(e.engine), e.useShaderStore ? (t.fragment = t.fragmentSource, t.vertex || (t.vertex = t.vertexSource), delete t.fragmentSource, delete t.vertexSource, this.effect = e.engine.createEffect(t, e.attributeNames || ["position"], i, e.samplerNames, r, void 0, e.onCompiled, void 0, void 0, e.shaderLanguage)) : (this.effect = new ve(t, e.attributeNames || ["position"], i, e.samplerNames, e.engine, r, void 0, e.onCompiled, void 0, void 0, void 0, e.shaderLanguage), this._onContextRestoredObserver = e.engine.onContextRestoredObservable.add(() => {
+    this._drawWrapper = new Ft(e.engine), e.useShaderStore ? (t.fragment = t.fragmentSource, t.vertex || (t.vertex = t.vertexSource), delete t.fragmentSource, delete t.vertexSource, this.effect = e.engine.createEffect(t, e.attributeNames || ["position"], i, e.samplerNames, r, void 0, e.onCompiled, void 0, void 0, e.shaderLanguage)) : (this.effect = new ve(t, e.attributeNames || ["position"], i, e.samplerNames, e.engine, r, void 0, e.onCompiled, void 0, void 0, void 0, e.shaderLanguage), this._onContextRestoredObserver = e.engine.onContextRestoredObservable.add(() => {
       this.effect._pipelineContext = null, this.effect._wasPreviouslyReady = !1, this.effect._prepareEffect();
     }));
   }
@@ -3627,18 +3627,18 @@ class Ii {
     this._onContextRestoredObserver && (this.effect.getEngine().onContextRestoredObservable.remove(this._onContextRestoredObserver), this._onContextRestoredObserver = null), this.effect.dispose();
   }
 }
-const $t = "passPixelShader", Zt = `varying vec2 vUV;
+const Zt = "passPixelShader", jt = `varying vec2 vUV;
 uniform sampler2D textureSampler;
 #define CUSTOM_FRAGMENT_DEFINITIONS
 void main(void) 
 {
 gl_FragColor=texture2D(textureSampler,vUV);
 }`;
-x.ShadersStore[$t] = Zt;
-const Vt = { name: $t, shader: Zt };
-class J {
+x.ShadersStore[Zt] = jt;
+const Xt = { name: Zt, shader: jt };
+class ee {
   static _CreateDumpRenderer() {
-    if (!J._DumpToolsEngine) {
+    if (!ee._DumpToolsEngine) {
       const e = document.createElement("canvas"), t = new Le(e, !1, {
         preserveDrawingBuffer: !0,
         depth: !1,
@@ -3649,20 +3649,20 @@ class J {
         failIfMajorPerformanceCaveat: !1
       });
       t.getCaps().parallelShaderCompile = void 0;
-      const i = new Ri(t), r = new Ii({
+      const i = new bi(t), r = new Pi({
         engine: t,
-        name: Vt.name,
-        fragmentShader: Vt.shader,
+        name: Xt.name,
+        fragmentShader: Xt.shader,
         samplerNames: ["textureSampler"]
       });
-      J._DumpToolsEngine = {
+      ee._DumpToolsEngine = {
         canvas: e,
         engine: t,
         renderer: i,
         wrapper: r
       };
     }
-    return J._DumpToolsEngine;
+    return ee._DumpToolsEngine;
   }
   /**
    * Dumps the current bound framebuffer
@@ -3676,7 +3676,7 @@ class J {
    */
   static async DumpFramebuffer(e, t, i, r, s = "image/png", n) {
     const a = await i.readPixels(0, 0, e, t), o = new Uint8Array(a.buffer);
-    J.DumpData(e, t, o, r, s, n, !0);
+    ee.DumpData(e, t, o, r, s, n, !0);
   }
   /**
    * Dumps an array buffer
@@ -3692,7 +3692,7 @@ class J {
    */
   static DumpDataAsync(e, t, i, r = "image/png", s, n = !1, a = !1, o) {
     return new Promise((l) => {
-      J.DumpData(e, t, i, (d) => l(d), r, s, n, a, o);
+      ee.DumpData(e, t, i, (d) => l(d), r, s, n, a, o);
     });
   }
   /**
@@ -3708,7 +3708,7 @@ class J {
    * @param quality defines the quality of the result
    */
   static DumpData(e, t, i, r, s = "image/png", n, a = !1, o = !1, l) {
-    const d = J._CreateDumpRenderer();
+    const d = ee._CreateDumpRenderer();
     if (d.engine.setSize(e, t, !0), i instanceof Float32Array) {
       const f = new Uint8Array(i.length);
       let p = i.length;
@@ -3731,13 +3731,13 @@ class J {
    * Dispose the dump tools associated resources
    */
   static Dispose() {
-    J._DumpToolsEngine && (J._DumpToolsEngine.wrapper.dispose(), J._DumpToolsEngine.renderer.dispose(), J._DumpToolsEngine.engine.dispose()), J._DumpToolsEngine = null;
+    ee._DumpToolsEngine && (ee._DumpToolsEngine.wrapper.dispose(), ee._DumpToolsEngine.renderer.dispose(), ee._DumpToolsEngine.engine.dispose()), ee._DumpToolsEngine = null;
   }
 }
-const bi = () => {
-  Ge.DumpData = J.DumpData, Ge.DumpDataAsync = J.DumpDataAsync, Ge.DumpFramebuffer = J.DumpFramebuffer;
+const Di = () => {
+  Ge.DumpData = ee.DumpData, Ge.DumpDataAsync = ee.DumpDataAsync, Ge.DumpFramebuffer = ee.DumpFramebuffer;
 };
-bi();
+Di();
 class ae extends v {
   /**
    * Use this list to define the list of mesh you want to render.
@@ -3746,7 +3746,7 @@ class ae extends v {
     return this._renderList;
   }
   set renderList(e) {
-    this._unObserveRenderList && (this._unObserveRenderList(), this._unObserveRenderList = null), e && (this._unObserveRenderList = oi(e, this._renderListHasChanged)), this._renderList = e;
+    this._unObserveRenderList && (this._unObserveRenderList(), this._unObserveRenderList = null), e && (this._unObserveRenderList = hi(e, this._renderListHasChanged)), this._renderList = e;
   }
   /**
    * Post-processes for this render target
@@ -3875,7 +3875,7 @@ class ae extends v {
       return;
     const y = this.getScene().getEngine();
     this._coordinatesMode = v.PROJECTION_MODE, this.renderList = new Array(), this.name = e, this.isRenderTarget = !0, this._initialSizeParameter = t, this._renderPassIds = [], this._isCubeData = a, this._processSizeParameter(t), this.renderPassId = this._renderPassIds[0], this._resizeObserver = y.onResizeObservable.add(() => {
-    }), this._generateMipMaps = !!r, this._doNotChangeAspectRatio = s, this._renderingManager = new Rt(i), this._renderingManager._useSceneAutoClearSetup = !0, !h && (this._renderTargetOptions = {
+    }), this._generateMipMaps = !!r, this._doNotChangeAspectRatio = s, this._renderingManager = new bt(i), this._renderingManager._useSceneAutoClearSetup = !0, !h && (this._renderTargetOptions = {
       generateMipMaps: r,
       type: n,
       format: (b = this._format) !== null && b !== void 0 ? b : void 0,
@@ -3966,7 +3966,7 @@ class ae extends v {
       const t = this.getScene();
       if (!t)
         return;
-      this._postProcessManager = new Ht(t), this._postProcesses = new Array();
+      this._postProcessManager = new Gt(t), this._postProcesses = new Array();
     }
     this._postProcesses.push(e), this._postProcesses[0].autoClear = !1;
   }
@@ -4233,7 +4233,7 @@ class ae extends v {
       this._texture && (this._texture.generateMipMaps = !1), this._postProcessManager ? this._postProcessManager._finalizeFrame(!1, (l = this._renderTarget) !== null && l !== void 0 ? l : void 0, e, this._postProcesses, this.ignoreCameraViewport) : t && f.postProcessManager._finalizeFrame(!1, (d = this._renderTarget) !== null && d !== void 0 ? d : void 0, e);
       for (const I of f._afterRenderTargetPostProcessStage)
         I.action(this, e, r);
-      this._texture && (this._texture.generateMipMaps = R), this._doNotChangeAspectRatio || f.updateTransformMatrix(!0), i && J.DumpFramebuffer(this.getRenderWidth(), this.getRenderHeight(), p);
+      this._texture && (this._texture.generateMipMaps = R), this._doNotChangeAspectRatio || f.updateTransformMatrix(!0), i && ee.DumpFramebuffer(this.getRenderWidth(), this.getRenderHeight(), p);
     }
     this._unbindFrameBuffer(p, e), this._texture && this.isCube && e === 5 && p.generateMipMapsForCubemap(this._texture), (h = p._debugPopGroup) === null || h === void 0 || h.call(p, 1);
   }
@@ -4445,8 +4445,8 @@ class V {
    * @param blockCompilation If the shader should not be compiled immediatly. (default: false)
    * @param textureFormat Format of textures used when performing the post process. (default: TEXTUREFORMAT_RGBA)
    */
-  constructor(e, t, i, r, s, n, a = 1, o, l, d = null, h = 0, f = "postprocess", p, E = !1, _ = 5, m = hi.GLSL) {
-    this._parentContainer = null, this.width = -1, this.height = -1, this.nodeMaterialSource = null, this._outputTexture = null, this.autoClear = !0, this.forceAutoClearInAlphaMode = !1, this.alphaMode = 0, this.animations = new Array(), this.enablePixelPerfectMode = !1, this.forceFullscreenViewport = !0, this.scaleMode = 1, this.alwaysForcePOT = !1, this._samples = 1, this.adaptScaleToCurrentViewport = !1, this._reusable = !1, this._renderId = 0, this.externalTextureSamplerBinding = !1, this._textures = new It(2), this._textureCache = [], this._currentRenderTextureInd = 0, this._scaleRatio = new $e(1, 1), this._texelSize = $e.Zero(), this.onActivateObservable = new Y(), this.onSizeChangedObservable = new Y(), this.onApplyObservable = new Y(), this.onBeforeRenderObservable = new Y(), this.onAfterRenderObservable = new Y(), this.name = e, n != null ? (this._camera = n, this._scene = n.getScene(), n.attachPostProcess(this), this._engine = this._scene.getEngine(), this._scene.postProcesses.push(this), this.uniqueId = this._scene.getUniqueId()) : o && (this._engine = o, this._engine.postProcesses.push(this)), this._options = s, this.renderTargetSamplingMode = a || 1, this._reusable = l || !1, this._textureType = h, this._textureFormat = _, this._shaderLanguage = m, this._samplers = r || [], this._samplers.push("textureSampler"), this._fragmentUrl = t, this._vertexUrl = f, this._parameters = i || [], this._parameters.push("scale"), this._indexParameters = p, this._drawWrapper = new Dt(this._engine), E || this.updateEffect(d);
+  constructor(e, t, i, r, s, n, a = 1, o, l, d = null, h = 0, f = "postprocess", p, E = !1, _ = 5, m = fi.GLSL) {
+    this._parentContainer = null, this.width = -1, this.height = -1, this.nodeMaterialSource = null, this._outputTexture = null, this.autoClear = !0, this.forceAutoClearInAlphaMode = !1, this.alphaMode = 0, this.animations = new Array(), this.enablePixelPerfectMode = !1, this.forceFullscreenViewport = !0, this.scaleMode = 1, this.alwaysForcePOT = !1, this._samples = 1, this.adaptScaleToCurrentViewport = !1, this._reusable = !1, this._renderId = 0, this.externalTextureSamplerBinding = !1, this._textures = new Pt(2), this._textureCache = [], this._currentRenderTextureInd = 0, this._scaleRatio = new $e(1, 1), this._texelSize = $e.Zero(), this.onActivateObservable = new Y(), this.onSizeChangedObservable = new Y(), this.onApplyObservable = new Y(), this.onBeforeRenderObservable = new Y(), this.onAfterRenderObservable = new Y(), this.name = e, n != null ? (this._camera = n, this._scene = n.getScene(), n.attachPostProcess(this), this._engine = this._scene.getEngine(), this._scene.postProcesses.push(this), this.uniqueId = this._scene.getUniqueId()) : o && (this._engine = o, this._engine.postProcesses.push(this)), this._options = s, this.renderTargetSamplingMode = a || 1, this._reusable = l || !1, this._textureType = h, this._textureFormat = _, this._shaderLanguage = m, this._samplers = r || [], this._samplers.push("textureSampler"), this._fragmentUrl = t, this._vertexUrl = f, this._parameters = i || [], this._parameters.push("scale"), this._indexParameters = p, this._drawWrapper = new Ft(this._engine), E || this.updateEffect(d);
   }
   /**
    * Gets a string identifying the name of the class
@@ -4482,7 +4482,7 @@ class V {
    * This should be called if the post process that shares output with this post process is disabled/disposed.
    */
   useOwnOutput() {
-    this._textures.length == 0 && (this._textures = new It(2)), this._shareOutputWithPostProcess = null;
+    this._textures.length == 0 && (this._textures = new Pt(2)), this._shareOutputWithPostProcess = null;
   }
   /**
    * Updates the effect with the current post process compile time values and recompiles the shader.
@@ -4710,7 +4710,7 @@ class V {
    * @returns a new post process
    */
   static Parse(e, t, i) {
-    const r = Pt(e.customType);
+    const r = Lt(e.customType);
     if (!r || !r._Parse)
       return null;
     const s = t ? t.getCameraById(e.cameraId) : null;
@@ -4740,7 +4740,7 @@ u([
   S()
 ], V.prototype, "renderTargetSamplingMode", void 0);
 u([
-  li()
+  di()
 ], V.prototype, "clearColor", void 0);
 u([
   S()
@@ -4773,9 +4773,9 @@ u([
   S()
 ], V.prototype, "adaptScaleToCurrentViewport", void 0);
 We("BABYLON.PostProcess", V);
-const Pi = "kernelBlurVaryingDeclaration", Di = "varying vec2 sampleCoord{X};";
-x.IncludesShadersStore[Pi] = Di;
-const Li = "packingFunctions", Fi = `vec4 pack(float depth)
+const Li = "kernelBlurVaryingDeclaration", Fi = "varying vec2 sampleCoord{X};";
+x.IncludesShadersStore[Li] = Fi;
+const wi = "packingFunctions", Oi = `vec4 pack(float depth)
 {
 const vec4 bit_shift=vec4(255.0*255.0*255.0,255.0*255.0,255.0,1.0);
 const vec4 bit_mask=vec4(0.0,1.0/255.0,1.0/255.0,1.0/255.0);
@@ -4788,8 +4788,8 @@ float unpack(vec4 color)
 const vec4 bit_shift=vec4(1.0/(255.0*255.0*255.0),1.0/(255.0*255.0),1.0/255.0,1.0);
 return dot(color,bit_shift);
 }`;
-x.IncludesShadersStore[Li] = Fi;
-const wi = "kernelBlurFragment", Oi = `#ifdef DOF
+x.IncludesShadersStore[wi] = Oi;
+const Ni = "kernelBlurFragment", yi = `#ifdef DOF
 factor=sampleCoC(sampleCoord{X}); 
 computedWeight=KERNEL_WEIGHT{X}*factor;
 sumOfWeights+=computedWeight;
@@ -4802,8 +4802,8 @@ blend+=unpack(texture2D(textureSampler,sampleCoord{X}))*computedWeight;
 blend+=texture2D(textureSampler,sampleCoord{X})*computedWeight;
 #endif
 `;
-x.IncludesShadersStore[wi] = Oi;
-const Ni = "kernelBlurFragment2", yi = `#ifdef DOF
+x.IncludesShadersStore[Ni] = yi;
+const Ui = "kernelBlurFragment2", Bi = `#ifdef DOF
 factor=sampleCoC(sampleCenter+delta*KERNEL_DEP_OFFSET{X});
 computedWeight=KERNEL_DEP_WEIGHT{X}*factor;
 sumOfWeights+=computedWeight;
@@ -4816,8 +4816,8 @@ blend+=unpack(texture2D(textureSampler,sampleCenter+delta*KERNEL_DEP_OFFSET{X}))
 blend+=texture2D(textureSampler,sampleCenter+delta*KERNEL_DEP_OFFSET{X})*computedWeight;
 #endif
 `;
-x.IncludesShadersStore[Ni] = yi;
-const Ui = "kernelBlurPixelShader", Bi = `uniform sampler2D textureSampler;
+x.IncludesShadersStore[Ui] = Bi;
+const Vi = "kernelBlurPixelShader", Xi = `uniform sampler2D textureSampler;
 uniform vec2 delta;
 varying vec2 sampleCenter;
 #ifdef DOF
@@ -4860,10 +4860,10 @@ gl_FragColor=blend;
 gl_FragColor/=sumOfWeights;
 #endif
 }`;
-x.ShadersStore[Ui] = Bi;
-const Vi = "kernelBlurVertex", Xi = "sampleCoord{X}=sampleCenter+delta*KERNEL_OFFSET{X};";
-x.IncludesShadersStore[Vi] = Xi;
-const zi = "kernelBlurVertexShader", Wi = `attribute vec2 position;
+x.ShadersStore[Vi] = Xi;
+const zi = "kernelBlurVertex", Wi = "sampleCoord{X}=sampleCenter+delta*KERNEL_OFFSET{X};";
+x.IncludesShadersStore[zi] = Wi;
+const ki = "kernelBlurVertexShader", Hi = `attribute vec2 position;
 uniform vec2 delta;
 varying vec2 sampleCenter;
 #include<kernelBlurVaryingDeclaration>[0..varyingCount]
@@ -4876,7 +4876,7 @@ sampleCenter=(position*madd+madd);
 gl_Position=vec4(position,0.0,1.0);
 #define CUSTOM_VERTEX_MAIN_END
 }`;
-x.ShadersStore[zi] = Wi;
+x.ShadersStore[ki] = Hi;
 class Ce extends V {
   /**
    * Sets the length in pixels of the blur sample region
@@ -5029,10 +5029,10 @@ u([
   S("packedFloat")
 ], Ce.prototype, "_packedFloat", void 0);
 u([
-  di()
+  ci()
 ], Ce.prototype, "direction", void 0);
 We("BABYLON.BlurPostProcess", Ce);
-class Ot {
+class yt {
   constructor() {
     this._defines = {}, this._currentRank = 32, this._maxRank = -1, this._mesh = null;
   }
@@ -5102,7 +5102,7 @@ class Ot {
     return e;
   }
 }
-const ki = "bayerDitherFunctions", Hi = `float bayerDither2(vec2 _P) {
+const Gi = "bayerDitherFunctions", Yi = `float bayerDither2(vec2 _P) {
 return mod(2.0*_P.y+_P.x+1.0,4.0);
 }
 float bayerDither4(vec2 _P) {
@@ -5117,8 +5117,8 @@ vec2 P4=floor(0.25*mod(_P,8.0));
 return 4.0*(4.0*bayerDither2(P1)+bayerDither2(P2))+bayerDither2(P4);
 }
 `;
-x.IncludesShadersStore[ki] = Hi;
-const Gi = "shadowMapFragmentExtraDeclaration", Yi = `#if SM_FLOAT==0
+x.IncludesShadersStore[Gi] = Yi;
+const $i = "shadowMapFragmentExtraDeclaration", Zi = `#if SM_FLOAT==0
 #include<packingFunctions>
 #endif
 #if SM_SOFTTRANSPARENTSHADOW==1
@@ -5136,8 +5136,8 @@ uniform vec2 depthValuesSM;
 varying float zSM;
 #endif
 `;
-x.IncludesShadersStore[Gi] = Yi;
-const $i = "clipPlaneFragmentDeclaration", Zi = `#ifdef CLIPPLANE
+x.IncludesShadersStore[$i] = Zi;
+const ji = "clipPlaneFragmentDeclaration", Qi = `#ifdef CLIPPLANE
 varying float fClipDistance;
 #endif
 #ifdef CLIPPLANE2
@@ -5156,8 +5156,8 @@ varying float fClipDistance5;
 varying float fClipDistance6;
 #endif
 `;
-x.IncludesShadersStore[$i] = Zi;
-const ji = "clipPlaneFragment", Qi = `#if defined(CLIPPLANE) || defined(CLIPPLANE2) || defined(CLIPPLANE3) || defined(CLIPPLANE4) || defined(CLIPPLANE5) || defined(CLIPPLANE6)
+x.IncludesShadersStore[ji] = Qi;
+const Ki = "clipPlaneFragment", qi = `#if defined(CLIPPLANE) || defined(CLIPPLANE2) || defined(CLIPPLANE3) || defined(CLIPPLANE4) || defined(CLIPPLANE5) || defined(CLIPPLANE6)
 if (false) {}
 #endif
 #ifdef CLIPPLANE
@@ -5197,8 +5197,8 @@ discard;
 }
 #endif
 `;
-x.IncludesShadersStore[ji] = Qi;
-const Ki = "shadowMapFragment", qi = `float depthSM=vDepthMetricSM;
+x.IncludesShadersStore[Ki] = qi;
+const Ji = "shadowMapFragment", er = `float depthSM=vDepthMetricSM;
 #if defined(SM_DEPTHCLAMP) && SM_DEPTHCLAMP==1
 #if SM_USEDISTANCE==1
 depthSM=(length(vPositionWSM-lightDataSM)+depthValuesSM.x)/depthValuesSM.y+biasAndScaleSM.x;
@@ -5226,8 +5226,8 @@ gl_FragColor=vec4(depthSM,1.0,1.0,1.0);
 gl_FragColor=pack(depthSM);
 #endif
 return;`;
-x.IncludesShadersStore[Ki] = qi;
-const Ji = "shadowMapPixelShader", er = `#include<shadowMapFragmentExtraDeclaration>
+x.IncludesShadersStore[Ji] = er;
+const tr = "shadowMapPixelShader", ir = `#include<shadowMapFragmentExtraDeclaration>
 #ifdef ALPHATEXTURE
 varying vec2 vUV;
 uniform sampler2D diffuseSampler;
@@ -5253,8 +5253,8 @@ if ((bayerDither8(floor(mod(gl_FragCoord.xy,8.0))))/64.0>=softTransparentShadowS
 #endif
 #include<shadowMapFragment>
 }`;
-x.ShadersStore[Ji] = er;
-const tr = "bonesDeclaration", ir = `#if NUM_BONE_INFLUENCERS>0
+x.ShadersStore[tr] = ir;
+const rr = "bonesDeclaration", sr = `#if NUM_BONE_INFLUENCERS>0
 attribute vec4 matricesIndices;
 attribute vec4 matricesWeights;
 #if NUM_BONE_INFLUENCERS>4
@@ -5287,8 +5287,8 @@ return mat4(m0,m1,m2,m3);
 #endif
 #endif
 `;
-x.IncludesShadersStore[tr] = ir;
-const rr = "bakedVertexAnimationDeclaration", sr = `#ifdef BAKED_VERTEX_ANIMATION_TEXTURE
+x.IncludesShadersStore[rr] = sr;
+const nr = "bakedVertexAnimationDeclaration", ar = `#ifdef BAKED_VERTEX_ANIMATION_TEXTURE
 uniform float bakedVertexAnimationTime;
 uniform vec2 bakedVertexAnimationTextureSizeInverted;
 uniform vec4 bakedVertexAnimationSettings;
@@ -5310,8 +5310,8 @@ return mat4(m0,m1,m2,m3);
 }
 #endif
 `;
-x.IncludesShadersStore[rr] = sr;
-const nr = "morphTargetsVertexGlobalDeclaration", ar = `#ifdef MORPHTARGETS
+x.IncludesShadersStore[nr] = ar;
+const or = "morphTargetsVertexGlobalDeclaration", lr = `#ifdef MORPHTARGETS
 uniform float morphTargetInfluences[NUM_MORPH_INFLUENCERS];
 #ifdef MORPHTARGETS_TEXTURE 
 precision mediump sampler2DArray; 
@@ -5328,8 +5328,8 @@ return texture(morphTargets,textureUV).xyz;
 #endif
 #endif
 `;
-x.IncludesShadersStore[nr] = ar;
-const or = "morphTargetsVertexDeclaration", lr = `#ifdef MORPHTARGETS
+x.IncludesShadersStore[or] = lr;
+const hr = "morphTargetsVertexDeclaration", dr = `#ifdef MORPHTARGETS
 #ifndef MORPHTARGETS_TEXTURE
 attribute vec3 position{X};
 #ifdef MORPHTARGETS_NORMAL
@@ -5344,8 +5344,8 @@ attribute vec2 uv_{X};
 #endif
 #endif
 `;
-x.IncludesShadersStore[or] = lr;
-const hr = "helperFunctions", dr = `const float PI=3.1415926535897932384626433832795;
+x.IncludesShadersStore[hr] = dr;
+const fr = "helperFunctions", cr = `const float PI=3.1415926535897932384626433832795;
 const float HALF_MIN=5.96046448e-08; 
 const float LinearEncodePowerApprox=2.2;
 const float GammaEncodePowerApprox=1.0/LinearEncodePowerApprox;
@@ -5509,8 +5509,8 @@ vec3 intersectPositionWS=vertexPos+origVec*distance;
 return intersectPositionWS-cubePos;
 }
 `;
-x.IncludesShadersStore[hr] = dr;
-const fr = "sceneVertexDeclaration", cr = `uniform mat4 viewProjection;
+x.IncludesShadersStore[fr] = cr;
+const ur = "sceneVertexDeclaration", pr = `uniform mat4 viewProjection;
 #ifdef MULTIVIEW
 uniform mat4 viewProjectionR;
 #endif
@@ -5518,16 +5518,16 @@ uniform mat4 view;
 uniform mat4 projection;
 uniform vec4 vEyePosition;
 `;
-x.IncludesShadersStore[fr] = cr;
-const ur = "meshVertexDeclaration", pr = `uniform mat4 world;
+x.IncludesShadersStore[ur] = pr;
+const mr = "meshVertexDeclaration", _r = `uniform mat4 world;
 uniform float visibility;
 `;
-x.IncludesShadersStore[ur] = pr;
-const mr = "shadowMapVertexDeclaration", _r = `#include<sceneVertexDeclaration>
+x.IncludesShadersStore[mr] = _r;
+const gr = "shadowMapVertexDeclaration", vr = `#include<sceneVertexDeclaration>
 #include<meshVertexDeclaration>
 `;
-x.IncludesShadersStore[mr] = _r;
-const gr = "sceneUboDeclaration", vr = `layout(std140,column_major) uniform;
+x.IncludesShadersStore[gr] = vr;
+const Er = "sceneUboDeclaration", Sr = `layout(std140,column_major) uniform;
 uniform Scene {
 mat4 viewProjection;
 #ifdef MULTIVIEW
@@ -5538,8 +5538,8 @@ mat4 projection;
 vec4 vEyePosition;
 };
 `;
-x.IncludesShadersStore[gr] = vr;
-const Er = "meshUboDeclaration", Sr = `#ifdef WEBGL2
+x.IncludesShadersStore[Er] = Sr;
+const Tr = "meshUboDeclaration", xr = `#ifdef WEBGL2
 uniform mat4 world;
 uniform float visibility;
 #else
@@ -5552,13 +5552,13 @@ float visibility;
 #endif
 #define WORLD_UBO
 `;
-x.IncludesShadersStore[Er] = Sr;
-const Tr = "shadowMapUboDeclaration", xr = `layout(std140,column_major) uniform;
+x.IncludesShadersStore[Tr] = xr;
+const Mr = "shadowMapUboDeclaration", Ar = `layout(std140,column_major) uniform;
 #include<sceneUboDeclaration>
 #include<meshUboDeclaration>
 `;
-x.IncludesShadersStore[Tr] = xr;
-const Mr = "shadowMapVertexExtraDeclaration", Ar = `#if SM_NORMALBIAS==1
+x.IncludesShadersStore[Mr] = Ar;
+const Cr = "shadowMapVertexExtraDeclaration", Rr = `#if SM_NORMALBIAS==1
 uniform vec3 lightDataSM;
 #endif
 uniform vec3 biasAndScaleSM;
@@ -5571,8 +5571,8 @@ varying vec3 vPositionWSM;
 varying float zSM;
 #endif
 `;
-x.IncludesShadersStore[Mr] = Ar;
-const Cr = "clipPlaneVertexDeclaration", Rr = `#ifdef CLIPPLANE
+x.IncludesShadersStore[Cr] = Rr;
+const Ir = "clipPlaneVertexDeclaration", br = `#ifdef CLIPPLANE
 uniform vec4 vClipPlane;
 varying float fClipDistance;
 #endif
@@ -5597,15 +5597,15 @@ uniform vec4 vClipPlane6;
 varying float fClipDistance6;
 #endif
 `;
-x.IncludesShadersStore[Cr] = Rr;
-const Ir = "morphTargetsVertexGlobal", br = `#ifdef MORPHTARGETS
+x.IncludesShadersStore[Ir] = br;
+const Pr = "morphTargetsVertexGlobal", Dr = `#ifdef MORPHTARGETS
 #ifdef MORPHTARGETS_TEXTURE
 float vertexID;
 #endif
 #endif
 `;
-x.IncludesShadersStore[Ir] = br;
-const Pr = "morphTargetsVertex", Dr = `#ifdef MORPHTARGETS
+x.IncludesShadersStore[Pr] = Dr;
+const Lr = "morphTargetsVertex", Fr = `#ifdef MORPHTARGETS
 #ifdef MORPHTARGETS_TEXTURE 
 vertexID=float(gl_VertexID)*morphTargetTextureInfo.x;
 positionUpdated+=(readVector3FromRawSampler({X},vertexID)-position)*morphTargetInfluences[{X}];
@@ -5635,8 +5635,8 @@ uvUpdated+=(uv_{X}-uv)*morphTargetInfluences[{X}];
 #endif
 #endif
 `;
-x.IncludesShadersStore[Pr] = Dr;
-const Lr = "instancesVertex", Fr = `#ifdef INSTANCES
+x.IncludesShadersStore[Lr] = Fr;
+const wr = "instancesVertex", Or = `#ifdef INSTANCES
 mat4 finalWorld=mat4(world0,world1,world2,world3);
 #if defined(PREPASS_VELOCITY) || defined(VELOCITY)
 mat4 finalPreviousWorld=mat4(previousWorld0,previousWorld1,previousWorld2,previousWorld3);
@@ -5654,8 +5654,8 @@ mat4 finalPreviousWorld=previousWorld;
 #endif
 #endif
 `;
-x.IncludesShadersStore[Lr] = Fr;
-const wr = "bonesVertex", Or = `#ifndef BAKED_VERTEX_ANIMATION_TEXTURE
+x.IncludesShadersStore[wr] = Or;
+const Nr = "bonesVertex", yr = `#ifndef BAKED_VERTEX_ANIMATION_TEXTURE
 #if NUM_BONE_INFLUENCERS>0
 mat4 influence;
 #ifdef BONETEXTURE
@@ -5709,8 +5709,8 @@ finalWorld=finalWorld*influence;
 #endif
 #endif
 `;
-x.IncludesShadersStore[wr] = Or;
-const Nr = "bakedVertexAnimation", yr = `#ifdef BAKED_VERTEX_ANIMATION_TEXTURE
+x.IncludesShadersStore[Nr] = yr;
+const Ur = "bakedVertexAnimation", Br = `#ifdef BAKED_VERTEX_ANIMATION_TEXTURE
 {
 #ifdef INSTANCES
 #define BVASNAME bakedVertexAnimationSettingsInstanced
@@ -5756,8 +5756,8 @@ finalWorld=finalWorld*VATInfluence;
 }
 #endif
 `;
-x.IncludesShadersStore[Nr] = yr;
-const Ur = "shadowMapVertexNormalBias", Br = `#if SM_NORMALBIAS==1
+x.IncludesShadersStore[Ur] = Br;
+const Vr = "shadowMapVertexNormalBias", Xr = `#if SM_NORMALBIAS==1
 #if SM_DIRECTIONINLIGHTDATA==1
 vec3 worldLightDirSM=normalize(-lightDataSM.xyz);
 #else
@@ -5770,8 +5770,8 @@ float normalBiasSM=biasAndScaleSM.y*sinNLSM;
 worldPos.xyz-=vNormalW*normalBiasSM;
 #endif
 `;
-x.IncludesShadersStore[Ur] = Br;
-const Vr = "shadowMapVertexMetric", Xr = `#if SM_USEDISTANCE==1
+x.IncludesShadersStore[Vr] = Xr;
+const zr = "shadowMapVertexMetric", Wr = `#if SM_USEDISTANCE==1
 vPositionWSM=worldPos.xyz;
 #endif
 #if SM_DEPTHTEXTURE==1
@@ -5797,8 +5797,8 @@ vDepthMetricSM=(gl_Position.z+depthValuesSM.x)/depthValuesSM.y+biasAndScaleSM.x;
 #endif
 #endif
 `;
-x.IncludesShadersStore[Vr] = Xr;
-const zr = "clipPlaneVertex", Wr = `#ifdef CLIPPLANE
+x.IncludesShadersStore[zr] = Wr;
+const kr = "clipPlaneVertex", Hr = `#ifdef CLIPPLANE
 fClipDistance=dot(worldPos,vClipPlane);
 #endif
 #ifdef CLIPPLANE2
@@ -5817,8 +5817,8 @@ fClipDistance5=dot(worldPos,vClipPlane5);
 fClipDistance6=dot(worldPos,vClipPlane6);
 #endif
 `;
-x.IncludesShadersStore[zr] = Wr;
-const kr = "shadowMapVertexShader", Hr = `attribute vec3 position;
+x.IncludesShadersStore[kr] = Hr;
+const Gr = "shadowMapVertexShader", Yr = `attribute vec3 position;
 #ifdef NORMAL
 attribute vec3 normal;
 #endif
@@ -5887,8 +5887,8 @@ vUV=vec2(diffuseMatrix*vec4(uv2,1.0,0.0));
 #endif
 #include<clipPlaneVertex>
 }`;
-x.ShadersStore[kr] = Hr;
-const Gr = "depthBoxBlurPixelShader", Yr = `varying vec2 vUV;
+x.ShadersStore[Gr] = Yr;
+const $r = "depthBoxBlurPixelShader", Zr = `varying vec2 vUV;
 uniform sampler2D textureSampler;
 uniform vec2 screenSize;
 #define CUSTOM_FRAGMENT_DEFINITIONS
@@ -5900,12 +5900,12 @@ for (int y=-OFFSET; y<=OFFSET; y++)
 colorDepth+=texture2D(textureSampler,vUV+vec2(x,y)/screenSize);
 gl_FragColor=(colorDepth/float((OFFSET*2+1)*(OFFSET*2+1)));
 }`;
-x.ShadersStore[Gr] = Yr;
-const $r = "shadowMapFragmentSoftTransparentShadow", Zr = `#if SM_SOFTTRANSPARENTSHADOW==1
+x.ShadersStore[$r] = Zr;
+const jr = "shadowMapFragmentSoftTransparentShadow", Qr = `#if SM_SOFTTRANSPARENTSHADOW==1
 if ((bayerDither8(floor(mod(gl_FragCoord.xy,8.0))))/64.0>=softTransparentShadowSM*alpha) discard;
 #endif
 `;
-x.IncludesShadersStore[$r] = Zr;
+x.IncludesShadersStore[jr] = Qr;
 class A {
   /**
    * Gets the bias: offset applied on the depth preventing acnea (in light direction).
@@ -6323,7 +6323,7 @@ class A {
     }), this._shadowMap.onResizeObservable.add((r) => {
       this._storedUniqueId = this._shadowMap.uniqueId, this._mapSize = r.getRenderSize(), this._light._markMeshesAsLightDirty(), this.recreateShadowMap();
     });
-    for (let r = Rt.MIN_RENDERINGGROUPS; r < Rt.MAX_RENDERINGGROUPS; r++)
+    for (let r = bt.MIN_RENDERINGGROUPS; r < bt.MAX_RENDERINGGROUPS; r++)
       this._shadowMap.setRenderingAutoClearDepthStencil(r, !1);
   }
   _initializeBlurRTTAndPostProcesses() {
@@ -6371,7 +6371,7 @@ class A {
     if (!(this.customAllowRendering && !this.customAllowRendering(e)))
       if (this.isReady(e, E, t)) {
         e._renderId = a.getRenderId();
-        const _ = l.shadowDepthWrapper, m = (r = _ == null ? void 0 : _.getEffect(e, this, o.currentRenderPassId)) !== null && r !== void 0 ? r : e._getDrawWrapper(), T = Dt.GetEffect(m);
+        const _ = l.shadowDepthWrapper, m = (r = _ == null ? void 0 : _.getEffect(e, this, o.currentRenderPassId)) !== null && r !== void 0 ? r : e._getDrawWrapper(), T = Ft.GetEffect(m);
         o.enableEffect(m), E || s._bind(e, T, l.fillMode), this.getTransformMatrix(), T.setFloat3("biasAndScaleSM", this.bias, this.normalBias, this.depthScale), this.getLight().getTypeID() === D.LIGHTTYPEID_DIRECTIONALLIGHT ? T.setVector3("lightDataSM", this._cachedDirection) : T.setVector3("lightDataSM", this._cachedPosition);
         const R = this._getCamera();
         if (R && T.setFloat2("depthValuesSM", this.getLight().getDepthMinZ(R), this.getLight().getDepthMinZ(R) + this.getLight().getDepthMaxZ(R)), t && this.enableSoftTransparentShadow && T.setFloat("softTransparentShadowSM", n.visibility * l.alpha), _)
@@ -6387,7 +6387,7 @@ class A {
             } else
               T.setMatrices("mBones", P.getTransformMatrices(s));
           }
-          L.BindMorphTargetParameters(s, T), s.morphTargetManager && s.morphTargetManager.isUsingTextureForTargets && s.morphTargetManager._bind(T), dt(T, l, a);
+          L.BindMorphTargetParameters(s, T), s.morphTargetManager && s.morphTargetManager.isUsingTextureForTargets && s.morphTargetManager._bind(T), ft(T, l, a);
         }
         !this._useUBO && !_ && this._bindCustomEffectForRenderSubMeshForShadowMap(e, T, n), L.BindSceneUniformBuffer(T, this._scene.getSceneUniformBuffer()), this._scene.getSceneUniformBuffer().bindUniformBuffer();
         const I = n.getWorldMatrix();
@@ -6488,7 +6488,7 @@ class A {
         const R = (r = s.alphaCutOff) !== null && r !== void 0 ? r : A.DEFAULT_ALPHA_CUTOFF;
         a.push("#define ALPHATEXTURE"), p && a.push(`#define ALPHATESTVALUE ${R}${R % 1 === 0 ? "." : ""}`), f.isVerticesDataPresent(B.UVKind) && (h.push(B.UVKind), a.push("#define UV1")), f.isVerticesDataPresent(B.UV2Kind) && this._opacityTexture.coordinatesIndex === 1 && (h.push(B.UV2Kind), a.push("#define UV2"));
       }
-      const E = new Ot();
+      const E = new yt();
       if (f.useBones && f.computeBonesUsingShaders && f.skeleton) {
         h.push(B.MatricesIndicesKind), h.push(B.MatricesWeightsKind), f.numBoneInfluencers > 4 && (h.push(B.MatricesIndicesExtraKind), h.push(B.MatricesWeightsExtraKind));
         const R = f.skeleton;
@@ -6497,7 +6497,7 @@ class A {
         a.push("#define NUM_BONE_INFLUENCERS 0");
       const _ = f.morphTargetManager;
       let m = 0;
-      if (_ && _.numInfluencers > 0 && (a.push("#define MORPHTARGETS"), m = _.numInfluencers, a.push("#define NUM_MORPH_INFLUENCERS " + m), _.isUsingTextureForTargets && a.push("#define MORPHTARGETS_TEXTURE"), L.PrepareAttributesForMorphTargetsInfluencers(h, f, m)), Gt(s, this._scene, a), t && (a.push("#define INSTANCES"), L.PushAttributesForInstances(h), e.getRenderingMesh().hasThinInstances && a.push("#define THIN_INSTANCES")), this.customShaderOptions && this.customShaderOptions.defines)
+      if (_ && _.numInfluencers > 0 && (a.push("#define MORPHTARGETS"), m = _.numInfluencers, a.push("#define NUM_MORPH_INFLUENCERS " + m), _.isUsingTextureForTargets && a.push("#define MORPHTARGETS_TEXTURE"), L.PrepareAttributesForMorphTargetsInfluencers(h, f, m)), Yt(s, this._scene, a), t && (a.push("#define INSTANCES"), L.PushAttributesForInstances(h), e.getRenderingMesh().hasThinInstances && a.push("#define THIN_INSTANCES")), this.customShaderOptions && this.customShaderOptions.defines)
         for (const R of this.customShaderOptions.defines)
           a.indexOf(R) === -1 && a.push(R);
       const T = a.join(`
@@ -6519,7 +6519,7 @@ class A {
           "morphTargetTextureInfo",
           "morphTargetTextureIndices"
         ], P = ["diffuseSampler", "boneSampler", "morphTargets"], X = ["Scene", "Mesh"];
-        if (ft(I), this.customShaderOptions) {
+        if (ct(I), this.customShaderOptions) {
           if (R = this.customShaderOptions.shaderName, this.customShaderOptions.attributes)
             for (const b of this.customShaderOptions.attributes)
               h.indexOf(b) === -1 && h.push(b);
@@ -6690,7 +6690,7 @@ A.DEFAULT_ALPHA_CUTOFF = 0.5;
 A._SceneComponentInitialization = (c) => {
   throw ze("ShadowGeneratorSceneComponent");
 };
-const jr = "depthPixelShader", Qr = `#ifdef ALPHATEST
+const Kr = "depthPixelShader", qr = `#ifdef ALPHATEST
 varying vec2 vUV;
 uniform sampler2D diffuseSampler;
 #endif
@@ -6732,8 +6732,8 @@ gl_FragColor=vec4(vDepthMetric,0.0,0.0,1.0);
 #endif
 #endif
 }`;
-x.ShadersStore[jr] = Qr;
-const Kr = "instancesDeclaration", qr = `#ifdef INSTANCES
+x.ShadersStore[Kr] = qr;
+const Jr = "instancesDeclaration", es = `#ifdef INSTANCES
 attribute vec4 world0;
 attribute vec4 world1;
 attribute vec4 world2;
@@ -6762,8 +6762,8 @@ uniform mat4 previousWorld;
 #endif
 #endif
 `;
-x.IncludesShadersStore[Kr] = qr;
-const Jr = "depthVertexShader", es = `attribute vec3 position;
+x.IncludesShadersStore[Jr] = es;
+const ts = "depthVertexShader", is = `attribute vec3 position;
 #include<bonesDeclaration>
 #include<bakedVertexAnimationDeclaration>
 #include<morphTargetsVertexGlobalDeclaration>
@@ -6821,8 +6821,8 @@ vUV=vec2(diffuseMatrix*vec4(uv2,1.0,0.0));
 #endif
 }
 `;
-x.ShadersStore[Jr] = es;
-class ut {
+x.ShadersStore[ts] = is;
+class pt {
   /**
    * Sets a specific material to be used to render a mesh/a list of meshes by the depth renderer
    * @param mesh mesh or array of meshes
@@ -6842,7 +6842,7 @@ class ut {
    * @param name Name of the render target (default: DepthRenderer)
    */
   constructor(e, t = 1, i = null, r = !1, s = v.TRILINEAR_SAMPLINGMODE, n = !1, a) {
-    this.enabled = !0, this.forceDepthWriteTransparentMeshes = !1, this.useOnlyInActiveCamera = !1, this.reverseCulling = !1, this._scene = e, this._storeNonLinearDepth = r, this._storeCameraSpaceZ = n, this.isPacked = t === 0, this.isPacked ? this.clearColor = new Xe(1, 1, 1, 1) : this.clearColor = new Xe(n ? 1e8 : 1, 0, 0, 1), ut._SceneComponentInitialization(this._scene);
+    this.enabled = !0, this.forceDepthWriteTransparentMeshes = !1, this.useOnlyInActiveCamera = !1, this.reverseCulling = !1, this._scene = e, this._storeNonLinearDepth = r, this._storeCameraSpaceZ = n, this.isPacked = t === 0, this.isPacked ? this.clearColor = new Xe(1, 1, 1, 1) : this.clearColor = new Xe(n ? 1e8 : 1, 0, 0, 1), pt._SceneComponentInitialization(this._scene);
     const o = e.getEngine();
     this._camera = i, s !== v.NEAREST_SAMPLINGMODE && (t === 1 && !o._caps.textureFloatLinearFiltering && (s = v.NEAREST_SAMPLINGMODE), t === 2 && !o._caps.textureHalfFloatLinearFiltering && (s = v.NEAREST_SAMPLINGMODE));
     const l = this.isPacked || !o._features.supportExtendedTextureFormats ? 5 : 6;
@@ -6903,7 +6903,7 @@ class ut {
             } else
               H.setMatrices("mBones", q.getTransformMatrices(E));
           }
-          dt(H, R, m), L.BindMorphTargetParameters(E, H), E.morphTargetManager && E.morphTargetManager.isUsingTextureForTargets && E.morphTargetManager._bind(H);
+          ft(H, R, m), L.BindMorphTargetParameters(E, H), E.morphTargetManager && E.morphTargetManager.isUsingTextureForTargets && E.morphTargetManager._bind(H);
         }
         E._processRendering(_, h, H, R.fillMode, k, b, (q, pe) => H.setMatrix("world", pe));
       }
@@ -6948,7 +6948,7 @@ class ut {
       l.push("#define NUM_BONE_INFLUENCERS 0");
     const h = s.morphTargetManager;
     let f = 0;
-    h && h.numInfluencers > 0 && (f = h.numInfluencers, l.push("#define MORPHTARGETS"), l.push("#define NUM_MORPH_INFLUENCERS " + f), h.isUsingTextureForTargets && l.push("#define MORPHTARGETS_TEXTURE"), L.PrepareAttributesForMorphTargetsInfluencers(d, s, f)), t && (l.push("#define INSTANCES"), L.PushAttributesForInstances(d), e.getRenderingMesh().hasThinInstances && l.push("#define THIN_INSTANCES")), this._storeNonLinearDepth && l.push("#define NONLINEARDEPTH"), this._storeCameraSpaceZ && l.push("#define STORE_CAMERASPACE_Z"), this.isPacked && l.push("#define PACKED"), Gt(o, n, l);
+    h && h.numInfluencers > 0 && (f = h.numInfluencers, l.push("#define MORPHTARGETS"), l.push("#define NUM_MORPH_INFLUENCERS " + f), h.isUsingTextureForTargets && l.push("#define MORPHTARGETS_TEXTURE"), L.PrepareAttributesForMorphTargetsInfluencers(d, s, f)), t && (l.push("#define INSTANCES"), L.PushAttributesForInstances(d), e.getRenderingMesh().hasThinInstances && l.push("#define THIN_INSTANCES")), this._storeNonLinearDepth && l.push("#define NONLINEARDEPTH"), this._storeCameraSpaceZ && l.push("#define STORE_CAMERASPACE_Z"), this.isPacked && l.push("#define PACKED"), Yt(o, n, l);
     const p = e._getDrawWrapper(void 0, !0), E = p.defines, _ = l.join(`
 `);
     if (E !== _) {
@@ -6964,7 +6964,7 @@ class ut {
         "morphTargetTextureInfo",
         "morphTargetTextureIndices"
       ];
-      ft(m), p.setEffect(r.createEffect("depth", d, m, ["diffuseSampler", "morphTargets", "boneSampler"], _, void 0, void 0, void 0, {
+      ct(m), p.setEffect(r.createEffect("depth", d, m, ["diffuseSampler", "morphTargets", "boneSampler"], _, void 0, void 0, void 0, {
         maxSimultaneousMorphTargets: f
       }), _);
     }
@@ -6991,10 +6991,10 @@ class ut {
     }
   }
 }
-ut._SceneComponentInitialization = (c) => {
+pt._SceneComponentInitialization = (c) => {
   throw ze("DepthRendererSceneComponent");
 };
-const ts = "minmaxReduxPixelShader", is = `varying vec2 vUV;
+const rs = "minmaxReduxPixelShader", ss = `varying vec2 vUV;
 uniform sampler2D textureSampler;
 #if defined(INITIAL)
 uniform sampler2D sourceTexture;
@@ -7050,14 +7050,14 @@ discard;
 }
 #endif
 `;
-x.ShadersStore[ts] = is;
-class rs {
+x.ShadersStore[rs] = ss;
+class ns {
   /**
    * Creates a min/max reducer
    * @param camera The camera to use for the post processes
    */
   constructor(e) {
-    this.onAfterReductionPerformed = new Y(), this._forceFullscreenViewport = !0, this._activated = !1, this._camera = e, this._postProcessManager = new Ht(e.getScene()), this._onContextRestoredObserver = e.getEngine().onContextRestoredObservable.add(() => {
+    this.onAfterReductionPerformed = new Y(), this._forceFullscreenViewport = !0, this._activated = !1, this._camera = e, this._postProcessManager = new Gt(e.getScene()), this._onContextRestoredObserver = e.getEngine().onContextRestoredObservable.add(() => {
       this._postProcessManager._rebuild();
     });
   }
@@ -7200,7 +7200,7 @@ class rs {
     this._postProcessManager && e && this._postProcessManager.dispose(), this._sourceTexture = null;
   }
 }
-class ss extends rs {
+class as extends ns {
   /**
    * Gets the depth renderer used for the computation.
    * Note that the result is null if you provide your own renderer when calling setDepthRenderer.
@@ -7223,7 +7223,7 @@ class ss extends rs {
    */
   setDepthRenderer(e = null, t = 2, i = !0) {
     const r = this._camera.getScene();
-    this._depthRenderer && (delete r._depthRenderer[this._depthRendererId], this._depthRenderer.dispose(), this._depthRenderer = null), e === null && (r._depthRenderer || (r._depthRenderer = {}), e = this._depthRenderer = new ut(r, t, this._camera, !1, 1), e.enabled = !1, this._depthRendererId = "minmax" + this._camera.id, r._depthRenderer[this._depthRendererId] = e), super.setSourceTexture(e.getDepthMap(), !0, t, i);
+    this._depthRenderer && (delete r._depthRenderer[this._depthRendererId], this._depthRenderer.dispose(), this._depthRenderer = null), e === null && (r._depthRenderer || (r._depthRenderer = {}), e = this._depthRenderer = new pt(r, t, this._camera, !1, 1), e.enabled = !1, this._depthRendererId = "minmax" + this._camera.id, r._depthRenderer[this._depthRendererId] = e), super.setSourceTexture(e.getDepthMap(), !0, t, i);
   }
   /**
    * @internal
@@ -7256,7 +7256,7 @@ class ss extends rs {
     }
   }
 }
-const Xt = M.Up(), ns = M.Zero(), G = new M(), Ne = new M(), it = new F();
+const zt = M.Up(), os = M.Zero(), G = new M(), Ne = new M(), it = new F();
 class $ extends A {
   _validateFilter(e) {
     return e === A.FILTER_NONE || e === A.FILTER_PCF || e === A.FILTER_PCSS ? e : (console.error('Unsupported filter "' + e + '"!'), A.FILTER_NONE);
@@ -7475,7 +7475,7 @@ class $ extends A {
         this._depthReducer && this._depthReducer.deactivate(), this.setMinMaxDistance(0, 1);
         return;
       }
-      this._depthReducer || (this._depthReducer = new ss(t), this._depthReducer.onAfterReductionPerformed.add((i) => {
+      this._depthReducer || (this._depthReducer = new as(t), this._depthReducer.onAfterReductionPerformed.add((i) => {
         let r = i.min, s = i.max;
         r >= s && (r = 0, s = 1), (r != this._minDistance || s != this._maxDistance) && this.setMinMaxDistance(r, s);
       }), this._depthReducer.setDepthRenderer(this._depthRenderer)), this._depthReducer.activate();
@@ -7521,10 +7521,10 @@ class $ extends A {
     M.NormalizeToRef(this._light.getShadowDirection(0), this._lightDirection), Math.abs(M.Dot(this._lightDirection, M.Up())) === 1 && (this._lightDirection.z = 1e-13), this._cachedDirection.copyFrom(this._lightDirection);
     const i = e.getEngine().useReverseDepthBuffer;
     for (let r = 0; r < this._numCascades; ++r) {
-      this._computeFrustumInWorldSpace(r), this._computeCascadeFrustum(r), this._cascadeMaxExtents[r].subtractToRef(this._cascadeMinExtents[r], G), this._frustumCenter[r].addToRef(this._lightDirection.scale(this._cascadeMinExtents[r].z), this._shadowCameraPos[r]), F.LookAtLHToRef(this._shadowCameraPos[r], this._frustumCenter[r], Xt, this._viewMatrices[r]);
+      this._computeFrustumInWorldSpace(r), this._computeCascadeFrustum(r), this._cascadeMaxExtents[r].subtractToRef(this._cascadeMinExtents[r], G), this._frustumCenter[r].addToRef(this._lightDirection.scale(this._cascadeMinExtents[r].z), this._shadowCameraPos[r]), F.LookAtLHToRef(this._shadowCameraPos[r], this._frustumCenter[r], zt, this._viewMatrices[r]);
       let s = 0, n = G.z;
       const a = this._shadowCastersBoundingInfo;
-      a.update(this._viewMatrices[r]), n = Math.min(n, a.boundingBox.maximumWorld.z), !this._depthClamp || this.filter === A.FILTER_PCSS ? s = Math.min(s, a.boundingBox.minimumWorld.z) : s = Math.max(s, a.boundingBox.minimumWorld.z), F.OrthoOffCenterLHToRef(this._cascadeMinExtents[r].x, this._cascadeMaxExtents[r].x, this._cascadeMinExtents[r].y, this._cascadeMaxExtents[r].y, i ? n : s, i ? s : n, this._projectionMatrices[r], e.getEngine().isNDCHalfZRange), this._cascadeMinExtents[r].z = s, this._cascadeMaxExtents[r].z = n, this._viewMatrices[r].multiplyToRef(this._projectionMatrices[r], this._transformMatrices[r]), M.TransformCoordinatesToRef(ns, this._transformMatrices[r], G), G.scaleInPlace(this._mapSize / 2), Ne.copyFromFloats(Math.round(G.x), Math.round(G.y), Math.round(G.z)), Ne.subtractInPlace(G).scaleInPlace(2 / this._mapSize), F.TranslationToRef(Ne.x, Ne.y, 0, it), this._projectionMatrices[r].multiplyToRef(it, this._projectionMatrices[r]), this._viewMatrices[r].multiplyToRef(this._projectionMatrices[r], this._transformMatrices[r]), this._transformMatrices[r].copyToArray(this._transformMatricesAsArray, r * 16);
+      a.update(this._viewMatrices[r]), n = Math.min(n, a.boundingBox.maximumWorld.z), !this._depthClamp || this.filter === A.FILTER_PCSS ? s = Math.min(s, a.boundingBox.minimumWorld.z) : s = Math.max(s, a.boundingBox.minimumWorld.z), F.OrthoOffCenterLHToRef(this._cascadeMinExtents[r].x, this._cascadeMaxExtents[r].x, this._cascadeMinExtents[r].y, this._cascadeMaxExtents[r].y, i ? n : s, i ? s : n, this._projectionMatrices[r], e.getEngine().isNDCHalfZRange), this._cascadeMinExtents[r].z = s, this._cascadeMaxExtents[r].z = n, this._viewMatrices[r].multiplyToRef(this._projectionMatrices[r], this._transformMatrices[r]), M.TransformCoordinatesToRef(os, this._transformMatrices[r], G), G.scaleInPlace(this._mapSize / 2), Ne.copyFromFloats(Math.round(G.x), Math.round(G.y), Math.round(G.z)), Ne.subtractInPlace(G).scaleInPlace(2 / this._mapSize), F.TranslationToRef(Ne.x, Ne.y, 0, it), this._projectionMatrices[r].multiplyToRef(it, this._projectionMatrices[r]), this._viewMatrices[r].multiplyToRef(this._projectionMatrices[r], this._transformMatrices[r]), this._transformMatrices[r].copyToArray(this._transformMatricesAsArray, r * 16);
     }
   }
   // Get the 8 points of the view frustum in world space
@@ -7553,7 +7553,7 @@ class $ extends A {
         i = Math.ceil(i * 16) / 16, this._cascadeMaxExtents[e].copyFromFloats(i, i, i), this._cascadeMinExtents[e].copyFromFloats(-i, -i, -i);
       } else {
         const i = this._frustumCenter[e];
-        this._frustumCenter[e].addToRef(this._lightDirection, G), F.LookAtLHToRef(i, G, Xt, it);
+        this._frustumCenter[e].addToRef(this._lightDirection, G), F.LookAtLHToRef(i, G, zt, it);
         for (let r = 0; r < this._frustumCornersWorldSpace[e].length; ++r)
           M.TransformCoordinatesToRef(this._frustumCornersWorldSpace[e][r], it, G), this._cascadeMinExtents[e].minimizeInPlace(G), this._cascadeMaxExtents[e].maximizeInPlace(G);
       }
@@ -7568,7 +7568,7 @@ class $ extends A {
    *  Support test.
    */
   static get IsSupported() {
-    const e = bt.LastCreatedEngine;
+    const e = Dt.LastCreatedEngine;
     return e ? e._features.supportCSM : !1;
   }
   /**
@@ -7590,7 +7590,7 @@ class $ extends A {
   }
   _initializeGenerator() {
     var e, t, i, r, s, n, a, o, l, d, h, f, p, E, _, m, T, R, I, P;
-    this.penumbraDarkness = (e = this.penumbraDarkness) !== null && e !== void 0 ? e : 1, this._numCascades = (t = this._numCascades) !== null && t !== void 0 ? t : $.DEFAULT_CASCADES_COUNT, this.stabilizeCascades = (i = this.stabilizeCascades) !== null && i !== void 0 ? i : !1, this._freezeShadowCastersBoundingInfoObservable = (r = this._freezeShadowCastersBoundingInfoObservable) !== null && r !== void 0 ? r : null, this.freezeShadowCastersBoundingInfo = (s = this.freezeShadowCastersBoundingInfo) !== null && s !== void 0 ? s : !1, this._scbiMin = (n = this._scbiMin) !== null && n !== void 0 ? n : new M(0, 0, 0), this._scbiMax = (a = this._scbiMax) !== null && a !== void 0 ? a : new M(0, 0, 0), this._shadowCastersBoundingInfo = (o = this._shadowCastersBoundingInfo) !== null && o !== void 0 ? o : new fi(new M(0, 0, 0), new M(0, 0, 0)), this._breaksAreDirty = (l = this._breaksAreDirty) !== null && l !== void 0 ? l : !0, this._minDistance = (d = this._minDistance) !== null && d !== void 0 ? d : 0, this._maxDistance = (h = this._maxDistance) !== null && h !== void 0 ? h : 1, this._currentLayer = (f = this._currentLayer) !== null && f !== void 0 ? f : 0, this._shadowMaxZ = (_ = (p = this._shadowMaxZ) !== null && p !== void 0 ? p : (E = this._getCamera()) === null || E === void 0 ? void 0 : E.maxZ) !== null && _ !== void 0 ? _ : 1e4, this._debug = (m = this._debug) !== null && m !== void 0 ? m : !1, this._depthClamp = (T = this._depthClamp) !== null && T !== void 0 ? T : !0, this._cascadeBlendPercentage = (R = this._cascadeBlendPercentage) !== null && R !== void 0 ? R : 0.1, this._lambda = (I = this._lambda) !== null && I !== void 0 ? I : 0.5, this._autoCalcDepthBounds = (P = this._autoCalcDepthBounds) !== null && P !== void 0 ? P : !1, this._recreateSceneUBOs(), super._initializeGenerator();
+    this.penumbraDarkness = (e = this.penumbraDarkness) !== null && e !== void 0 ? e : 1, this._numCascades = (t = this._numCascades) !== null && t !== void 0 ? t : $.DEFAULT_CASCADES_COUNT, this.stabilizeCascades = (i = this.stabilizeCascades) !== null && i !== void 0 ? i : !1, this._freezeShadowCastersBoundingInfoObservable = (r = this._freezeShadowCastersBoundingInfoObservable) !== null && r !== void 0 ? r : null, this.freezeShadowCastersBoundingInfo = (s = this.freezeShadowCastersBoundingInfo) !== null && s !== void 0 ? s : !1, this._scbiMin = (n = this._scbiMin) !== null && n !== void 0 ? n : new M(0, 0, 0), this._scbiMax = (a = this._scbiMax) !== null && a !== void 0 ? a : new M(0, 0, 0), this._shadowCastersBoundingInfo = (o = this._shadowCastersBoundingInfo) !== null && o !== void 0 ? o : new ui(new M(0, 0, 0), new M(0, 0, 0)), this._breaksAreDirty = (l = this._breaksAreDirty) !== null && l !== void 0 ? l : !0, this._minDistance = (d = this._minDistance) !== null && d !== void 0 ? d : 0, this._maxDistance = (h = this._maxDistance) !== null && h !== void 0 ? h : 1, this._currentLayer = (f = this._currentLayer) !== null && f !== void 0 ? f : 0, this._shadowMaxZ = (_ = (p = this._shadowMaxZ) !== null && p !== void 0 ? p : (E = this._getCamera()) === null || E === void 0 ? void 0 : E.maxZ) !== null && _ !== void 0 ? _ : 1e4, this._debug = (m = this._debug) !== null && m !== void 0 ? m : !1, this._depthClamp = (T = this._depthClamp) !== null && T !== void 0 ? T : !0, this._cascadeBlendPercentage = (R = this._cascadeBlendPercentage) !== null && R !== void 0 ? R : 0.1, this._lambda = (I = this._lambda) !== null && I !== void 0 ? I : 0.5, this._autoCalcDepthBounds = (P = this._autoCalcDepthBounds) !== null && P !== void 0 ? P : !1, this._recreateSceneUBOs(), super._initializeGenerator();
   }
   _createTargetRenderTexture() {
     const e = this._scene.getEngine(), t = { width: this._mapSize, height: this._mapSize, layers: this.numCascades };
@@ -7734,14 +7734,14 @@ $.MAX_CASCADES_COUNT = 4;
 $._SceneComponentInitialization = (c) => {
   throw ze("ShadowGeneratorSceneComponent");
 };
-ci.AddParser(st.NAME_SHADOWGENERATOR, (c, e) => {
+pi.AddParser(st.NAME_SHADOWGENERATOR, (c, e) => {
   if (c.shadowGenerators !== void 0 && c.shadowGenerators !== null)
     for (let t = 0, i = c.shadowGenerators.length; t < i; t++) {
       const r = c.shadowGenerators[t];
       r.className === $.CLASSNAME ? $.Parse(r, e) : A.Parse(r, e);
     }
 });
-class as {
+class ls {
   /**
    * Creates a new instance of the component for the given scene
    * @param scene Defines the scene to register the component in
@@ -7817,18 +7817,18 @@ class as {
 }
 A._SceneComponentInitialization = (c) => {
   let e = c._getComponent(st.NAME_SHADOWGENERATOR);
-  e || (e = new as(c), c._addComponent(e));
+  e || (e = new ls(c), c._addComponent(e));
 };
-const os = {
+const hs = {
   enableShadows: !0
 };
-function zt(c = os) {
+function Wt(c = hs) {
   const { enableShadows: e, shadowTransparency: t, intensity: i, scene: r } = c, s = new _e("DirectionalLight", new M(-0.3, -1, 0.4), r);
   s.position = new M(-50, 65, -50), s.intensity = 0.65 * i;
-  const n = new ct("HemisphericLight", new M(1, 1, 0), r);
+  const n = new ut("HemisphericLight", new M(1, 1, 0), r);
   return n.intensity = 0.4 * i, e && (s.shadowMinZ = 1, s.shadowMaxZ = 70, s.shadowGenerator = new A(2048, s), s.shadowGenerator.useCloseExponentialShadowMap = !0, s.shadowGenerator.darkness = t), { directional: s, hemispheric: n };
 }
-function jt(c) {
+function Qt(c) {
   let t = [0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11, 12, 13, 14, 12, 14, 15, 16, 17, 18, 16, 18, 19, 20, 21, 22, 20, 22, 23];
   const i = [
     0,
@@ -8056,7 +8056,7 @@ function jt(c) {
   s = m.reduce((b, O, y) => b.concat(O * T[y % 3]), []);
   const R = c.sideOrientation === 0 ? 0 : c.sideOrientation || ke.DEFAULTSIDE, I = c.faceUV || new Array(6), P = c.faceColors, X = [];
   for (let b = 0; b < 6; b++)
-    I[b] === void 0 && (I[b] = new ui(0, 0, 1, 1)), P && P[b] === void 0 && (P[b] = new Xe(1, 1, 1, 1));
+    I[b] === void 0 && (I[b] = new mi(0, 0, 1, 1)), P && P[b] === void 0 && (P[b] = new Xe(1, 1, 1, 1));
   for (let b = 0; b < 6; b++)
     if (r.push(I[b].z, Ue.UseOpenGLOrientationForUV ? 1 - I[b].w : I[b].w), r.push(I[b].x, Ue.UseOpenGLOrientationForUV ? 1 - I[b].w : I[b].w), r.push(I[b].x, Ue.UseOpenGLOrientationForUV ? 1 - I[b].y : I[b].y), r.push(I[b].z, Ue.UseOpenGLOrientationForUV ? 1 - I[b].y : I[b].y), P)
       for (let O = 0; O < 4; O++)
@@ -8071,15 +8071,15 @@ function jt(c) {
 }
 function ye(c, e = {}, t = null) {
   const i = new Ye(c, t);
-  return e.sideOrientation = Ye._GetDefaultSideOrientation(e.sideOrientation), i._originalBuilderSideOrientation = e.sideOrientation, jt(e).applyToMesh(i, e.updatable), i;
+  return e.sideOrientation = Ye._GetDefaultSideOrientation(e.sideOrientation), i._originalBuilderSideOrientation = e.sideOrientation, Qt(e).applyToMesh(i, e.updatable), i;
 }
-ke.CreateBox = jt;
+ke.CreateBox = Qt;
 Ye.CreateBox = (c, e, t = null, i, r) => ye(c, {
   size: e,
   sideOrientation: r,
   updatable: i
 }, t);
-class Wt {
+class kt {
   constructor() {
     this.previousWorldMatrices = {}, this.previousBones = {};
   }
@@ -8114,7 +8114,7 @@ class Wt {
     }
   }
 }
-class Qt extends nt {
+class Kt extends nt {
   constructor(e, t, i = !0) {
     super(e, t), this._normalMatrix = new F(), this._storeEffectOnSubMeshes = i;
   }
@@ -8379,12 +8379,12 @@ w._ThicknessTextureEnabled = !0;
 w._RefractionIntensityTextureEnabled = !0;
 w._TranslucencyIntensityTextureEnabled = !0;
 w._IridescenceTextureEnabled = !0;
-const ls = "decalFragmentDeclaration", hs = `#ifdef DECAL
+const ds = "decalFragmentDeclaration", fs = `#ifdef DECAL
 uniform vec4 vDecalInfos;
 #endif
 `;
-x.IncludesShadersStore[ls] = hs;
-const ds = "defaultFragmentDeclaration", fs = `uniform vec4 vEyePosition;
+x.IncludesShadersStore[ds] = fs;
+const cs = "defaultFragmentDeclaration", us = `uniform vec4 vEyePosition;
 uniform vec4 vDiffuseColor;
 #ifdef SPECULARTERM
 uniform vec4 vSpecularColor;
@@ -8467,8 +8467,8 @@ uniform vec4 vDetailInfos;
 #include<decalFragmentDeclaration>
 #define ADDITIONAL_FRAGMENT_DECLARATION
 `;
-x.IncludesShadersStore[ds] = fs;
-const cs = "defaultUboDeclaration", us = `layout(std140,column_major) uniform;
+x.IncludesShadersStore[cs] = us;
+const ps = "defaultUboDeclaration", ms = `layout(std140,column_major) uniform;
 uniform Material
 {
 vec4 diffuseLeftColor;
@@ -8514,8 +8514,8 @@ vec3 vAmbientColor;
 #include<sceneUboDeclaration>
 #include<meshUboDeclaration>
 `;
-x.IncludesShadersStore[cs] = us;
-const ps = "prePassDeclaration", ms = `#ifdef PREPASS
+x.IncludesShadersStore[ps] = ms;
+const _s = "prePassDeclaration", gs = `#ifdef PREPASS
 #extension GL_EXT_draw_buffers : require
 layout(location=0) out highp vec4 glFragData[{X}];highp vec4 gl_FragColor;
 #ifdef PREPASS_DEPTH
@@ -8526,8 +8526,8 @@ varying highp vec4 vCurrentPosition;varying highp vec4 vPreviousPosition;
 #endif
 #endif
 `;
-x.IncludesShadersStore[ps] = ms;
-const _s = "oitDeclaration", gs = `#ifdef ORDER_INDEPENDENT_TRANSPARENCY
+x.IncludesShadersStore[_s] = gs;
+const vs = "oitDeclaration", Es = `#ifdef ORDER_INDEPENDENT_TRANSPARENCY
 #extension GL_EXT_draw_buffers : require
 layout(location=0) out vec2 depth; 
 layout(location=1) out vec4 frontColor;
@@ -8538,13 +8538,13 @@ uniform sampler2D oitDepthSampler;
 uniform sampler2D oitFrontColorSampler;
 #endif
 `;
-x.IncludesShadersStore[_s] = gs;
-const vs = "mainUVVaryingDeclaration", Es = `#ifdef MAINUV{X}
+x.IncludesShadersStore[vs] = Es;
+const Ss = "mainUVVaryingDeclaration", Ts = `#ifdef MAINUV{X}
 varying vec2 vMainUV{X};
 #endif
 `;
-x.IncludesShadersStore[vs] = Es;
-const Ss = "lightFragmentDeclaration", Ts = `#ifdef LIGHT{X}
+x.IncludesShadersStore[Ss] = Ts;
+const xs = "lightFragmentDeclaration", Ms = `#ifdef LIGHT{X}
 uniform vec4 vLightData{X};
 uniform vec4 vLightDiffuse{X};
 #ifdef SPECULARTERM
@@ -8624,8 +8624,8 @@ uniform sampler2D projectionLightSampler{X};
 #endif
 #endif
 `;
-x.IncludesShadersStore[Ss] = Ts;
-const xs = "lightUboDeclaration", Ms = `#ifdef LIGHT{X}
+x.IncludesShadersStore[xs] = Ms;
+const As = "lightUboDeclaration", Cs = `#ifdef LIGHT{X}
 uniform Light{X}
 {
 vec4 vLightData;
@@ -8704,8 +8704,8 @@ uniform mat4 lightMatrix{X};
 #endif
 #endif
 `;
-x.IncludesShadersStore[xs] = Ms;
-const As = "lightsFragmentFunctions", Cs = `struct lightingInfo
+x.IncludesShadersStore[As] = Cs;
+const Rs = "lightsFragmentFunctions", Is = `struct lightingInfo
 {
 vec3 diffuse;
 #ifdef SPECULARTERM
@@ -8796,8 +8796,8 @@ strq/=strq.w;
 vec3 textureColor=texture2D(projectionLightSampler,strq.xy).rgb;
 return textureColor;
 }`;
-x.IncludesShadersStore[As] = Cs;
-const Rs = "shadowsFragmentFunctions", Is = `#ifdef SHADOWS
+x.IncludesShadersStore[Rs] = Is;
+const bs = "shadowsFragmentFunctions", Ps = `#ifdef SHADOWS
 #if defined(WEBGL2) || defined(WEBGPU) || defined(NATIVE)
 #define TEXTUREFUNC(s,c,l) texture2DLodEXT(s,c,l)
 #else
@@ -9409,8 +9409,8 @@ return computeShadowWithCSMPCSS(layer,vPositionFromLight,depthMetric,depthSample
 #endif
 #endif
 `;
-x.IncludesShadersStore[Rs] = Is;
-const bs = "samplerFragmentDeclaration", Ps = `#ifdef _DEFINENAME_
+x.IncludesShadersStore[bs] = Ps;
+const Ds = "samplerFragmentDeclaration", Ls = `#ifdef _DEFINENAME_
 #if _DEFINENAME_DIRECTUV==1
 #define v_VARYINGNAME_UV vMainUV1
 #elif _DEFINENAME_DIRECTUV==2
@@ -9429,8 +9429,8 @@ varying vec2 v_VARYINGNAME_UV;
 uniform sampler2D _SAMPLERNAME_Sampler;
 #endif
 `;
-x.IncludesShadersStore[bs] = Ps;
-const Ds = "fresnelFunction", Ls = `#ifdef FRESNEL
+x.IncludesShadersStore[Ds] = Ls;
+const Fs = "fresnelFunction", ws = `#ifdef FRESNEL
 float computeFresnelTerm(vec3 viewDirection,vec3 worldNormal,float bias,float power)
 {
 float fresnelTerm=pow(bias+abs(dot(viewDirection,worldNormal)),power);
@@ -9438,8 +9438,8 @@ return clamp(fresnelTerm,0.,1.);
 }
 #endif
 `;
-x.IncludesShadersStore[Ds] = Ls;
-const Fs = "reflectionFunction", ws = `vec3 computeFixedEquirectangularCoords(vec4 worldPos,vec3 worldNormal,vec3 direction)
+x.IncludesShadersStore[Fs] = ws;
+const Os = "reflectionFunction", Ns = `vec3 computeFixedEquirectangularCoords(vec4 worldPos,vec3 worldNormal,vec3 direction)
 {
 float lon=atan(direction.z,direction.x);
 float lat=acos(direction.y);
@@ -9553,8 +9553,8 @@ return vec3(0,0,0);
 }
 #endif
 `;
-x.IncludesShadersStore[Fs] = ws;
-const Os = "imageProcessingDeclaration", Ns = `#ifdef EXPOSURE
+x.IncludesShadersStore[Os] = Ns;
+const ys = "imageProcessingDeclaration", Us = `#ifdef EXPOSURE
 uniform float exposureLinear;
 #endif
 #ifdef CONTRAST
@@ -9584,8 +9584,8 @@ uniform vec4 colorTransformSettings;
 uniform float ditherIntensity;
 #endif
 `;
-x.IncludesShadersStore[Os] = Ns;
-const ys = "imageProcessingFunctions", Us = `#if defined(COLORGRADING) && !defined(COLORGRADING3D)
+x.IncludesShadersStore[ys] = Us;
+const Bs = "imageProcessingFunctions", Vs = `#if defined(COLORGRADING) && !defined(COLORGRADING3D)
 /** 
 * Polyfill for SAMPLE_TEXTURE_3D,which is unsupported in WebGL.
 * sampler3dSetting.x=textureOffset (0.5/textureSize).
@@ -9712,8 +9712,8 @@ result.rgb=saturate(result.rgb+vec3(dither));
 #define CUSTOM_IMAGEPROCESSINGFUNCTIONS_UPDATERESULT_ATEND
 return result;
 }`;
-x.IncludesShadersStore[ys] = Us;
-const Bs = "bumpFragmentMainFunctions", Vs = `#if defined(BUMP) || defined(CLEARCOAT_BUMP) || defined(ANISOTROPIC) || defined(DETAIL)
+x.IncludesShadersStore[Bs] = Vs;
+const Xs = "bumpFragmentMainFunctions", zs = `#if defined(BUMP) || defined(CLEARCOAT_BUMP) || defined(ANISOTROPIC) || defined(DETAIL)
 #if defined(TANGENT) && defined(NORMAL) 
 varying mat3 vTBN;
 #endif
@@ -9804,8 +9804,8 @@ return mat3(tangent*invmax,bitangent*invmax,normal);
 }
 #endif
 `;
-x.IncludesShadersStore[Bs] = Vs;
-const Xs = "bumpFragmentFunctions", zs = `#if defined(BUMP)
+x.IncludesShadersStore[Xs] = zs;
+const Ws = "bumpFragmentFunctions", ks = `#if defined(BUMP)
 #include<samplerFragmentDeclaration>(_DEFINENAME_,BUMP,_VARYINGNAME_,Bump,_SAMPLERNAME_,bump)
 #endif
 #if defined(DETAIL)
@@ -9860,14 +9860,14 @@ return -texCoordOffset;
 }
 #endif
 `;
-x.IncludesShadersStore[Xs] = zs;
-const Ws = "logDepthDeclaration", ks = `#ifdef LOGARITHMICDEPTH
+x.IncludesShadersStore[Ws] = ks;
+const Hs = "logDepthDeclaration", Gs = `#ifdef LOGARITHMICDEPTH
 uniform float logarithmicDepthConstant;
 varying float vFragmentDepth;
 #endif
 `;
-x.IncludesShadersStore[Ws] = ks;
-const Hs = "fogFragmentDeclaration", Gs = `#ifdef FOG
+x.IncludesShadersStore[Hs] = Gs;
+const Ys = "fogFragmentDeclaration", $s = `#ifdef FOG
 #define FOGMODE_NONE 0.
 #define FOGMODE_EXP 1.
 #define FOGMODE_EXP2 2.
@@ -9899,8 +9899,8 @@ return clamp(fogCoeff,0.0,1.0);
 }
 #endif
 `;
-x.IncludesShadersStore[Hs] = Gs;
-const Ys = "bumpFragment", $s = `vec2 uvOffset=vec2(0.0,0.0);
+x.IncludesShadersStore[Ys] = $s;
+const Zs = "bumpFragment", js = `vec2 uvOffset=vec2(0.0,0.0);
 #if defined(BUMP) || defined(PARALLAX) || defined(DETAIL)
 #ifdef NORMALXYSCALE
 float normalScale=1.0;
@@ -9965,8 +9965,8 @@ detailNormal.xy*=vDetailInfos.z;
 normalW=perturbNormalBase(TBN,detailNormal,vDetailInfos.z);
 #endif
 `;
-x.IncludesShadersStore[Ys] = $s;
-const Zs = "decalFragment", js = `#ifdef DECAL
+x.IncludesShadersStore[Zs] = js;
+const Qs = "decalFragment", Ks = `#ifdef DECAL
 #ifdef GAMMADECAL
 decalColor.rgb=toLinearSpace(decalColor.rgb);
 #endif
@@ -9976,14 +9976,14 @@ decalColor.a*=decalColor.a;
 surfaceAlbedo.rgb=mix(surfaceAlbedo.rgb,decalColor.rgb,decalColor.a);
 #endif
 `;
-x.IncludesShadersStore[Zs] = js;
-const Qs = "depthPrePass", Ks = `#ifdef DEPTHPREPASS
+x.IncludesShadersStore[Qs] = Ks;
+const qs = "depthPrePass", Js = `#ifdef DEPTHPREPASS
 gl_FragColor=vec4(0.,0.,0.,1.0);
 return;
 #endif
 `;
-x.IncludesShadersStore[Qs] = Ks;
-const qs = "lightFragment", Js = `#ifdef LIGHT{X}
+x.IncludesShadersStore[qs] = Js;
+const en = "lightFragment", tn = `#ifdef LIGHT{X}
 #if defined(SHADOWONLY) || defined(LIGHTMAP) && defined(LIGHTMAPEXCLUDED{X}) && defined(LIGHTMAPNOSPECULAR{X})
 #else
 #ifdef PBR
@@ -10259,13 +10259,13 @@ sheenBase+=info.sheen.rgb*shadow;
 #endif
 #endif
 `;
-x.IncludesShadersStore[qs] = Js;
-const en = "logDepthFragment", tn = `#ifdef LOGARITHMICDEPTH
+x.IncludesShadersStore[en] = tn;
+const rn = "logDepthFragment", sn = `#ifdef LOGARITHMICDEPTH
 gl_FragDepthEXT=log2(vFragmentDepth)*logarithmicDepthConstant*0.5;
 #endif
 `;
-x.IncludesShadersStore[en] = tn;
-const rn = "fogFragment", sn = `#ifdef FOG
+x.IncludesShadersStore[rn] = sn;
+const nn = "fogFragment", an = `#ifdef FOG
 float fog=CalcFogFactor();
 #ifdef PBR
 fog=toLinearSpace(fog);
@@ -10273,8 +10273,8 @@ fog=toLinearSpace(fog);
 color.rgb=mix(vFogColor,color.rgb,fog);
 #endif
 `;
-x.IncludesShadersStore[rn] = sn;
-const nn = "oitFragment", an = `#ifdef ORDER_INDEPENDENT_TRANSPARENCY
+x.IncludesShadersStore[nn] = an;
+const on = "oitFragment", ln = `#ifdef ORDER_INDEPENDENT_TRANSPARENCY
 float fragDepth=gl_FragCoord.z; 
 #ifdef ORDER_INDEPENDENT_TRANSPARENCY_16BITS
 uint halfFloat=packHalf2x16(vec2(fragDepth));
@@ -10312,8 +10312,8 @@ return;
 }
 #endif
 `;
-x.IncludesShadersStore[nn] = an;
-const on = "defaultPixelShader", ln = `#include<__decl__defaultFragment>
+x.IncludesShadersStore[on] = ln;
+const hn = "defaultPixelShader", dn = `#include<__decl__defaultFragment>
 #if defined(BUMP) || !defined(NORMAL)
 #extension GL_OES_standard_derivatives : enable
 #endif
@@ -10666,14 +10666,14 @@ backColor+=color;
 #define CUSTOM_FRAGMENT_MAIN_END
 }
 `;
-x.ShadersStore[on] = ln;
-const hn = "decalVertexDeclaration", dn = `#ifdef DECAL
+x.ShadersStore[hn] = dn;
+const fn = "decalVertexDeclaration", cn = `#ifdef DECAL
 uniform vec4 vDecalInfos;
 uniform mat4 decalMatrix;
 #endif
 `;
-x.IncludesShadersStore[hn] = dn;
-const fn = "defaultVertexDeclaration", cn = `uniform mat4 viewProjection;
+x.IncludesShadersStore[fn] = cn;
+const un = "defaultVertexDeclaration", pn = `uniform mat4 viewProjection;
 uniform mat4 view;
 #ifdef DIFFUSE
 uniform mat4 diffuseMatrix;
@@ -10716,13 +10716,13 @@ uniform mat4 detailMatrix;
 #include<decalVertexDeclaration>
 #define ADDITIONAL_VERTEX_DECLARATION
 `;
-x.IncludesShadersStore[fn] = cn;
-const un = "uvAttributeDeclaration", pn = `#ifdef UV{X}
+x.IncludesShadersStore[un] = pn;
+const mn = "uvAttributeDeclaration", _n = `#ifdef UV{X}
 attribute vec2 uv{X};
 #endif
 `;
-x.IncludesShadersStore[un] = pn;
-const mn = "prePassVertexDeclaration", _n = `#ifdef PREPASS
+x.IncludesShadersStore[mn] = _n;
+const gn = "prePassVertexDeclaration", vn = `#ifdef PREPASS
 #ifdef PREPASS_DEPTH
 varying vec3 vViewPos;
 #endif
@@ -10733,25 +10733,25 @@ varying vec4 vPreviousPosition;
 #endif
 #endif
 `;
-x.IncludesShadersStore[mn] = _n;
-const gn = "samplerVertexDeclaration", vn = `#if defined(_DEFINENAME_) && _DEFINENAME_DIRECTUV==0
+x.IncludesShadersStore[gn] = vn;
+const En = "samplerVertexDeclaration", Sn = `#if defined(_DEFINENAME_) && _DEFINENAME_DIRECTUV==0
 varying vec2 v_VARYINGNAME_UV;
 #endif
 `;
-x.IncludesShadersStore[gn] = vn;
-const En = "bumpVertexDeclaration", Sn = `#if defined(BUMP) || defined(PARALLAX) || defined(CLEARCOAT_BUMP) || defined(ANISOTROPIC)
+x.IncludesShadersStore[En] = Sn;
+const Tn = "bumpVertexDeclaration", xn = `#if defined(BUMP) || defined(PARALLAX) || defined(CLEARCOAT_BUMP) || defined(ANISOTROPIC)
 #if defined(TANGENT) && defined(NORMAL) 
 varying mat3 vTBN;
 #endif
 #endif
 `;
-x.IncludesShadersStore[En] = Sn;
-const Tn = "fogVertexDeclaration", xn = `#ifdef FOG
+x.IncludesShadersStore[Tn] = xn;
+const Mn = "fogVertexDeclaration", An = `#ifdef FOG
 varying vec3 vFogDistance;
 #endif
 `;
-x.IncludesShadersStore[Tn] = xn;
-const Mn = "lightVxFragmentDeclaration", An = `#ifdef LIGHT{X}
+x.IncludesShadersStore[Mn] = An;
+const Cn = "lightVxFragmentDeclaration", Rn = `#ifdef LIGHT{X}
 uniform vec4 vLightData{X};
 uniform vec4 vLightDiffuse{X};
 #ifdef SPECULARTERM
@@ -10784,8 +10784,8 @@ uniform vec3 vLightGround{X};
 #endif
 #endif
 `;
-x.IncludesShadersStore[Mn] = An;
-const Cn = "lightVxUboDeclaration", Rn = `#ifdef LIGHT{X}
+x.IncludesShadersStore[Cn] = Rn;
+const In = "lightVxUboDeclaration", bn = `#ifdef LIGHT{X}
 uniform Light{X}
 {
 vec4 vLightData;
@@ -10817,8 +10817,8 @@ uniform mat4 lightMatrix{X};
 #endif
 #endif
 `;
-x.IncludesShadersStore[Cn] = Rn;
-const In = "prePassVertex", bn = `#ifdef PREPASS_DEPTH
+x.IncludesShadersStore[In] = bn;
+const Pn = "prePassVertex", Dn = `#ifdef PREPASS_DEPTH
 vViewPos=(view*worldPos).rgb;
 #endif
 #if defined(PREPASS_VELOCITY) && defined(BONES_VELOCITY_ENABLED)
@@ -10853,16 +10853,16 @@ vPreviousPosition=previousViewProjection*finalPreviousWorld*vec4(positionUpdated
 #endif
 #endif
 `;
-x.IncludesShadersStore[In] = bn;
-const Pn = "uvVariableDeclaration", Dn = `#if !defined(UV{X}) && defined(MAINUV{X})
+x.IncludesShadersStore[Pn] = Dn;
+const Ln = "uvVariableDeclaration", Fn = `#if !defined(UV{X}) && defined(MAINUV{X})
 vec2 uv{X}=vec2(0.,0.);
 #endif
 #ifdef MAINUV{X}
 vMainUV{X}=uv{X};
 #endif
 `;
-x.IncludesShadersStore[Pn] = Dn;
-const Ln = "samplerVertexImplementation", Fn = `#if defined(_DEFINENAME_) && _DEFINENAME_DIRECTUV==0
+x.IncludesShadersStore[Ln] = Fn;
+const wn = "samplerVertexImplementation", On = `#if defined(_DEFINENAME_) && _DEFINENAME_DIRECTUV==0
 if (v_INFONAME_==0.)
 {
 v_VARYINGNAME_UV=vec2(_MATRIXNAME_Matrix*vec4(uvUpdated,1.0,0.0));
@@ -10899,8 +10899,8 @@ v_VARYINGNAME_UV=vec2(_MATRIXNAME_Matrix*vec4(uv6,1.0,0.0));
 #endif
 #endif
 `;
-x.IncludesShadersStore[Ln] = Fn;
-const wn = "bumpVertex", On = `#if defined(BUMP) || defined(PARALLAX) || defined(CLEARCOAT_BUMP) || defined(ANISOTROPIC)
+x.IncludesShadersStore[wn] = On;
+const Nn = "bumpVertex", yn = `#if defined(BUMP) || defined(PARALLAX) || defined(CLEARCOAT_BUMP) || defined(ANISOTROPIC)
 #if defined(TANGENT) && defined(NORMAL)
 vec3 tbnNormal=normalize(normalUpdated);
 vec3 tbnTangent=normalize(tangentUpdated.xyz);
@@ -10909,13 +10909,13 @@ vTBN=mat3(finalWorld)*mat3(tbnTangent,tbnBitangent,tbnNormal);
 #endif
 #endif
 `;
-x.IncludesShadersStore[wn] = On;
-const Nn = "fogVertex", yn = `#ifdef FOG
+x.IncludesShadersStore[Nn] = yn;
+const Un = "fogVertex", Bn = `#ifdef FOG
 vFogDistance=(view*worldPos).xyz;
 #endif
 `;
-x.IncludesShadersStore[Nn] = yn;
-const Un = "shadowsVertex", Bn = `#ifdef SHADOWS
+x.IncludesShadersStore[Un] = Bn;
+const Vn = "shadowsVertex", Xn = `#ifdef SHADOWS
 #if defined(SHADOWCSM{X})
 vPositionFromCamera{X}=view*worldPos;
 for (int i=0; i<SHADOWCSMNUM_CASCADES{X}; i++) {
@@ -10936,8 +10936,8 @@ vDepthMetric{X}=(vPositionFromLight{X}.z+light{X}.depthValues.x)/light{X}.depthV
 #endif
 #endif
 `;
-x.IncludesShadersStore[Un] = Bn;
-const Vn = "vertexColorMixing", Xn = `#if defined(VERTEXCOLOR) || defined(INSTANCESCOLOR) && defined(INSTANCES)
+x.IncludesShadersStore[Vn] = Xn;
+const zn = "vertexColorMixing", Wn = `#if defined(VERTEXCOLOR) || defined(INSTANCESCOLOR) && defined(INSTANCES)
 vColor=vec4(1.0);
 #ifdef VERTEXCOLOR
 #ifdef VERTEXALPHA
@@ -10951,19 +10951,19 @@ vColor*=instanceColor;
 #endif
 #endif
 `;
-x.IncludesShadersStore[Vn] = Xn;
-const zn = "pointCloudVertex", Wn = `#if defined(POINTSIZE) && !defined(WEBGPU)
+x.IncludesShadersStore[zn] = Wn;
+const kn = "pointCloudVertex", Hn = `#if defined(POINTSIZE) && !defined(WEBGPU)
 gl_PointSize=pointSize;
 #endif
 `;
-x.IncludesShadersStore[zn] = Wn;
-const kn = "logDepthVertex", Hn = `#ifdef LOGARITHMICDEPTH
+x.IncludesShadersStore[kn] = Hn;
+const Gn = "logDepthVertex", Yn = `#ifdef LOGARITHMICDEPTH
 vFragmentDepth=1.0+gl_Position.w;
 gl_Position.z=log2(max(0.000001,vFragmentDepth))*logarithmicDepthConstant;
 #endif
 `;
-x.IncludesShadersStore[kn] = Hn;
-const Gn = "defaultVertexShader", Yn = `#include<__decl__defaultVertex>
+x.IncludesShadersStore[Gn] = Yn;
+const $n = "defaultVertexShader", Zn = `#include<__decl__defaultVertex>
 #define CUSTOM_VERTEX_BEGIN
 attribute vec3 position;
 #ifdef NORMAL
@@ -11099,8 +11099,8 @@ vMainUV1=uvUpdated;
 #define CUSTOM_VERTEX_MAIN_END
 }
 `;
-x.ShadersStore[Gn] = Yn;
-const $n = new RegExp("^([gimus]+)!");
+x.ShadersStore[$n] = Zn;
+const jn = new RegExp("^([gimus]+)!");
 class Me {
   /**
    * Creates a new instance of the plugin manager
@@ -11272,7 +11272,7 @@ class Me {
             if (n.charAt(0) === "!")
               o = "", n = n.substring(1);
             else {
-              const f = $n.exec(n);
+              const f = jn.exec(n);
               f && f.length >= 2 && (o = f[1], n = n.substring(o.length + 1));
             }
             o.indexOf("g") < 0 && (o += "g");
@@ -11297,7 +11297,7 @@ class Me {
 }
 Me._MaterialPluginClassToMainDefine = {};
 Me._MaterialPluginCounter = 0;
-class pt {
+class mt {
   _enable(e) {
     e && this._pluginManager._activatePlugin(this);
   }
@@ -11510,25 +11510,25 @@ class pt {
 }
 u([
   S()
-], pt.prototype, "name", void 0);
+], mt.prototype, "name", void 0);
 u([
   S()
-], pt.prototype, "priority", void 0);
+], mt.prototype, "priority", void 0);
 u([
   S()
-], pt.prototype, "registerForExtraEvents", void 0);
-class Zn extends Lt {
+], mt.prototype, "registerForExtraEvents", void 0);
+class Qn extends wt {
   constructor() {
     super(...arguments), this.DETAIL = !1, this.DETAILDIRECTUV = 0, this.DETAIL_NORMALBLENDMETHOD = 0;
   }
 }
-class Fe extends pt {
+class Fe extends mt {
   /** @internal */
   _markAllSubMeshesAsTexturesDirty() {
     this._enable(this._isEnabled), this._internalMarkAllSubMeshesAsTexturesDirty();
   }
   constructor(e, t = !0) {
-    super(e, "DetailMap", 140, new Zn(), t), this._texture = null, this.diffuseBlendLevel = 1, this.roughnessBlendLevel = 1, this.bumpLevel = 1, this._normalBlendMethod = nt.MATERIAL_NORMALBLENDMETHOD_WHITEOUT, this._isEnabled = !1, this.isEnabled = !1, this._internalMarkAllSubMeshesAsTexturesDirty = e._dirtyCallbacks[1];
+    super(e, "DetailMap", 140, new Qn(), t), this._texture = null, this.diffuseBlendLevel = 1, this.roughnessBlendLevel = 1, this.bumpLevel = 1, this._normalBlendMethod = nt.MATERIAL_NORMALBLENDMETHOD_WHITEOUT, this._isEnabled = !1, this.isEnabled = !1, this._internalMarkAllSubMeshesAsTexturesDirty = e._dirtyCallbacks[1];
   }
   isReadyForSubMesh(e, t, i) {
     return this._isEnabled ? !(e._areTexturesDirty && t.texturesEnabled && i.getCaps().standardDerivatives && this._texture && w.DetailTextureEnabled && !this._texture.isReady()) : !0;
@@ -11596,8 +11596,8 @@ u([
   S(),
   U("_markAllSubMeshesAsTexturesDirty")
 ], Fe.prototype, "isEnabled", void 0);
-const At = { effect: null, subMesh: null };
-class jn extends Lt {
+const Rt = { effect: null, subMesh: null };
+class Kn extends wt {
   /**
    * Initializes the Standard Material defines.
    * @param externalProperties The external properties
@@ -11622,7 +11622,7 @@ class jn extends Lt {
       this[i] = i === e;
   }
 }
-class g extends Qt {
+class g extends Kt {
   /**
    * Gets the image processing configuration used either in this material.
    */
@@ -11761,7 +11761,7 @@ class g extends Qt {
    * @param scene Define the scene the material belong to
    */
   constructor(e, t) {
-    super(e, t), this._diffuseTexture = null, this._ambientTexture = null, this._opacityTexture = null, this._reflectionTexture = null, this._emissiveTexture = null, this._specularTexture = null, this._bumpTexture = null, this._lightmapTexture = null, this._refractionTexture = null, this.ambientColor = new he(0, 0, 0), this.diffuseColor = new he(1, 1, 1), this.specularColor = new he(1, 1, 1), this.emissiveColor = new he(0, 0, 0), this.specularPower = 64, this._useAlphaFromDiffuseTexture = !1, this._useEmissiveAsIllumination = !1, this._linkEmissiveWithDiffuse = !1, this._useSpecularOverAlpha = !1, this._useReflectionOverAlpha = !1, this._disableLighting = !1, this._useObjectSpaceNormalMap = !1, this._useParallax = !1, this._useParallaxOcclusion = !1, this.parallaxScaleBias = 0.05, this._roughness = 0, this.indexOfRefraction = 0.98, this.invertRefractionY = !0, this.alphaCutOff = 0.4, this._useLightmapAsShadowmap = !1, this._useReflectionFresnelFromSpecular = !1, this._useGlossinessFromSpecularMapAlpha = !1, this._maxSimultaneousLights = 4, this._invertNormalMapX = !1, this._invertNormalMapY = !1, this._twoSidedLighting = !1, this._renderTargets = new It(16), this._worldViewProjectionMatrix = F.Zero(), this._globalAmbientColor = new he(0, 0, 0), this._cacheHasRenderTargetTextures = !1, this.detailMap = new Fe(this), this._attachImageProcessingConfiguration(null), this.prePassConfiguration = new Wt(), this.getRenderTargetTextures = () => (this._renderTargets.reset(), g.ReflectionTextureEnabled && this._reflectionTexture && this._reflectionTexture.isRenderTarget && this._renderTargets.push(this._reflectionTexture), g.RefractionTextureEnabled && this._refractionTexture && this._refractionTexture.isRenderTarget && this._renderTargets.push(this._refractionTexture), this._eventInfo.renderTargets = this._renderTargets, this._callbackPluginEventFillRenderTargetTextures(this._eventInfo), this._renderTargets);
+    super(e, t), this._diffuseTexture = null, this._ambientTexture = null, this._opacityTexture = null, this._reflectionTexture = null, this._emissiveTexture = null, this._specularTexture = null, this._bumpTexture = null, this._lightmapTexture = null, this._refractionTexture = null, this.ambientColor = new he(0, 0, 0), this.diffuseColor = new he(1, 1, 1), this.specularColor = new he(1, 1, 1), this.emissiveColor = new he(0, 0, 0), this.specularPower = 64, this._useAlphaFromDiffuseTexture = !1, this._useEmissiveAsIllumination = !1, this._linkEmissiveWithDiffuse = !1, this._useSpecularOverAlpha = !1, this._useReflectionOverAlpha = !1, this._disableLighting = !1, this._useObjectSpaceNormalMap = !1, this._useParallax = !1, this._useParallaxOcclusion = !1, this.parallaxScaleBias = 0.05, this._roughness = 0, this.indexOfRefraction = 0.98, this.invertRefractionY = !0, this.alphaCutOff = 0.4, this._useLightmapAsShadowmap = !1, this._useReflectionFresnelFromSpecular = !1, this._useGlossinessFromSpecularMapAlpha = !1, this._maxSimultaneousLights = 4, this._invertNormalMapX = !1, this._invertNormalMapY = !1, this._twoSidedLighting = !1, this._renderTargets = new Pt(16), this._worldViewProjectionMatrix = F.Zero(), this._globalAmbientColor = new he(0, 0, 0), this._cacheHasRenderTargetTextures = !1, this.detailMap = new Fe(this), this._attachImageProcessingConfiguration(null), this.prePassConfiguration = new kt(), this.getRenderTargetTextures = () => (this._renderTargets.reset(), g.ReflectionTextureEnabled && this._reflectionTexture && this._reflectionTexture.isRenderTarget && this._renderTargets.push(this._reflectionTexture), g.RefractionTextureEnabled && this._refractionTexture && this._refractionTexture.isRenderTarget && this._renderTargets.push(this._refractionTexture), this._eventInfo.renderTargets = this._renderTargets, this._callbackPluginEventFillRenderTargetTextures(this._eventInfo), this._renderTargets);
   }
   /**
    * Gets a boolean indicating that current material needs to register RTT
@@ -11832,7 +11832,7 @@ class g extends Qt {
   isReadyForSubMesh(e, t, i = !1) {
     if (this._uniformBufferLayoutBuilt || this.buildUniformLayout(), t.effect && this.isFrozen && t.effect._wasPreviouslyReady && t.effect._wasPreviouslyUsingInstances === i)
       return !0;
-    t.materialDefines || (this._callbackPluginEventGeneric(Ee.GetDefineNames, this._eventInfo), t.materialDefines = new jn(this._eventInfo.defineNames));
+    t.materialDefines || (this._callbackPluginEventGeneric(Ee.GetDefineNames, this._eventInfo), t.materialDefines = new Kn(this._eventInfo.defineNames));
     const r = this.getScene(), s = t.materialDefines;
     if (this._isReadyForSubMesh(t))
       return !0;
@@ -11956,7 +11956,7 @@ class g extends Qt {
     if (s.isDirty) {
       const l = s._areLightsDisposed;
       s.markAsProcessed();
-      const d = new Ot();
+      const d = new yt();
       s.REFLECTION && d.addFallback(0, "REFLECTION"), s.SPECULAR && d.addFallback(0, "SPECULAR"), s.BUMP && d.addFallback(0, "BUMP"), s.PARALLAX && d.addFallback(1, "PARALLAX"), s.PARALLAXOCCLUSION && d.addFallback(0, "PARALLAXOCCLUSION"), s.SPECULAROVERALPHA && d.addFallback(0, "SPECULAROVERALPHA"), s.FOG && d.addFallback(1, "FOG"), s.POINTSIZE && d.addFallback(0, "POINTSIZE"), s.LOGARITHMICDEPTH && d.addFallback(0, "LOGARITHMICDEPTH"), L.HandleFallbacksForShadows(s, d, this._maxSimultaneousLights), s.SPECULARTERM && d.addFallback(0, "SPECULARTERM"), s.DIFFUSEFRESNEL && d.addFallback(1, "DIFFUSEFRESNEL"), s.OPACITYFRESNEL && d.addFallback(2, "OPACITYFRESNEL"), s.REFLECTIONFRESNEL && d.addFallback(3, "REFLECTIONFRESNEL"), s.EMISSIVEFRESNEL && d.addFallback(4, "EMISSIVEFRESNEL"), s.FRESNEL && d.addFallback(4, "FRESNEL"), s.MULTIVIEW && d.addFallback(0, "MULTIVIEW");
       const h = [B.PositionKind];
       s.NORMAL && h.push(B.NormalKind), s.TANGENT && h.push(B.TangentKind);
@@ -12034,13 +12034,13 @@ class g extends Qt {
         "oitDepthSampler",
         "oitFrontColorSampler"
       ], _ = ["Material", "Scene", "Mesh"];
-      this._eventInfo.fallbacks = d, this._eventInfo.fallbackRank = 0, this._eventInfo.defines = s, this._eventInfo.uniforms = p, this._eventInfo.attributes = h, this._eventInfo.samplers = E, this._eventInfo.uniformBuffersNames = _, this._eventInfo.customCode = void 0, this._eventInfo.mesh = e, this._callbackPluginEventGeneric(Ee.PrepareEffect, this._eventInfo), Wt.AddUniforms(p), gt && (gt.PrepareUniforms(p, s), gt.PrepareSamplers(E, s)), L.PrepareUniformsAndSamplersList({
+      this._eventInfo.fallbacks = d, this._eventInfo.fallbackRank = 0, this._eventInfo.defines = s, this._eventInfo.uniforms = p, this._eventInfo.attributes = h, this._eventInfo.samplers = E, this._eventInfo.uniformBuffersNames = _, this._eventInfo.customCode = void 0, this._eventInfo.mesh = e, this._callbackPluginEventGeneric(Ee.PrepareEffect, this._eventInfo), kt.AddUniforms(p), Et && (Et.PrepareUniforms(p, s), Et.PrepareSamplers(E, s)), L.PrepareUniformsAndSamplersList({
         uniformsNames: p,
         uniformBuffersNames: _,
         samplers: E,
         defines: s,
         maxSimultaneousLights: this._maxSimultaneousLights
-      }), ft(p);
+      }), ct(p);
       const m = {};
       this.customShaderNameResolve && (f = this.customShaderNameResolve(f, p, _, E, s, h, m));
       const T = s.toString(), R = t.effect;
@@ -12059,7 +12059,7 @@ class g extends Qt {
         multiTarget: s.PREPASS
       }, n);
       if (this._eventInfo.customCode = void 0, I)
-        if (this._onEffectCreatedObservable && (At.effect = I, At.subMesh = t, this._onEffectCreatedObservable.notifyObservers(At)), this.allowShaderHotSwapping && R && !I.isReady()) {
+        if (this._onEffectCreatedObservable && (Rt.effect = I, Rt.subMesh = t, this._onEffectCreatedObservable.notifyObservers(Rt)), this.allowShaderHotSwapping && R && !I.isReady()) {
           if (I = R, s.markAsUnprocessed(), o = this.isFrozen, l)
             return s._areLightsDisposed = !0, !1;
         } else
@@ -12110,10 +12110,10 @@ class g extends Qt {
         }
         this.pointsCloud && l.updateFloat("pointSize", this.pointSize), n.SPECULARTERM && l.updateColor4("vSpecularColor", this.specularColor, this.specularPower), l.updateColor3("vEmissiveColor", g.EmissiveTextureEnabled ? this.emissiveColor : he.BlackReadOnly), l.updateColor4("vDiffuseColor", this.diffuseColor, this.alpha), s.ambientColor.multiplyToRef(this.ambientColor, this._globalAmbientColor), l.updateColor3("vAmbientColor", this._globalAmbientColor);
       }
-      s.texturesEnabled && (this._diffuseTexture && g.DiffuseTextureEnabled && a.setTexture("diffuseSampler", this._diffuseTexture), this._ambientTexture && g.AmbientTextureEnabled && a.setTexture("ambientSampler", this._ambientTexture), this._opacityTexture && g.OpacityTextureEnabled && a.setTexture("opacitySampler", this._opacityTexture), this._reflectionTexture && g.ReflectionTextureEnabled && (this._reflectionTexture.isCube ? a.setTexture("reflectionCubeSampler", this._reflectionTexture) : a.setTexture("reflection2DSampler", this._reflectionTexture)), this._emissiveTexture && g.EmissiveTextureEnabled && a.setTexture("emissiveSampler", this._emissiveTexture), this._lightmapTexture && g.LightmapTextureEnabled && a.setTexture("lightmapSampler", this._lightmapTexture), this._specularTexture && g.SpecularTextureEnabled && a.setTexture("specularSampler", this._specularTexture), this._bumpTexture && s.getEngine().getCaps().standardDerivatives && g.BumpTextureEnabled && a.setTexture("bumpSampler", this._bumpTexture), this._refractionTexture && g.RefractionTextureEnabled && (this._refractionTexture.isCube ? a.setTexture("refractionCubeSampler", this._refractionTexture) : a.setTexture("refraction2DSampler", this._refractionTexture))), this.getScene().useOrderIndependentTransparency && this.needAlphaBlendingForMesh(t) && this.getScene().depthPeelingRenderer.bind(a), this._eventInfo.subMesh = i, this._callbackPluginEventBindForSubMesh(this._eventInfo), dt(a, this, s), this.bindEyePosition(a);
+      s.texturesEnabled && (this._diffuseTexture && g.DiffuseTextureEnabled && a.setTexture("diffuseSampler", this._diffuseTexture), this._ambientTexture && g.AmbientTextureEnabled && a.setTexture("ambientSampler", this._ambientTexture), this._opacityTexture && g.OpacityTextureEnabled && a.setTexture("opacitySampler", this._opacityTexture), this._reflectionTexture && g.ReflectionTextureEnabled && (this._reflectionTexture.isCube ? a.setTexture("reflectionCubeSampler", this._reflectionTexture) : a.setTexture("reflection2DSampler", this._reflectionTexture)), this._emissiveTexture && g.EmissiveTextureEnabled && a.setTexture("emissiveSampler", this._emissiveTexture), this._lightmapTexture && g.LightmapTextureEnabled && a.setTexture("lightmapSampler", this._lightmapTexture), this._specularTexture && g.SpecularTextureEnabled && a.setTexture("specularSampler", this._specularTexture), this._bumpTexture && s.getEngine().getCaps().standardDerivatives && g.BumpTextureEnabled && a.setTexture("bumpSampler", this._bumpTexture), this._refractionTexture && g.RefractionTextureEnabled && (this._refractionTexture.isCube ? a.setTexture("refractionCubeSampler", this._refractionTexture) : a.setTexture("refraction2DSampler", this._refractionTexture))), this.getScene().useOrderIndependentTransparency && this.needAlphaBlendingForMesh(t) && this.getScene().depthPeelingRenderer.bind(a), this._eventInfo.subMesh = i, this._callbackPluginEventBindForSubMesh(this._eventInfo), ft(a, this, s), this.bindEyePosition(a);
     } else
       s.getEngine()._features.needToAlwaysBindUniformBuffers && (this._needToBindSceneUbo = !0);
-    (o || !this.isFrozen) && (s.lightsEnabled && !this._disableLighting && L.BindLights(s, t, a, n, this._maxSimultaneousLights), (s.fogEnabled && t.applyFog && s.fogMode !== lt.FOGMODE_NONE || this._reflectionTexture || this._refractionTexture || t.receiveShadows || n.PREPASS) && this.bindView(a), L.BindFogParameters(s, t, a), n.NUM_MORPH_INFLUENCERS && L.BindMorphTargetParameters(t, a), n.BAKED_VERTEX_ANIMATION_TEXTURE && ((r = t.bakedVertexAnimationManager) === null || r === void 0 || r.bind(a, n.INSTANCES)), this.useLogarithmicDepth && L.BindLogDepth(n, a, s), this._imageProcessingConfiguration && !this._imageProcessingConfiguration.applyByPostProcess && this._imageProcessingConfiguration.bind(this._activeEffect)), this._afterBind(t, this._activeEffect), l.update();
+    (o || !this.isFrozen) && (s.lightsEnabled && !this._disableLighting && L.BindLights(s, t, a, n, this._maxSimultaneousLights), (s.fogEnabled && t.applyFog && s.fogMode !== ht.FOGMODE_NONE || this._reflectionTexture || this._refractionTexture || t.receiveShadows || n.PREPASS) && this.bindView(a), L.BindFogParameters(s, t, a), n.NUM_MORPH_INFLUENCERS && L.BindMorphTargetParameters(t, a), n.BAKED_VERTEX_ANIMATION_TEXTURE && ((r = t.bakedVertexAnimationManager) === null || r === void 0 || r.bind(a, n.INSTANCES)), this.useLogarithmicDepth && L.BindLogDepth(n, a, s), this._imageProcessingConfiguration && !this._imageProcessingConfiguration.applyByPostProcess && this._imageProcessingConfiguration.bind(this._activeEffect)), this._afterBind(t, this._activeEffect), l.update();
   }
   /**
    * Get the list of animatables in the material.
@@ -12495,13 +12495,13 @@ u([
   S()
 ], g.prototype, "useLogarithmicDepth", null);
 We("BABYLON.StandardMaterial", g);
-lt.DefaultMaterialFactory = (c) => new g("default material", c);
-const Qn = "imageProcessingCompatibility", Kn = `#ifdef IMAGEPROCESSINGPOSTPROCESS
+ht.DefaultMaterialFactory = (c) => new g("default material", c);
+const qn = "imageProcessingCompatibility", Jn = `#ifdef IMAGEPROCESSINGPOSTPROCESS
 gl_FragColor.rgb=pow(gl_FragColor.rgb,vec3(2.2));
 #endif
 `;
-x.IncludesShadersStore[Qn] = Kn;
-const qn = "shadowOnlyPixelShader", Jn = `precision highp float;
+x.IncludesShadersStore[qn] = Jn;
+const ea = "shadowOnlyPixelShader", ta = `precision highp float;
 uniform vec4 vEyePosition;
 uniform float alpha;
 uniform vec3 shadowColor;
@@ -12536,8 +12536,8 @@ gl_FragColor=color;
 #include<imageProcessingCompatibility>
 #define CUSTOM_FRAGMENT_MAIN_END
 }`;
-x.ShadersStore[qn] = Jn;
-const ea = "shadowOnlyVertexShader", ta = `precision highp float;
+x.ShadersStore[ea] = ta;
+const ia = "shadowOnlyVertexShader", ra = `precision highp float;
 attribute vec3 position;
 #ifdef NORMAL
 attribute vec3 normal;
@@ -12581,13 +12581,13 @@ gl_PointSize=pointSize;
 #define CUSTOM_VERTEX_MAIN_END
 }
 `;
-x.ShadersStore[ea] = ta;
-class ia extends Lt {
+x.ShadersStore[ia] = ra;
+class sa extends wt {
   constructor() {
     super(), this.CLIPPLANE = !1, this.CLIPPLANE2 = !1, this.CLIPPLANE3 = !1, this.CLIPPLANE4 = !1, this.CLIPPLANE5 = !1, this.CLIPPLANE6 = !1, this.POINTSIZE = !1, this.FOG = !1, this.NORMAL = !1, this.NUM_BONE_INFLUENCERS = 0, this.BonesPerMesh = 0, this.INSTANCES = !1, this.IMAGEPROCESSINGPOSTPROCESS = !1, this.SKIPFINALCOLORCLAMP = !1, this.rebuild();
   }
 }
-class je extends Qt {
+class je extends Kt {
   constructor(e, t) {
     super(e, t), this._needAlphaBlending = !0, this.shadowColor = he.Black();
   }
@@ -12617,7 +12617,7 @@ class je extends Qt {
     var r;
     if (this.isFrozen && t.effect && t.effect._wasPreviouslyReady && t.effect._wasPreviouslyUsingInstances === i)
       return !0;
-    t.materialDefines || (t.materialDefines = new ia());
+    t.materialDefines || (t.materialDefines = new sa());
     const s = t.materialDefines, n = this.getScene();
     if (this._isReadyForSubMesh(t))
       return !0;
@@ -12640,12 +12640,12 @@ class je extends Qt {
     }
     if (L.PrepareDefinesForAttributes(e, s, !1, !0), s.isDirty) {
       s.markAsProcessed(), n.resetCachedMaterial();
-      const l = new Ot();
+      const l = new yt();
       s.FOG && l.addFallback(1, "FOG"), L.HandleFallbacksForShadows(s, l, 1), s.NUM_BONE_INFLUENCERS > 0 && l.addCPUSkinningFallback(0, e), s.IMAGEPROCESSINGPOSTPROCESS = n.imageProcessingConfiguration.applyByPostProcess;
       const d = [B.PositionKind];
       s.NORMAL && d.push(B.NormalKind), L.PrepareAttributesForBones(d, e, s, l), L.PrepareAttributesForInstances(d, s);
       const h = "shadowOnly", f = s.toString(), p = ["world", "view", "viewProjection", "vEyePosition", "vLightsType", "vFogInfos", "vFogColor", "pointSize", "alpha", "shadowColor", "mBones"], E = new Array(), _ = new Array();
-      ft(p), L.PrepareUniformsAndSamplersList({
+      ct(p), L.PrepareUniformsAndSamplersList({
         uniformsNames: p,
         uniformBuffersNames: _,
         samplers: E,
@@ -12671,12 +12671,12 @@ class je extends Qt {
       return;
     const n = i.effect;
     if (n) {
-      if (this._activeEffect = n, this.bindOnlyWorldMatrix(e), this._activeEffect.setMatrix("viewProjection", r.getTransformMatrix()), L.BindBonesParameters(t, this._activeEffect), this._mustRebind(r, n) && (dt(n, this, r), this.pointsCloud && this._activeEffect.setFloat("pointSize", this.pointSize), this._activeEffect.setFloat("alpha", this.alpha), this._activeEffect.setColor3("shadowColor", this.shadowColor), r.bindEyePosition(n)), r.lightsEnabled) {
+      if (this._activeEffect = n, this.bindOnlyWorldMatrix(e), this._activeEffect.setMatrix("viewProjection", r.getTransformMatrix()), L.BindBonesParameters(t, this._activeEffect), this._mustRebind(r, n) && (ft(n, this, r), this.pointsCloud && this._activeEffect.setFloat("pointSize", this.pointSize), this._activeEffect.setFloat("alpha", this.alpha), this._activeEffect.setColor3("shadowColor", this.shadowColor), r.bindEyePosition(n)), r.lightsEnabled) {
         L.BindLights(r, t, this._activeEffect, s, 1);
         const a = this._getFirstShadowLightForMesh(t);
         a && (a._renderId = -1);
       }
-      (r.fogEnabled && t.applyFog && r.fogMode !== lt.FOGMODE_NONE || s.SHADOWCSM0) && this._activeEffect.setMatrix("view", r.getViewMatrix()), L.BindFogParameters(r, t, this._activeEffect), this._afterBind(t, this._activeEffect);
+      (r.fogEnabled && t.applyFog && r.fogMode !== ht.FOGMODE_NONE || s.SHADOWCSM0) && this._activeEffect.setMatrix("view", r.getViewMatrix()), L.BindFogParameters(r, t, this._activeEffect), this._afterBind(t, this._activeEffect);
     }
   }
   clone(e) {
@@ -12695,20 +12695,20 @@ class je extends Qt {
   }
 }
 We("BABYLON.ShadowOnlyMaterial", je);
-const ra = {
+const na = {
   aspect: 300 / 150,
   enableDebugging: !1,
   enableShadows: !0
 };
-class sa {
+class aa {
   constructor(e) {
     xe(this, "size", 9.5);
-    this.config = { ...ra, ...e }, this.create();
+    this.config = { ...na, ...e }, this.create();
   }
   create(e) {
     this.destroy(), Object.assign(this.config, e);
     const { aspect: t, enableDebugging: i, enableShadows: r } = this.config, s = 30;
-    this.box = new pi("diceBox");
+    this.box = new _i("diceBox");
     let n = new je("shadowOnly", this.config.scene);
     n.alpha = r ? 1 : 0, i && (n = new g("diceBox_material"), n.alpha = 0.7, n.diffuseColor = new he(1, 1, 0));
     const a = ye("ground", {
@@ -12747,7 +12747,7 @@ class sa {
     this.box && this.box.dispose();
   }
 }
-class na {
+class oa {
   constructor() {
   }
 }
@@ -12791,7 +12791,7 @@ class Re extends g {
 `) : "") + (this.CustomParts.Fragment_Definitions ? this.CustomParts.Fragment_Definitions : "")).replace("#define CUSTOM_FRAGMENT_UPDATE_DIFFUSE", this.CustomParts.Fragment_Custom_Diffuse ? this.CustomParts.Fragment_Custom_Diffuse : "").replace("#define CUSTOM_FRAGMENT_UPDATE_ALPHA", this.CustomParts.Fragment_Custom_Alpha ? this.CustomParts.Fragment_Custom_Alpha : "").replace("#define CUSTOM_FRAGMENT_BEFORE_LIGHTS", this.CustomParts.Fragment_Before_Lights ? this.CustomParts.Fragment_Before_Lights : "").replace("#define CUSTOM_FRAGMENT_BEFORE_FRAGCOLOR", this.CustomParts.Fragment_Before_FragColor ? this.CustomParts.Fragment_Before_FragColor : "").replace("#define CUSTOM_FRAGMENT_MAIN_END", this.CustomParts.Fragment_MainEnd ? this.CustomParts.Fragment_MainEnd : ""), this.CustomParts.Fragment_Before_Fog && (ve.ShadersStore[a + "PixelShader"] = ve.ShadersStore[a + "PixelShader"].replace("#define CUSTOM_FRAGMENT_BEFORE_FOG", this.CustomParts.Fragment_Before_Fog)), this._isCreatedShader = !0, this._createdShaderName = a, a;
   }
   constructor(e, t) {
-    super(e, t), this.CustomParts = new na(), this.customShaderNameResolve = this.Builder, this.FragmentShader = ve.ShadersStore.defaultPixelShader, this.VertexShader = ve.ShadersStore.defaultVertexShader;
+    super(e, t), this.CustomParts = new oa(), this.customShaderNameResolve = this.Builder, this.FragmentShader = ve.ShadersStore.defaultPixelShader, this.VertexShader = ve.ShadersStore.defaultVertexShader;
   }
   AddUniform(e, t, i) {
     return this._customUniform || (this._customUniform = new Array(), this._newUniforms = new Array(), this._newSamplerInstances = {}, this._newUniformInstances = {}), i && (t.indexOf("sampler") != -1 ? this._newSamplerInstances[t + "-" + e] = i : this._newUniformInstances[t + "-" + e] = i), this._customUniform.push("uniform " + t + " " + e + ";"), this._newUniforms.push(e), this;
@@ -12854,7 +12854,7 @@ Re.prototype.clone = function(c) {
   const e = this, t = Q.Clone(() => new Re(c, this.getScene()), this);
   return t.name = c, t.id = c, t.CustomParts.Fragment_Begin = e.CustomParts.Fragment_Begin, t.CustomParts.Fragment_Definitions = e.CustomParts.Fragment_Definitions, t.CustomParts.Fragment_MainBegin = e.CustomParts.Fragment_MainBegin, t.CustomParts.Fragment_Custom_Diffuse = e.CustomParts.Fragment_Custom_Diffuse, t.CustomParts.Fragment_Before_Lights = e.CustomParts.Fragment_Before_Lights, t.CustomParts.Fragment_Before_Fog = e.CustomParts.Fragment_Before_Fog, t.CustomParts.Fragment_Custom_Alpha = e.CustomParts.Fragment_Custom_Alpha, t.CustomParts.Fragment_Before_FragColor = e.CustomParts.Fragment_Before_FragColor, t.CustomParts.Vertex_Begin = e.CustomParts.Vertex_Begin, t.CustomParts.Vertex_Definitions = e.CustomParts.Vertex_Definitions, t.CustomParts.Vertex_MainBegin = e.CustomParts.Vertex_MainBegin, t.CustomParts.Vertex_Before_PositionUpdated = e.CustomParts.Vertex_Before_PositionUpdated, t.CustomParts.Vertex_Before_NormalUpdated = e.CustomParts.Vertex_Before_NormalUpdated, t.CustomParts.Vertex_After_WorldPosComputed = e.CustomParts.Vertex_After_WorldPosComputed, t.CustomParts.Vertex_MainEnd = e.CustomParts.Vertex_MainEnd, t;
 };
-class aa {
+class la {
   constructor(e) {
     xe(this, "loadedThemes", {});
     xe(this, "themeData", {});
@@ -12866,7 +12866,7 @@ class aa {
   }
   // this will create two materials - one with light text and one with dark text, the underlying color can be changed by color instance buffers
   async loadColorMaterial(e) {
-    const { theme: t, material: i } = e, r = new Re(t + "_light", this.scene), s = mi(e);
+    const { theme: t, material: i } = e, r = new Re(t + "_light", this.scene), s = gi(e);
     i.diffuseTexture && i.diffuseTexture.light && (s.material.diffuseTexture = e.material.diffuseTexture.light, r.diffuseTexture = await this.getTexture("diffuse", s)), i.bumpTexture && (r.bumpTexture = await this.getTexture("bump", e)), i.specularTexture && (r.specularTexture = await this.getTexture("specular", e)), r.allowShaderHotSwapping = !1, r.Vertex_Definitions(`
       attribute vec3 customColor;
       varying vec3 vColor;
@@ -12884,22 +12884,18 @@ class aa {
     const { basePath: i, material: r, theme: s } = t;
     let n;
     const a = e + "Level", o = e + "Texture";
-    try {
-      switch (e) {
-        case "diffuse":
-          n = await this.importTextureAsync(`${i}/${r[o]}`, s), r[a] && (n.level = r[a]);
-          break;
-        case "bump":
-          n = await this.importTextureAsync(`${i}/${r[o]}`, s), r[a] && (n.level = r[a]);
-          break;
-        case "specular":
-          n = await this.importTextureAsync(`${i}/${r[o]}`, s), r.specularPower && (n.specularPower = r.specularPower);
-          break;
-        default:
-          throw new Error(`Texture type: ${e} is not supported`);
-      }
-    } catch (l) {
-      console.error(l);
+    switch (e) {
+      case "diffuse":
+        n = await this.importTextureAsync(`${i}/${r[o]}`, s), r[a] && (n.level = r[a]);
+        break;
+      case "bump":
+        n = await this.importTextureAsync(`${i}/${r[o]}`, s), r[a] && (n.level = r[a]);
+        break;
+      case "specular":
+        n = await this.importTextureAsync(`${i}/${r[o]}`, s), r.specularPower && (n.specularPower = r.specularPower);
+        break;
+      default:
+        throw new Error(`Texture type: ${e} is not supported`);
     }
     return n;
   }
@@ -12918,54 +12914,60 @@ class aa {
         // samplingMode?: number
         () => i(n),
         // onLoad?: Nullable<() => void>
-        () => r(`Unable to load texture '${s[2]}' for theme: '${t}'. Check that your assetPath is configured correctly and that the files exist at path: '${s[1]}'`)
+        () => r(new Error(`Unable to load texture '${s[2]}' for theme: '${t}'. Check that your assetPath is configured correctly and that the files exist at path: '${s[1]}'`))
         // onError?: Nullable<(message?: string
       );
-    }).catch((i) => console.error(i));
+    });
   }
   async load(e) {
     const { material: t } = e;
-    t.type === "color" ? await this.loadColorMaterial(e) : t.type === "standard" ? await this.loadStandardMaterial(e) : console.error(`Material type: ${t.type} not supported`);
+    if (t.type === "color")
+      await this.loadColorMaterial(e);
+    else if (t.type === "standard")
+      await this.loadStandardMaterial(e);
+    else
+      throw new Error(`Material type: ${t.type} not supported`);
   }
 }
-var Z, Be, me, Ve, fe, oe, K, at, ce, Qe, Ke, ne, qe, ot, Kt;
-class da {
+var Z, Be, me, Ve, fe, oe, K, at, ce, Qe, Ke, ne, qe, ot, qt, lt, Jt;
+class ca {
   constructor(e) {
+    J(this, ot);
     // add a die to the scene
-    te(this, ot);
+    J(this, lt);
     xe(this, "config");
     xe(this, "initialized", !1);
-    te(this, Z, {});
-    te(this, Be, 0);
-    te(this, me, 0);
-    te(this, Ve, []);
-    te(this, fe, void 0);
-    te(this, oe, void 0);
-    te(this, K, void 0);
-    te(this, at, void 0);
-    te(this, ce, void 0);
-    te(this, Qe, void 0);
-    te(this, Ke, void 0);
-    te(this, ne, void 0);
-    te(this, qe, {});
+    J(this, Z, {});
+    J(this, Be, 0);
+    J(this, me, 0);
+    J(this, Ve, []);
+    J(this, fe, void 0);
+    J(this, oe, void 0);
+    J(this, K, void 0);
+    J(this, at, void 0);
+    J(this, ce, void 0);
+    J(this, Qe, void 0);
+    J(this, Ke, void 0);
+    J(this, ne, void 0);
+    J(this, qe, {});
     xe(this, "noop", () => {
     });
-    xe(this, "diceBufferView", new Float32Array(8e3));
+    xe(this, "diceBufferView", new Float32Array(1));
     this.onInitComplete = e.onInitComplete || this.noop, this.onThemeLoaded = e.onThemeLoaded || this.noop, this.onRollResult = e.onRollResult || this.noop, this.onRollComplete = e.onRollComplete || this.noop, this.onDieRemoved = e.onDieRemoved || this.noop, this.initialized = this.initScene(e);
   }
   // initialize the babylon scene
   async initScene(e) {
-    ie(this, fe, e.canvas), C(this, fe).width = e.width, C(this, fe).height = e.height, this.config = e.options, ie(this, oe, _i(C(this, fe))), ie(this, K, vi({ engine: C(this, oe) })), ie(this, at, Ei({ engine: C(this, oe), scene: C(this, K) })), ie(this, ce, zt({
+    ie(this, fe, e.canvas), C(this, fe).width = e.width, C(this, fe).height = e.height, this.config = e.options, this.diceBufferView = vt(this, ot, qt).call(this), ie(this, oe, vi(C(this, fe))), ie(this, K, Si({ engine: C(this, oe) })), ie(this, at, Ti({ engine: C(this, oe), scene: C(this, K) })), ie(this, ce, Wt({
       enableShadows: this.config.enableShadows,
       shadowTransparency: this.config.shadowTransparency,
       intensity: this.config.lightIntensity,
       scene: C(this, K)
-    })), ie(this, Qe, new sa({
+    })), ie(this, Qe, new aa({
       enableShadows: this.config.enableShadows,
       aspect: C(this, fe).width / C(this, fe).height,
       lights: C(this, ce),
       scene: C(this, K)
-    })), ie(this, Ke, new aa({ scene: C(this, K) })), this.onInitComplete();
+    })), ie(this, Ke, new la({ scene: C(this, K) })), this.onInitComplete();
   }
   connect(e) {
     ie(this, ne, e), C(this, ne).postMessage({
@@ -12984,7 +12986,7 @@ class da {
   }
   updateConfig(e) {
     const t = this.config;
-    this.config = e, t.enableShadows !== this.config.enableShadows && (Object.values(C(this, ce)).forEach((i) => i.dispose()), ie(this, ce, zt(
+    this.config = e, t.enableShadows !== this.config.enableShadows && (Object.values(C(this, ce)).forEach((i) => i.dispose()), ie(this, ce, Wt(
       {
         enableShadows: this.config.enableShadows,
         shadowTransparency: this.config.shadowTransparency,
@@ -13040,7 +13042,7 @@ class da {
   add(e) {
     be.loadDie(e, C(this, K)).then((t) => {
       C(this, Ve).push(setTimeout(() => {
-        Nt(this, ot, Kt).call(this, t);
+        vt(this, lt, Jt).call(this, t);
       }, we(this, Be)._++ * this.config.delay));
     });
   }
@@ -13120,7 +13122,9 @@ class da {
     C(this, Qe).create({ aspect: t / i }), C(this, oe).resize();
   }
 }
-Z = new WeakMap(), Be = new WeakMap(), me = new WeakMap(), Ve = new WeakMap(), fe = new WeakMap(), oe = new WeakMap(), K = new WeakMap(), at = new WeakMap(), ce = new WeakMap(), Qe = new WeakMap(), Ke = new WeakMap(), ne = new WeakMap(), qe = new WeakMap(), ot = new WeakSet(), Kt = async function(e) {
+Z = new WeakMap(), Be = new WeakMap(), me = new WeakMap(), Ve = new WeakMap(), fe = new WeakMap(), oe = new WeakMap(), K = new WeakMap(), at = new WeakMap(), ce = new WeakMap(), Qe = new WeakMap(), Ke = new WeakMap(), ne = new WeakMap(), qe = new WeakMap(), ot = new WeakSet(), qt = function() {
+  return new Float32Array(1 + this.config.maxDice * 8);
+}, lt = new WeakSet(), Jt = async function(e) {
   C(this, oe).activeRenderLoops.length === 0 && this.render(e.newStartPoint);
   const t = {
     ...e,
@@ -13166,6 +13170,6 @@ Z = new WeakMap(), Be = new WeakMap(), me = new WeakMap(), Ve = new WeakMap(), f
   return i;
 };
 export {
-  da as default
+  ca as default
 };
 //# sourceMappingURL=world.onscreen.js.map

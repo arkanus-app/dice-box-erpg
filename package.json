@@ -27,8 +27,7 @@
   },
   "type": "module",
   "files": [
-    "dist",
-    "copyAssets.js"
+    "dist"
   ],
   "main": "./dist/dice-box.es.js",
   "files-dev": [

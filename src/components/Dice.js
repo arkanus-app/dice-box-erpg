@@ -129,64 +129,63 @@ class Dice {
       } else {
         throw new Error(`Unable to load 3D mesh file: '${meshFilePath}'. Request rejected with status ${resp.status}: ${resp.statusText}`)
       }
-    }).catch(error => console.error(error))
+    })
 
     if(!modelData){
       return
     }
 
-    SceneLoader.ImportMeshAsync(null,null, 'data:' + JSON.stringify(modelData) , scene).then(data => {
-      data.meshes.forEach(model => {
-        if(model.name === "__root__") {
-          model.dispose()
-        }
-        // shrink the colliders
-        if( model.name.includes("collider")) {
-          model.scaling = new Vector3(
-            model.scaling.x * .9,
-            model.scaling.y * .9,
-            model.scaling.z * .9
-          )
-        }
-        // check if d100 is available as a mesh - otherwise we'll clone a d10
-        if (!has_d100) {
-          has_d100 = model.name === "d100"
-        }
-        if (!has_d10) {
-          has_d10 = model.name === "d10"
-        }
-        model.setEnabled(false)
-        model.freezeNormals()
-        model.freezeWorldMatrix()
-        model.isPickable = false
-        model.doNotSyncBoundingInfo = true
-        // model.scaling = new Vector3(model.scaling)
-        // prefix all the meshes ids from this file with the file name so we can find them later e.g.: 'default-dice_d10' and 'default-dice_d10_collider'
-        // model.id = meshName + '_' + model.id
-        model.name = meshName + '_' + model.name
-        model.metadata = {
-          baseScale: model.scaling
-        }
-      })
-      if(!has_d100 && has_d10) {
-        // console.log("create a d100 from a d10")  
-        scene.getMeshByName(meshName + '_d10').clone(meshName + '_d100')
-        scene.getMeshByName(meshName + '_d10_collider').clone(meshName + '_d100_collider')
-        if(modelData.colliderFaceMap) {
-          modelData.colliderFaceMap['d100'] = deepCopy(modelData.colliderFaceMap['d10'])
-          Object.values(modelData.colliderFaceMap['d100']).forEach((val,i) => {
-            modelData.colliderFaceMap['d100'][i] = val * (val === 10 ? 0 : 10)
-          })
-        }
+    const data = await SceneLoader.ImportMeshAsync(null,null, 'data:' + JSON.stringify(modelData) , scene)
+    data.meshes.forEach(model => {
+      if(model.name === "__root__") {
+        model.dispose()
       }
-      // save colliderFaceMap to scene - couldn't find a better place to stash this
-      if(!modelData.colliderFaceMap){
-        throw new Error(`'colliderFaceMap' data not found in ${meshFilePath}. Without the colliderFaceMap data dice values can not be resolved.`)
+      // shrink the colliders
+      if( model.name.includes("collider")) {
+        model.scaling = new Vector3(
+          model.scaling.x * .9,
+          model.scaling.y * .9,
+          model.scaling.z * .9
+        )
       }
-      scene.themeData[meshName] = {}
-      scene.themeData[meshName].colliderFaceMap = modelData.colliderFaceMap
-      scene.themeData[meshName].d4FaceDown = d4FaceDown
-    }).catch(error => console.error(error))
+      // check if d100 is available as a mesh - otherwise we'll clone a d10
+      if (!has_d100) {
+        has_d100 = model.name === "d100"
+      }
+      if (!has_d10) {
+        has_d10 = model.name === "d10"
+      }
+      model.setEnabled(false)
+      model.freezeNormals()
+      model.freezeWorldMatrix()
+      model.isPickable = false
+      model.doNotSyncBoundingInfo = true
+      // model.scaling = new Vector3(model.scaling)
+      // prefix all the meshes ids from this file with the file name so we can find them later e.g.: 'default-dice_d10' and 'default-dice_d10_collider'
+      // model.id = meshName + '_' + model.id
+      model.name = meshName + '_' + model.name
+      model.metadata = {
+        baseScale: model.scaling
+      }
+    })
+    if(!has_d100 && has_d10) {
+      // console.log("create a d100 from a d10")  
+      scene.getMeshByName(meshName + '_d10').clone(meshName + '_d100')
+      scene.getMeshByName(meshName + '_d10_collider').clone(meshName + '_d100_collider')
+      if(modelData.colliderFaceMap) {
+        modelData.colliderFaceMap['d100'] = deepCopy(modelData.colliderFaceMap['d10'])
+        Object.values(modelData.colliderFaceMap['d100']).forEach((val,i) => {
+          modelData.colliderFaceMap['d100'][i] = val * (val === 10 ? 0 : 10)
+        })
+      }
+    }
+    // save colliderFaceMap to scene - couldn't find a better place to stash this
+    if(!modelData.colliderFaceMap){
+      throw new Error(`'colliderFaceMap' data not found in ${meshFilePath}. Without the colliderFaceMap data dice values can not be resolved.`)
+    }
+    scene.themeData[meshName] = {}
+    scene.themeData[meshName].colliderFaceMap = modelData.colliderFaceMap
+    scene.themeData[meshName].d4FaceDown = d4FaceDown
     // return collider data so it can be passed to physics
     // TODO: return any physics settings as well
     return modelData.meshes.filter(model => model.name.includes("collider"))
