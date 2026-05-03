@@ -33245,30 +33245,41 @@ const Pr = {
     return ((t = e.config) == null ? void 0 : t.forcedValue) ?? ge.getForcedFaceValue(e);
   }
   static getFaceNormal(e, t) {
-    const i = e.getVerticesData("position"), s = e.getVerticesData("normal"), r = e.getIndices(), n = Number(t) * 3, a = new p(0, 0, 0);
-    if (s) {
-      for (let h = 0; h < 3; h++) {
-        const l = r ? r[n + h] : n + h;
-        a.addInPlaceFromFloats(
-          s[l * 3],
-          s[l * 3 + 1],
-          s[l * 3 + 2]
+    const i = e.getVerticesData("position"), s = e.getVerticesData("normal"), r = e.getIndices(), n = Number(t) * 3, a = (d) => r ? r[n + d] : n + d, o = (d) => {
+      const g = a(d);
+      return new p(
+        i[g * 3],
+        i[g * 3 + 1],
+        i[g * 3 + 2]
+      );
+    }, h = (d, g) => (g && p.Dot(d, g) < 0 && d.scaleInPlace(-1), d);
+    if (i) {
+      const d = o(0), g = o(1), f = o(2), m = p.Cross(g.subtract(d), f.subtract(d));
+      if (m.lengthSquared() > 1e-10) {
+        const b = new p(
+          (d.x + g.x + f.x) / 3,
+          (d.y + g.y + f.y) / 3,
+          (d.z + g.z + f.z) / 3
         );
+        return h(m, b).normalize();
       }
-      return a.normalize();
     }
-    if (!i)
+    if (!s)
       return null;
-    const o = [];
-    for (let h = 0; h < 3; h++) {
-      const l = r ? r[n + h] : n + h;
-      o.push(new p(
-        i[l * 3],
-        i[l * 3 + 1],
-        i[l * 3 + 2]
-      ));
+    const l = new p(0, 0, 0), u = i ? new p(0, 0, 0) : null;
+    for (let d = 0; d < 3; d++) {
+      const g = a(d);
+      l.addInPlaceFromFloats(
+        s[g * 3],
+        s[g * 3 + 1],
+        s[g * 3 + 2]
+      ), u && u.addInPlaceFromFloats(
+        i[g * 3],
+        i[g * 3 + 1],
+        i[g * 3 + 2]
+      );
     }
-    return p.Cross(o[1].subtract(o[0]), o[2].subtract(o[0])).normalize();
+    return l.lengthSquared() <= 1e-10 ? null : (u && u.scaleInPlace(1 / 3), h(l, u).normalize());
   }
   static getMappedFaceNormal(e, t, i) {
     const s = new p(0, 0, 0);

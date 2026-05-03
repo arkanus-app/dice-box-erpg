@@ -220,35 +220,72 @@ class Dice {
     const normals = collider.getVerticesData('normal')
     const indices = collider.getIndices()
     const triangleStart = Number(faceId) * 3
-    const faceNormal = new Vector3(0, 0, 0)
 
-    if(normals) {
-      for(let i = 0; i < 3; i++) {
-        const vertexIndex = indices ? indices[triangleStart + i] : triangleStart + i
-        faceNormal.addInPlaceFromFloats(
-          normals[vertexIndex * 3],
-          normals[vertexIndex * 3 + 1],
-          normals[vertexIndex * 3 + 2]
-        )
-      }
-      return faceNormal.normalize()
-    }
-
-    if(!positions) {
-      return null
-    }
-
-    const points = []
-    for(let i = 0; i < 3; i++) {
-      const vertexIndex = indices ? indices[triangleStart + i] : triangleStart + i
-      points.push(new Vector3(
+    const getVertexIndex = (offset) => indices ? indices[triangleStart + offset] : triangleStart + offset
+    const getPoint = (offset) => {
+      const vertexIndex = getVertexIndex(offset)
+      return new Vector3(
         positions[vertexIndex * 3],
         positions[vertexIndex * 3 + 1],
         positions[vertexIndex * 3 + 2]
-      ))
+      )
+    }
+    const orientOutward = (normal, center) => {
+      if(center && Vector3.Dot(normal, center) < 0) {
+        normal.scaleInPlace(-1)
+      }
+      return normal
     }
 
-    return Vector3.Cross(points[1].subtract(points[0]), points[2].subtract(points[0])).normalize()
+    if(positions) {
+      const p0 = getPoint(0)
+      const p1 = getPoint(1)
+      const p2 = getPoint(2)
+      const faceNormal = Vector3.Cross(p1.subtract(p0), p2.subtract(p0))
+
+      if(faceNormal.lengthSquared() > 1e-10) {
+        const center = new Vector3(
+          (p0.x + p1.x + p2.x) / 3,
+          (p0.y + p1.y + p2.y) / 3,
+          (p0.z + p1.z + p2.z) / 3
+        )
+        return orientOutward(faceNormal, center).normalize()
+      }
+    }
+
+    if(!normals) {
+      return null
+    }
+
+    const faceNormal = new Vector3(0, 0, 0)
+    const center = positions ? new Vector3(0, 0, 0) : null
+
+    for(let i = 0; i < 3; i++) {
+      const vertexIndex = getVertexIndex(i)
+      faceNormal.addInPlaceFromFloats(
+        normals[vertexIndex * 3],
+        normals[vertexIndex * 3 + 1],
+        normals[vertexIndex * 3 + 2]
+      )
+
+      if(center) {
+        center.addInPlaceFromFloats(
+          positions[vertexIndex * 3],
+          positions[vertexIndex * 3 + 1],
+          positions[vertexIndex * 3 + 2]
+        )
+      }
+    }
+
+    if(faceNormal.lengthSquared() <= 1e-10) {
+      return null
+    }
+
+    if(center) {
+      center.scaleInPlace(1 / 3)
+    }
+
+    return orientOutward(faceNormal, center).normalize()
   }
 
   static getMappedFaceNormal(collider, faceMap, value) {
