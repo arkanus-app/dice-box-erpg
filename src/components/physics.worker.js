@@ -26,8 +26,8 @@ const defaultOptions = {
 	mass: 1,
 	friction: .8,
 	restitution: .1,
-	linearDamping: .5,
-	angularDamping: .4,
+	linearDamping: .22,
+	angularDamping: .18,
 	settleTimeout: 5000,
 	// TODO: toss: "center", "edge", "allEdges"
 }
@@ -35,61 +35,68 @@ const defaultOptions = {
 let config = {...defaultOptions}
 
 const forcedGuideOptions = {
-	minElapsed: 120,
-	timeoutWindow: 1600,
+	minElapsed: 520,
+	forceGuideElapsed: 1450,
+	minGroundImpacts: 1,
+	bounceGrace: 160,
 	speedThreshold: 1.6,
 	tiltThreshold: 1.4,
-	duration: 1350,
-	angleThreshold: 0.028,
-	initialBias: .34,
-	angularStrength: 3.2,
-	maxAngularVelocity: 3.8,
-	motorBlend: .12,
-	linearDampingStart: .99,
-	linearDampingEnd: .82,
-	angularDampingStart: .985,
-	angularDampingEnd: .78,
-	centerPull: .01,
+	duration: 1180,
+	angleThreshold: 0.03,
+	initialBias: .28,
+	angularStrength: 3.6,
+	maxAngularVelocity: 4.8,
+	motorBlend: .09,
+	linearDampingStart: 1,
+	linearDampingEnd: .76,
+	angularDampingStart: .995,
+	angularDampingEnd: .72,
+	centerPull: .012,
 	centerMaxVelocity: .42,
 	maxLockHeight: 2.4
 }
 
 const forcedGuideByDieType = {
 	d4: {
-		minElapsed: 160,
-		duration: 1500,
-		angularStrength: 2.8,
-		maxAngularVelocity: 3.2,
-		initialBias: .26,
+		minElapsed: 620,
+		forceGuideElapsed: 1600,
+		duration: 1280,
+		angularStrength: 3,
+		maxAngularVelocity: 3.7,
+		initialBias: .2,
 		centerPull: .014
 	},
 	d6: {
-		minElapsed: 140,
-		duration: 1420,
-		angularStrength: 2.9,
-		maxAngularVelocity: 3.3,
-		initialBias: .3
+		minElapsed: 580,
+		forceGuideElapsed: 1500,
+		duration: 1220,
+		angularStrength: 3.2,
+		maxAngularVelocity: 4,
+		initialBias: .24
 	},
 	d10: {
-		minElapsed: 110,
-		duration: 1280,
-		angularStrength: 3.5,
-		maxAngularVelocity: 4.1,
-		initialBias: .36
+		minElapsed: 520,
+		forceGuideElapsed: 1400,
+		duration: 1120,
+		angularStrength: 3.8,
+		maxAngularVelocity: 5.2,
+		initialBias: .3
 	},
 	d100: {
-		minElapsed: 110,
-		duration: 1280,
-		angularStrength: 3.5,
-		maxAngularVelocity: 4.1,
-		initialBias: .36
+		minElapsed: 520,
+		forceGuideElapsed: 1400,
+		duration: 1120,
+		angularStrength: 3.8,
+		maxAngularVelocity: 5.2,
+		initialBias: .3
 	},
 	d20: {
-		minElapsed: 90,
-		duration: 1220,
-		angularStrength: 3.8,
-		maxAngularVelocity: 4.5,
-		initialBias: .4
+		minElapsed: 480,
+		forceGuideElapsed: 1320,
+		duration: 1080,
+		angularStrength: 4.1,
+		maxAngularVelocity: 5.5,
+		initialBias: .34
 	}
 }
 
@@ -518,6 +525,13 @@ const addDie = (options) => {
 	newDie.elapsed = 0
 	newDie.mass = mass
 	newDie.guidanceProfile = guidanceProfile
+	newDie.groundImpactCount = 0
+	newDie.groundContactElapsed = 0
+	newDie.firstGroundContactElapsed = null
+	newDie.lastGroundImpactForce = 0
+	newDie.hasGroundContact = false
+	newDie.wasGroundContact = false
+	newDie.currentGroundContact = false
 	if(options.forcedTargetQuaternion) {
 		setGuidedTarget(newDie, options.forcedTargetQuaternion, dieType)
 	}
@@ -722,6 +736,10 @@ const applyLandingAssist = (body, profile, progress) => {
 	))
 }
 
+const getGuideAssistProgress = (progress) => {
+	return smoothStep((progress - .18) / .82)
+}
+
 const applyAngularMotor = (body, currentQuaternion, guide, profile, progress) => {
 	const target = getShortestTargetQuaternion(currentQuaternion, guide.quaternion)
 	let error = multiplyQuaternion(target, conjugateQuaternion(currentQuaternion))
@@ -741,9 +759,10 @@ const applyAngularMotor = (body, currentQuaternion, guide, profile, progress) =>
 		z: error.z / sinHalfAngle
 	}
 	const easedProgress = smoothStep(progress)
+	const assistProgress = getGuideAssistProgress(progress)
 	const desiredSpeed = Math.min(
 		profile.maxAngularVelocity,
-		angle * profile.angularStrength * lerp(.38, 1, easedProgress)
+		angle * profile.angularStrength * lerp(.24, 1, easedProgress)
 	)
 	const desired = {
 		x: axis.x * desiredSpeed,
@@ -751,8 +770,8 @@ const applyAngularMotor = (body, currentQuaternion, guide, profile, progress) =>
 		z: axis.z * desiredSpeed
 	}
 	const current = body.getAngularVelocity()
-	const angularDamping = lerp(profile.angularDampingStart, profile.angularDampingEnd, progress)
-	const blend = clamp(profile.motorBlend + easedProgress * .24, 0, .44)
+	const angularDamping = lerp(profile.angularDampingStart, profile.angularDampingEnd, assistProgress)
+	const blend = clamp(profile.motorBlend + assistProgress * .26, 0, .42)
 
 	body.setAngularVelocity(setVector3(
 		lerp(current.x() * angularDamping, desired.x, blend),
@@ -776,6 +795,18 @@ const finalizeGuidedBody = (body) => {
 const shouldStartGuidance = (body, speed, tilt) => {
 	const profile = body.guidedTarget?.profile || body.guidanceProfile || forcedGuideOptions
 	if(body.elapsed < profile.minElapsed) {
+		return false
+	}
+
+	if(body.elapsed >= profile.forceGuideElapsed || body.timeout < profile.timeoutWindow) {
+		return true
+	}
+
+	if((body.groundImpactCount || 0) < profile.minGroundImpacts) {
+		return false
+	}
+
+	if(body.firstGroundContactElapsed !== null && body.elapsed - body.firstGroundContactElapsed < profile.bounceGrace) {
 		return false
 	}
 
@@ -806,8 +837,11 @@ const applyGuidance = (body, delta, speed, tilt) => {
 	guide.elapsed += delta
 	const profile = guide.profile || body.guidanceProfile || forcedGuideOptions
 	const progress = Math.min(1, guide.elapsed / profile.duration)
-	dampBodyVelocity(body, profile, progress)
-	applyLandingAssist(body, profile, progress)
+	const assistProgress = getGuideAssistProgress(progress)
+	if(assistProgress > 0) {
+		dampBodyVelocity(body, profile, assistProgress)
+		applyLandingAssist(body, profile, assistProgress)
+	}
 
 	const currentQuaternion = getBodyQuaternion(body)
 	if(!currentQuaternion) {
@@ -817,8 +851,9 @@ const applyGuidance = (body, delta, speed, tilt) => {
 	const angle = applyAngularMotor(body, currentQuaternion, guide, profile, progress)
 
 	const nearFloor = getBodyPositionY(body) <= profile.maxLockHeight
-	const canLock = nearFloor && (body.hasGroundContact || progress >= .7 || body.timeout < 80)
-	if(canLock && (angle < profile.angleThreshold || body.timeout < 80)) {
+	const settled = speed < profile.speedThreshold && tilt < profile.tiltThreshold
+	const canLock = nearFloor && (body.hasGroundContact || body.groundContactElapsed > 180 || body.timeout < 80)
+	if(canLock && (angle < profile.angleThreshold || (settled && progress > .78) || body.timeout < 80)) {
 		finalizeGuidedBody(body)
 	}
 }
@@ -867,6 +902,23 @@ const writeBodyTransformToBuffer = (body, bufferIndex) => {
 	return true
 }
 
+const syncGroundContactState = (body, delta) => {
+	const hasContact = Boolean(body.currentGroundContact)
+	if(hasContact) {
+		body.groundContactElapsed = (body.groundContactElapsed || 0) + delta
+		if(!body.wasGroundContact) {
+			body.groundImpactCount = (body.groundImpactCount || 0) + 1
+			body.firstGroundContactElapsed ??= body.elapsed
+		}
+	} else {
+		body.groundContactElapsed = 0
+	}
+
+	body.lastGroundImpactForce = Math.max(body.lastGroundImpactForce || 0, body.currentGroundImpactForce || 0)
+	body.hasGroundContact = hasContact
+	body.wasGroundContact = hasContact
+}
+
 const clearDice = () => {
 	if(diceBufferView.byteLength){
 		diceBufferView.fill(0)
@@ -909,7 +961,8 @@ const update = (delta) => {
 
 	// Detect collisions
 	bodies.forEach(body => {
-		body.hasGroundContact = false
+		body.currentGroundContact = false
+		body.currentGroundImpactForce = 0
 	})
     const numManifolds = physicsWorld.getDispatcher().getNumManifolds();
     for (let i = 0; i < numManifolds; i++) {
@@ -919,11 +972,13 @@ const update = (delta) => {
 
         const rb0Id = body0.id;
         const rb1Id = body1.id;
-				if(rb0Id === 'box_bottom' && body1.guidedTarget) {
-					body1.hasGroundContact = true
-				}
-				if(rb1Id === 'box_bottom' && body0.guidedTarget) {
-					body0.hasGroundContact = true
+				const bottomContactBody = rb0Id === 'box_bottom' && body1.guidedTarget
+					? body1
+					: rb1Id === 'box_bottom' && body0.guidedTarget
+						? body0
+						: null
+				if(bottomContactBody) {
+					bottomContactBody.currentGroundContact = true
 				}
 
         let totalForce = 0;
@@ -956,6 +1011,9 @@ const update = (delta) => {
 						}
 						
         if (totalForce > 0) {
+						if(bottomContactBody) {
+							bottomContactBody.currentGroundImpactForce = Math.max(bottomContactBody.currentGroundImpactForce || 0, totalForce)
+						}
             // Send the collision data to the main thread
             self.postMessage({
                 action: "collision",
@@ -970,9 +1028,10 @@ const update = (delta) => {
 	for (let i = bodies.length - 1; i >= 0; i--) {
 		const rb = bodies[i]
 		rb.elapsed = (rb.elapsed || 0) + delta
-		applyGuidance(rb, delta, rb.getLinearVelocity().length(), rb.getAngularVelocity().length())
 		const speed = rb.getLinearVelocity().length()
 		const tilt = rb.getAngularVelocity().length()
+		syncGroundContactState(rb, delta)
+		applyGuidance(rb, delta, speed, tilt)
 
 		if(rb.guidedTarget?.complete && !rb.guidedFinalFrameSynced) {
 			if(writeBodyTransformToBuffer(rb, (i * 8) + 1)) {
