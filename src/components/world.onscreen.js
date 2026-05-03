@@ -262,6 +262,7 @@ class WorldOnscreen {
 		
 		// save the die just created to the cache
 		this.#dieCache[newDie.id] = newDie
+		const forcedTargetQuaternion = this.#getForcedPhysicsTarget(newDie)
 		
 		// tell the physics engine to roll this die type - which is a low poly collider
 		this.#physicsWorkerPort.postMessage({
@@ -273,6 +274,7 @@ class WorldOnscreen {
 				newStartPoint: options.newStartPoint,
 				theme: options.theme,
 				meshName: options.meshName,
+				forcedTargetQuaternion
 			}
 		})
 	
@@ -298,6 +300,7 @@ class WorldOnscreen {
 			})
 			// add the d10 to the cache and ask the physics worker for a collider
 			this.#dieCache[`${newDie.d10Instance.id}`] = newDie.d10Instance
+			const forcedD10TargetQuaternion = this.#getForcedPhysicsTarget(newDie.d10Instance)
 			this.#physicsWorkerPort.postMessage({
 				action: "addDie",
 				options: {
@@ -305,7 +308,8 @@ class WorldOnscreen {
 					scale: this.config.scale,
 					id: newDie.d10Instance.id,
 					theme: options.theme,
-					meshName: options.meshName
+					meshName: options.meshName,
+					forcedTargetQuaternion: forcedD10TargetQuaternion
 				}
 			})
 		}
@@ -379,13 +383,27 @@ class WorldOnscreen {
 		this.#physicsWorkerPort.postMessage({
 			action: "guideDie",
 			id: die.id,
-			quaternion: {
-				x: targetQuaternion.x,
-				y: targetQuaternion.y,
-				z: targetQuaternion.z,
-				w: targetQuaternion.w
-			}
+			quaternion: this.#serializeQuaternion(targetQuaternion),
+			dieType: die.dieType
 		})
+	}
+
+	#serializeQuaternion(quaternion) {
+		return {
+			x: quaternion.x,
+			y: quaternion.y,
+			z: quaternion.z,
+			w: quaternion.w
+		}
+	}
+
+	#getForcedPhysicsTarget(die) {
+		if(!this.#usesPhysicsForcedResult(die)) {
+			return null
+		}
+
+		const resolvedTarget = Dice.getForcedTargetQuaternion(die, this.#scene)
+		return resolvedTarget ? this.#serializeQuaternion(resolvedTarget.targetQuaternion) : null
 	}
 	
 	updatesFromPhysics(buffer) {

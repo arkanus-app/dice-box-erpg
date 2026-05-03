@@ -40,7 +40,56 @@ const forcedGuideOptions = {
 	speedThreshold: 1.6,
 	tiltThreshold: 1.4,
 	duration: 700,
-	angleThreshold: 0.035
+	angleThreshold: 0.035,
+	initialBias: .18,
+	angularStrength: 8.5,
+	maxAngularVelocity: 9,
+	motorBlend: .35,
+	linearDampingStart: .96,
+	linearDampingEnd: .7,
+	angularDampingStart: .94,
+	angularDampingEnd: .55,
+	centerPull: .018,
+	centerMaxVelocity: .7
+}
+
+const forcedGuideByDieType = {
+	d4: {
+		minElapsed: 420,
+		duration: 850,
+		angularStrength: 6.8,
+		maxAngularVelocity: 7.2,
+		initialBias: .12,
+		centerPull: .024
+	},
+	d6: {
+		minElapsed: 360,
+		duration: 760,
+		angularStrength: 7.2,
+		maxAngularVelocity: 7.6,
+		initialBias: .16
+	},
+	d10: {
+		minElapsed: 300,
+		duration: 660,
+		angularStrength: 9.4,
+		maxAngularVelocity: 9.6,
+		initialBias: .2
+	},
+	d100: {
+		minElapsed: 300,
+		duration: 660,
+		angularStrength: 9.4,
+		maxAngularVelocity: 9.6,
+		initialBias: .2
+	},
+	d20: {
+		minElapsed: 280,
+		duration: 620,
+		angularStrength: 10,
+		maxAngularVelocity: 10.5,
+		initialBias: .22
+	}
 }
 
 let emptyVector
@@ -452,18 +501,25 @@ const addDie = (options) => {
 	const comboKey = `${meshName}_${cType}`
 	const colliderMass = colliders[comboKey]?.physicsMass || .1
 	const mass = colliderMass * config.mass * config.scale // feature? mass should go up with scale, but it throws off the throwForce and spinForce scaling
+	const guidanceProfile = getGuideProfile(dieType)
+	const initialQuaternion = createBiasedInitialQuaternion(options.forcedTargetQuaternion, guidanceProfile)
 	// TODO: incorporate colliders physicsFriction and physicsRestitution settings
 	// clone the collider
 	const newDie = createRigidBody(colliders[comboKey].convexHull, {
 		mass,
 		scaling: colliders[comboKey].scaling,
 		pos: config.startPosition,
-		// quat: colliders[cType].rotationQuaternion,
+		quat: initialQuaternion,
 	})
 	newDie.id = id
+	newDie.dieType = dieType
 	newDie.timeout = config.settleTimeout
 	newDie.elapsed = 0
 	newDie.mass = mass
+	newDie.guidanceProfile = guidanceProfile
+	if(options.forcedTargetQuaternion) {
+		setGuidedTarget(newDie, options.forcedTargetQuaternion, dieType)
+	}
 	physicsWorld.addRigidBody(newDie)
 	bodies.push(newDie)
 
@@ -517,6 +573,10 @@ const findBody = (id) => {
 	return bodies.find(die => die.id === id) || sleepingBodies.find(die => die.id === id)
 }
 
+const clamp = (value, min, max) => {
+	return Math.max(min, Math.min(max, value))
+}
+
 const normalizeQuaternion = (q) => {
 	const length = Math.hypot(q.x, q.y, q.z, q.w) || 1
 	return {
@@ -537,20 +597,54 @@ const getShortestTargetQuaternion = (source, target) => {
 		: target
 }
 
-const lerpQuaternion = (source, target, amount) => {
-	const shortestTarget = getShortestTargetQuaternion(source, target)
+const multiplyQuaternion = (a, b) => {
 	return normalizeQuaternion({
-		x: lerp(source.x, shortestTarget.x, amount),
-		y: lerp(source.y, shortestTarget.y, amount),
-		z: lerp(source.z, shortestTarget.z, amount),
-		w: lerp(source.w, shortestTarget.w, amount)
+		x: a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
+		y: a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
+		z: a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w,
+		w: a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z
 	})
 }
 
-const quaternionAngle = (source, target) => {
-	const shortestTarget = getShortestTargetQuaternion(source, target)
-	const dot = Math.min(1, Math.abs(dotQuaternion(source, shortestTarget)))
-	return 2 * Math.acos(dot)
+const conjugateQuaternion = (q) => {
+	return {
+		x: -q.x,
+		y: -q.y,
+		z: -q.z,
+		w: q.w
+	}
+}
+
+const randomQuaternion = () => {
+	const x = lerp(-1.5, 1.5, Math.random())
+	const y = lerp(-1.5, 1.5, Math.random())
+	const z = lerp(-1.5, 1.5, Math.random())
+	return normalizeQuaternion({x, y, z, w: -1})
+}
+
+const createBiasedInitialQuaternion = (targetQuaternion, profile) => {
+	if(!targetQuaternion || !profile.initialBias) {
+		return undefined
+	}
+
+	const source = randomQuaternion()
+	const target = getShortestTargetQuaternion(source, normalizeQuaternion(targetQuaternion))
+	const bias = clamp(profile.initialBias, 0, .45)
+	const quaternion = normalizeQuaternion({
+		x: lerp(source.x, target.x, bias),
+		y: lerp(source.y, target.y, bias),
+		z: lerp(source.z, target.z, bias),
+		w: lerp(source.w, target.w, bias)
+	})
+
+	return [quaternion.x, quaternion.y, quaternion.z, quaternion.w]
+}
+
+const getGuideProfile = (dieType) => {
+	return {
+		...forcedGuideOptions,
+		...(forcedGuideByDieType[dieType] || {})
+	}
 }
 
 const getBodyQuaternion = (body) => {
@@ -581,20 +675,72 @@ const setBodyQuaternion = (body, quaternion) => {
 	ms.setWorldTransform(tmpBtTrans)
 }
 
-const scaleBodyVelocity = (body, amount) => {
+const dampBodyVelocity = (body, profile, progress) => {
+	const angular = body.getAngularVelocity()
+	const angularDamping = lerp(profile.angularDampingStart, profile.angularDampingEnd, progress)
+	body.setAngularVelocity(setVector3(
+		angular.x() * angularDamping,
+		angular.y() * angularDamping,
+		angular.z() * angularDamping
+	))
+}
+
+const applyLandingAssist = (body, profile, progress) => {
+	const ms = body.getMotionState()
+	if(!ms) {
+		return
+	}
+
+	ms.getWorldTransform(tmpBtTrans)
+	const position = tmpBtTrans.getOrigin()
 	const linear = body.getLinearVelocity()
+	const linearDamping = lerp(profile.linearDampingStart, profile.linearDampingEnd, progress)
+	const centerPull = profile.centerPull * progress
+	const pullX = clamp(-position.x() * centerPull, -profile.centerMaxVelocity, profile.centerMaxVelocity)
+	const pullZ = clamp(-position.z() * centerPull, -profile.centerMaxVelocity, profile.centerMaxVelocity)
+
 	body.setLinearVelocity(setVector3(
-		linear.x() * amount,
-		linear.y() * amount,
-		linear.z() * amount
+		linear.x() * linearDamping + pullX,
+		linear.y() * lerp(.98, linearDamping, progress),
+		linear.z() * linearDamping + pullZ
+	))
+}
+
+const applyAngularMotor = (body, currentQuaternion, guide, profile, progress) => {
+	const target = getShortestTargetQuaternion(currentQuaternion, guide.quaternion)
+	let error = multiplyQuaternion(target, conjugateQuaternion(currentQuaternion))
+	if(error.w < 0) {
+		error = {x: -error.x, y: -error.y, z: -error.z, w: -error.w}
+	}
+
+	const angle = 2 * Math.acos(clamp(error.w, -1, 1))
+	if(angle < 0.0001) {
+		return angle
+	}
+
+	const sinHalfAngle = Math.sqrt(Math.max(0.000001, 1 - error.w * error.w))
+	const axis = {
+		x: error.x / sinHalfAngle,
+		y: error.y / sinHalfAngle,
+		z: error.z / sinHalfAngle
+	}
+	const desiredSpeed = Math.min(profile.maxAngularVelocity, angle * profile.angularStrength)
+	const desired = {
+		x: axis.x * desiredSpeed,
+		y: axis.y * desiredSpeed,
+		z: axis.z * desiredSpeed
+	}
+	const current = body.getAngularVelocity()
+	const angularDamping = lerp(profile.angularDampingStart, profile.angularDampingEnd, progress)
+	const blend = clamp(profile.motorBlend + progress * .35, 0, .9)
+
+	body.setAngularVelocity(setVector3(
+		lerp(current.x() * angularDamping, desired.x, blend),
+		lerp(current.y() * angularDamping, desired.y, blend),
+		lerp(current.z() * angularDamping, desired.z, blend)
 	))
 
-	const angular = body.getAngularVelocity()
-	body.setAngularVelocity(setVector3(
-		angular.x() * amount,
-		angular.y() * amount,
-		angular.z() * amount
-	))
+	return angle
 }
 
 const finalizeGuidedBody = (body) => {
@@ -605,11 +751,12 @@ const finalizeGuidedBody = (body) => {
 }
 
 const shouldStartGuidance = (body, speed, tilt) => {
-	if(body.elapsed < forcedGuideOptions.minElapsed) {
+	const profile = body.guidedTarget?.profile || body.guidanceProfile || forcedGuideOptions
+	if(body.elapsed < profile.minElapsed) {
 		return false
 	}
 
-	return body.timeout <= forcedGuideOptions.timeoutWindow || (speed < forcedGuideOptions.speedThreshold && tilt < forcedGuideOptions.tiltThreshold)
+	return body.timeout <= profile.timeoutWindow || (speed < profile.speedThreshold && tilt < profile.tiltThreshold)
 }
 
 const applyGuidance = (body, delta, speed, tilt) => {
@@ -632,38 +779,43 @@ const applyGuidance = (body, delta, speed, tilt) => {
 	}
 
 	guide.elapsed += delta
-	const progress = Math.min(1, guide.elapsed / guide.duration)
-	const damping = lerp(.92, .48, progress)
-	scaleBodyVelocity(body, damping)
+	const profile = guide.profile || body.guidanceProfile || forcedGuideOptions
+	const progress = Math.min(1, guide.elapsed / profile.duration)
+	dampBodyVelocity(body, profile, progress)
+	applyLandingAssist(body, profile, progress)
 
 	const currentQuaternion = getBodyQuaternion(body)
 	if(!currentQuaternion) {
 		return
 	}
 
-	const step = Math.min(.42, Math.max(.08, delta / 170))
-	const nextQuaternion = lerpQuaternion(currentQuaternion, guide.quaternion, step)
-	setBodyQuaternion(body, nextQuaternion)
+	const angle = applyAngularMotor(body, currentQuaternion, guide, profile, progress)
 
-	if(quaternionAngle(nextQuaternion, guide.quaternion) < forcedGuideOptions.angleThreshold || progress >= 1 || body.timeout < 80) {
+	if(angle < profile.angleThreshold || progress >= 1 || body.timeout < 80) {
 		finalizeGuidedBody(body)
 	}
 }
 
-const guideDie = ({id, quaternion}) => {
-	const body = findBody(id)
+const setGuidedTarget = (body, quaternion, dieType = body.dieType) => {
 	if(!body || !quaternion) {
 		return
 	}
 
+	const profile = getGuideProfile(dieType)
+	const existingGuide = body.guidedTarget
 	body.guidedTarget = {
 		quaternion: normalizeQuaternion(quaternion),
-		active: false,
+		profile,
+		active: existingGuide?.active || false,
 		complete: false,
-		elapsed: 0,
-		duration: forcedGuideOptions.duration
+		elapsed: existingGuide?.elapsed || 0,
 	}
+	body.guidanceProfile = profile
 	body.guidedSleepReady = false
+}
+
+const guideDie = ({id, quaternion, dieType}) => {
+	setGuidedTarget(findBody(id), quaternion, dieType)
 }
 
 const clearDice = () => {
