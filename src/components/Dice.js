@@ -318,18 +318,6 @@ class Dice {
     return target
   }
 
-  static chooseBestTargetQuaternion(source, delta, localNormal, topVector) {
-    const candidates = [
-      delta.multiply(source),
-      source.multiply(delta)
-    ]
-
-    return candidates.reduce((best, candidate) => {
-      const score = Vector3.Dot(Dice.transformNormalByQuaternion(localNormal, candidate), topVector)
-      return score > best.score ? { quaternion: candidate, score } : best
-    }, { quaternion: candidates[0], score: -Infinity }).quaternion
-  }
-
   static smoothForcedResult(die, scene, amount = 1, animate = false) {
     const forcedFaceValue = Dice.getForcedFaceValue(die)
     if(forcedFaceValue === undefined || !die.mesh?.rotationQuaternion) {
@@ -353,9 +341,11 @@ class Dice {
       ? new Vector3(0, -1, 0)
       : new Vector3(0, 1, 0)
     const sourceQuaternion = (die.__rawRotationQuaternion || die.mesh.rotationQuaternion).clone().normalize()
-    const currentTargetNormal = Dice.transformNormalByQuaternion(targetFaceNormal, sourceQuaternion)
+    const currentTargetNormal = targetFaceNormal.applyRotationQuaternion
+      ? targetFaceNormal.applyRotationQuaternion(sourceQuaternion).normalize()
+      : Dice.transformNormalByQuaternion(targetFaceNormal, sourceQuaternion)
     const delta = Quaternion.FromUnitVectorsToRef(currentTargetNormal, topVector, Quaternion.Identity())
-    let targetQuaternion = Dice.chooseBestTargetQuaternion(sourceQuaternion, delta, targetFaceNormal, topVector).normalize()
+    let targetQuaternion = delta.multiply(sourceQuaternion).normalize()
     targetQuaternion = Dice.chooseShortestQuaternion(sourceQuaternion, targetQuaternion)
 
     const apply = (progress) => {

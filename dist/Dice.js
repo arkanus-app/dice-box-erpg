@@ -975,14 +975,14 @@ class xt {
     throw Y("FileTools");
   }
 }
-class pe {
+class ge {
   /**
    * Gets the shaders repository path for a given shader language
    * @param shaderLanguage the shader language
    * @returns the path to the shaders repository
    */
   static GetShadersRepository(e = Pe.GLSL) {
-    return e === Pe.GLSL ? pe.ShadersRepository : pe.ShadersRepositoryWGSL;
+    return e === Pe.GLSL ? ge.ShadersRepository : ge.ShadersRepositoryWGSL;
   }
   /**
    * Gets the shaders store of a given shader language
@@ -990,7 +990,7 @@ class pe {
    * @returns the shaders store
    */
   static GetShadersStore(e = Pe.GLSL) {
-    return e === Pe.GLSL ? pe.ShadersStore : pe.ShadersStoreWGSL;
+    return e === Pe.GLSL ? ge.ShadersStore : ge.ShadersStoreWGSL;
   }
   /**
    * Gets the include shaders store of a given shader language
@@ -998,24 +998,24 @@ class pe {
    * @returns the include shaders store
    */
   static GetIncludesShadersStore(e = Pe.GLSL) {
-    return e === Pe.GLSL ? pe.IncludesShadersStore : pe.IncludesShadersStoreWGSL;
+    return e === Pe.GLSL ? ge.IncludesShadersStore : ge.IncludesShadersStoreWGSL;
   }
 }
-pe.ShadersRepository = "src/Shaders/";
-pe.ShadersStore = {};
-pe.IncludesShadersStore = {};
-pe.ShadersRepositoryWGSL = "src/ShadersWGSL/";
-pe.ShadersStoreWGSL = {};
-pe.IncludesShadersStoreWGSL = {};
+ge.ShadersRepository = "src/Shaders/";
+ge.ShadersStore = {};
+ge.IncludesShadersStore = {};
+ge.ShadersRepositoryWGSL = "src/ShadersWGSL/";
+ge.ShadersStoreWGSL = {};
+ge.IncludesShadersStoreWGSL = {};
 class Le {
   /**
    * Gets or sets the relative url used to load shaders if using the engine in non-minified mode
    */
   static get ShadersRepository() {
-    return pe.ShadersRepository;
+    return ge.ShadersRepository;
   }
   static set ShadersRepository(e) {
-    pe.ShadersRepository = e;
+    ge.ShadersRepository = e;
   }
   /**
    * Observable that will be called when effect is bound.
@@ -1065,8 +1065,8 @@ class Le {
       shouldUseHighPrecisionShader: this._engine._shouldUseHighPrecisionShader,
       processor: this._engine._getShaderProcessor(this._shaderLanguage),
       supportsUniformBuffers: this._engine.supportsUniformBuffers,
-      shadersRepository: pe.GetShadersRepository(this._shaderLanguage),
-      includesShadersStore: pe.GetIncludesShadersStore(this._shaderLanguage),
+      shadersRepository: ge.GetShadersRepository(this._shaderLanguage),
+      includesShadersStore: ge.GetIncludesShadersStore(this._shaderLanguage),
       version: (this._engine.version * 100).toString(),
       platformName: this._engine.shaderPlatformName,
       processingContext: this._processingContext,
@@ -1267,7 +1267,7 @@ class Le {
       s(a);
       return;
     }
-    const r = pe.GetShadersStore(this._shaderLanguage);
+    const r = ge.GetShadersStore(this._shaderLanguage);
     if (r[e + t + "Shader"]) {
       s(r[e + t + "Shader"]);
       return;
@@ -1277,7 +1277,7 @@ class Le {
       return;
     }
     let n;
-    e[0] === "." || e[0] === "/" || e.indexOf("http") > -1 ? n = e : n = pe.GetShadersRepository(this._shaderLanguage) + e, this._engine._loadFile(n + "." + t.toLowerCase() + ".fx", s);
+    e[0] === "." || e[0] === "/" || e.indexOf("http") > -1 ? n = e : n = ge.GetShadersRepository(this._shaderLanguage) + e, this._engine._loadFile(n + "." + t.toLowerCase() + ".fx", s);
   }
   /**
    * Gets the vertex shader source code of this effect
@@ -1874,7 +1874,7 @@ class Le {
    * @param shaderLanguage the language the shader is written in (default: GLSL)
    */
   static RegisterShader(e, t, i, s = Pe.GLSL) {
-    t && (pe.GetShadersStore(s)[`${e}PixelShader`] = t), i && (pe.GetShadersStore(s)[`${e}VertexShader`] = i);
+    t && (ge.GetShadersStore(s)[`${e}PixelShader`] = t), i && (ge.GetShadersStore(s)[`${e}VertexShader`] = i);
   }
   /**
    * Resets the cache of effects.
@@ -1886,8 +1886,8 @@ class Le {
 Le.LogShaderCodeOnCompilationError = !0;
 Le._UniqueIdSeed = 0;
 Le._BaseCache = {};
-Le.ShadersStore = pe.ShadersStore;
-Le.IncludesShadersStore = pe.IncludesShadersStore;
+Le.ShadersStore = ge.ShadersStore;
+Le.IncludesShadersStore = ge.IncludesShadersStore;
 class Ls {
   /**
    * Initializes the state.
@@ -17878,7 +17878,7 @@ class fs {
   }
 }
 fs._UniqueIdCounter = 1;
-class be {
+class me {
   /**
    * Sort function to order lights for rendering.
    * @param a First Light object to compare to second.
@@ -17889,22 +17889,22 @@ class be {
     return e.shadowEnabled !== t.shadowEnabled ? (t.shadowEnabled ? 1 : 0) - (e.shadowEnabled ? 1 : 0) : t.renderPriority - e.renderPriority;
   }
 }
-be.FALLOFF_DEFAULT = 0;
-be.FALLOFF_PHYSICAL = 1;
-be.FALLOFF_GLTF = 2;
-be.FALLOFF_STANDARD = 3;
-be.LIGHTMAP_DEFAULT = 0;
-be.LIGHTMAP_SPECULAR = 1;
-be.LIGHTMAP_SHADOWSONLY = 2;
-be.INTENSITYMODE_AUTOMATIC = 0;
-be.INTENSITYMODE_LUMINOUSPOWER = 1;
-be.INTENSITYMODE_LUMINOUSINTENSITY = 2;
-be.INTENSITYMODE_ILLUMINANCE = 3;
-be.INTENSITYMODE_LUMINANCE = 4;
-be.LIGHTTYPEID_POINTLIGHT = 0;
-be.LIGHTTYPEID_DIRECTIONALLIGHT = 1;
-be.LIGHTTYPEID_SPOTLIGHT = 2;
-be.LIGHTTYPEID_HEMISPHERICLIGHT = 3;
+me.FALLOFF_DEFAULT = 0;
+me.FALLOFF_PHYSICAL = 1;
+me.FALLOFF_GLTF = 2;
+me.FALLOFF_STANDARD = 3;
+me.LIGHTMAP_DEFAULT = 0;
+me.LIGHTMAP_SPECULAR = 1;
+me.LIGHTMAP_SHADOWSONLY = 2;
+me.INTENSITYMODE_AUTOMATIC = 0;
+me.INTENSITYMODE_LUMINOUSPOWER = 1;
+me.INTENSITYMODE_LUMINOUSINTENSITY = 2;
+me.INTENSITYMODE_ILLUMINANCE = 3;
+me.INTENSITYMODE_LUMINANCE = 4;
+me.LIGHTTYPEID_POINTLIGHT = 0;
+me.LIGHTTYPEID_DIRECTIONALLIGHT = 1;
+me.LIGHTTYPEID_SPOTLIGHT = 2;
+me.LIGHTTYPEID_HEMISPHERICLIGHT = 3;
 var et;
 (function(c) {
   c[c.BackwardCompatible = 0] = "BackwardCompatible", c[c.Intermediate = 1] = "Intermediate", c[c.Aggressive = 2] = "Aggressive";
@@ -18952,7 +18952,7 @@ class Q extends Li {
    * Sorts the list list based on light priorities
    */
   sortLightsByPriority() {
-    this.requireLightSorting && this.lights.sort(be.CompareLightsPriority);
+    this.requireLightSorting && this.lights.sort(me.CompareLightsPriority);
   }
   /**
    * Adds the given camera to this scene
@@ -21893,24 +21893,24 @@ P.SCALEMODE_NEAREST = 2;
 P.SCALEMODE_CEILING = 3;
 P._RescalePostProcessFactory = null;
 P._RenderPassIdCounter = 0;
-class me {
+class pe {
   /**
    * Gets or sets a boolean indicating if entire scene must be loaded even if scene contains incremental data
    */
   static get ForceFullSceneLoadingForIncremental() {
-    return me._ForceFullSceneLoadingForIncremental;
+    return pe._ForceFullSceneLoadingForIncremental;
   }
   static set ForceFullSceneLoadingForIncremental(e) {
-    me._ForceFullSceneLoadingForIncremental = e;
+    pe._ForceFullSceneLoadingForIncremental = e;
   }
   /**
    * Gets or sets a boolean indicating if loading screen must be displayed while loading a scene
    */
   static get ShowLoadingScreen() {
-    return me._ShowLoadingScreen;
+    return pe._ShowLoadingScreen;
   }
   static set ShowLoadingScreen(e) {
-    me._ShowLoadingScreen = e;
+    pe._ShowLoadingScreen = e;
   }
   /**
    * Defines the current logging level (while loading the scene)
@@ -21918,26 +21918,26 @@ class me {
    */
   // eslint-disable-next-line @typescript-eslint/naming-convention
   static get loggingLevel() {
-    return me._LoggingLevel;
+    return pe._LoggingLevel;
   }
   // eslint-disable-next-line @typescript-eslint/naming-convention
   static set loggingLevel(e) {
-    me._LoggingLevel = e;
+    pe._LoggingLevel = e;
   }
   /**
    * Gets or set a boolean indicating if matrix weights must be cleaned upon loading
    */
   static get CleanBoneMatrixWeights() {
-    return me._CleanBoneMatrixWeights;
+    return pe._CleanBoneMatrixWeights;
   }
   static set CleanBoneMatrixWeights(e) {
-    me._CleanBoneMatrixWeights = e;
+    pe._CleanBoneMatrixWeights = e;
   }
 }
-me._ForceFullSceneLoadingForIncremental = !1;
-me._ShowLoadingScreen = !0;
-me._CleanBoneMatrixWeights = !1;
-me._LoggingLevel = 0;
+pe._ForceFullSceneLoadingForIncremental = !1;
+pe._ShowLoadingScreen = !0;
+pe._CleanBoneMatrixWeights = !1;
+pe._LoggingLevel = 0;
 var pt;
 (function(c) {
   c[c.Clean = 0] = "Clean", c[c.Stop = 1] = "Stop", c[c.Sync = 2] = "Sync", c[c.NoSync = 3] = "NoSync";
@@ -21947,19 +21947,19 @@ class j {
    * Gets or sets a boolean indicating if entire scene must be loaded even if scene contains incremental data
    */
   static get ForceFullSceneLoadingForIncremental() {
-    return me.ForceFullSceneLoadingForIncremental;
+    return pe.ForceFullSceneLoadingForIncremental;
   }
   static set ForceFullSceneLoadingForIncremental(e) {
-    me.ForceFullSceneLoadingForIncremental = e;
+    pe.ForceFullSceneLoadingForIncremental = e;
   }
   /**
    * Gets or sets a boolean indicating if loading screen must be displayed while loading a scene
    */
   static get ShowLoadingScreen() {
-    return me.ShowLoadingScreen;
+    return pe.ShowLoadingScreen;
   }
   static set ShowLoadingScreen(e) {
-    me.ShowLoadingScreen = e;
+    pe.ShowLoadingScreen = e;
   }
   /**
    * Defines the current logging level (while loading the scene)
@@ -21967,20 +21967,20 @@ class j {
    */
   // eslint-disable-next-line @typescript-eslint/naming-convention
   static get loggingLevel() {
-    return me.loggingLevel;
+    return pe.loggingLevel;
   }
   // eslint-disable-next-line @typescript-eslint/naming-convention
   static set loggingLevel(e) {
-    me.loggingLevel = e;
+    pe.loggingLevel = e;
   }
   /**
    * Gets or set a boolean indicating if matrix weights must be cleaned upon loading
    */
   static get CleanBoneMatrixWeights() {
-    return me.CleanBoneMatrixWeights;
+    return pe.CleanBoneMatrixWeights;
   }
   static set CleanBoneMatrixWeights(e) {
-    me.CleanBoneMatrixWeights = e;
+    pe.CleanBoneMatrixWeights = e;
   }
   /**
    * Gets the default plugin (used to load Babylon files)
@@ -26546,7 +26546,7 @@ class We {
     t._shouldGenerateFlatShading && (t.convertToFlatShadedMesh(), t._shouldGenerateFlatShading = !1), t.computeWorldMatrix(!0), i.onMeshImportedObservable.notifyObservers(t);
   }
   static _CleanMatricesWeights(e, t) {
-    if (!me.CleanBoneMatrixWeights)
+    if (!pe.CleanBoneMatrixWeights)
       return;
     let s = 0;
     if (e.skeletonId > -1) {
@@ -29084,13 +29084,13 @@ class Bt {
   static PrepareDefinesForLight(e, t, i, s, r, n, a) {
     var o;
     switch (a.needNormals = !0, r["LIGHT" + s] === void 0 && (a.needRebuild = !0), r["LIGHT" + s] = !0, r["SPOTLIGHT" + s] = !1, r["HEMILIGHT" + s] = !1, r["POINTLIGHT" + s] = !1, r["DIRLIGHT" + s] = !1, i.prepareLightSpecificDefines(r, s), r["LIGHT_FALLOFF_PHYSICAL" + s] = !1, r["LIGHT_FALLOFF_GLTF" + s] = !1, r["LIGHT_FALLOFF_STANDARD" + s] = !1, i.falloffType) {
-      case be.FALLOFF_GLTF:
+      case me.FALLOFF_GLTF:
         r["LIGHT_FALLOFF_GLTF" + s] = !0;
         break;
-      case be.FALLOFF_PHYSICAL:
+      case me.FALLOFF_PHYSICAL:
         r["LIGHT_FALLOFF_PHYSICAL" + s] = !0;
         break;
-      case be.FALLOFF_STANDARD:
+      case me.FALLOFF_STANDARD:
         r["LIGHT_FALLOFF_STANDARD" + s] = !0;
         break;
     }
@@ -29101,7 +29101,7 @@ class Bt {
         l && l.renderList && l.renderList.length > 0 && (a.shadowEnabled = !0, h.prepareDefines(r, s));
       }
     }
-    i.lightmapMode != be.LIGHTMAP_DEFAULT ? (a.lightmapMode = !0, r["LIGHTMAPEXCLUDED" + s] = !0, r["LIGHTMAPNOSPECULAR" + s] = i.lightmapMode == be.LIGHTMAP_SHADOWSONLY) : (r["LIGHTMAPEXCLUDED" + s] = !1, r["LIGHTMAPNOSPECULAR" + s] = !1);
+    i.lightmapMode != me.LIGHTMAP_DEFAULT ? (a.lightmapMode = !0, r["LIGHTMAPEXCLUDED" + s] = !0, r["LIGHTMAPNOSPECULAR" + s] = i.lightmapMode == me.LIGHTMAP_SHADOWSONLY) : (r["LIGHTMAPEXCLUDED" + s] = !1, r["LIGHTMAPNOSPECULAR" + s] = !1);
   }
   /**
    * Prepares the defines related to the light information passed in parameter
@@ -32294,7 +32294,7 @@ Bad Bone Indices = ` + f;
    */
   static Parse(e, t, i) {
     let s;
-    if (e.type && e.type === "LinesMesh" ? s = U._LinesMeshParser(e, t) : e.type && e.type === "GroundMesh" ? s = U._GroundMeshParser(e, t) : e.type && e.type === "GoldbergMesh" ? s = U._GoldbergMeshParser(e, t) : s = new U(e.name, t), s.id = e.id, s._waitingParsedUniqueId = e.uniqueId, re && re.AddTagsTo(s, e.tags), s.position = p.FromArray(e.position), e.metadata !== void 0 && (s.metadata = e.metadata), e.rotationQuaternion ? s.rotationQuaternion = z.FromArray(e.rotationQuaternion) : e.rotation && (s.rotation = p.FromArray(e.rotation)), s.scaling = p.FromArray(e.scaling), e.localMatrix ? s.setPreTransformMatrix(R.FromArray(e.localMatrix)) : e.pivotMatrix && s.setPivotMatrix(R.FromArray(e.pivotMatrix)), s.setEnabled(e.isEnabled), s.isVisible = e.isVisible, s.infiniteDistance = e.infiniteDistance, s.showBoundingBox = e.showBoundingBox, s.showSubMeshesBoundingBox = e.showSubMeshesBoundingBox, e.applyFog !== void 0 && (s.applyFog = e.applyFog), e.pickable !== void 0 && (s.isPickable = e.pickable), e.alphaIndex !== void 0 && (s.alphaIndex = e.alphaIndex), s.receiveShadows = e.receiveShadows, e.billboardMode !== void 0 && (s.billboardMode = e.billboardMode), e.visibility !== void 0 && (s.visibility = e.visibility), s.checkCollisions = e.checkCollisions, s.overrideMaterialSideOrientation = e.overrideMaterialSideOrientation, e.isBlocker !== void 0 && (s.isBlocker = e.isBlocker), s._shouldGenerateFlatShading = e.useFlatShading, e.freezeWorldMatrix && (s._waitingData.freezeWorldMatrix = e.freezeWorldMatrix), e.parentId !== void 0 && (s._waitingParentId = e.parentId), e.parentInstanceIndex !== void 0 && (s._waitingParentInstanceIndex = e.parentInstanceIndex), e.actions !== void 0 && (s._waitingData.actions = e.actions), e.overlayAlpha !== void 0 && (s.overlayAlpha = e.overlayAlpha), e.overlayColor !== void 0 && (s.overlayColor = ee.FromArray(e.overlayColor)), e.renderOverlay !== void 0 && (s.renderOverlay = e.renderOverlay), s.isUnIndexed = !!e.isUnIndexed, s.hasVertexAlpha = e.hasVertexAlpha, e.delayLoadingFile ? (s.delayLoadState = 4, s.delayLoadingFile = i + e.delayLoadingFile, s.buildBoundingInfo(p.FromArray(e.boundingBoxMinimum), p.FromArray(e.boundingBoxMaximum)), e._binaryInfo && (s._binaryInfo = e._binaryInfo), s._delayInfo = [], e.hasUVs && s._delayInfo.push(_.UVKind), e.hasUVs2 && s._delayInfo.push(_.UV2Kind), e.hasUVs3 && s._delayInfo.push(_.UV3Kind), e.hasUVs4 && s._delayInfo.push(_.UV4Kind), e.hasUVs5 && s._delayInfo.push(_.UV5Kind), e.hasUVs6 && s._delayInfo.push(_.UV6Kind), e.hasColors && s._delayInfo.push(_.ColorKind), e.hasMatricesIndices && s._delayInfo.push(_.MatricesIndicesKind), e.hasMatricesWeights && s._delayInfo.push(_.MatricesWeightsKind), s._delayLoadingFunction = We._ImportGeometry, me.ForceFullSceneLoadingForIncremental && s._checkDelayState()) : We._ImportGeometry(e, s), e.materialUniqueId ? s._waitingMaterialId = e.materialUniqueId : e.materialId && (s._waitingMaterialId = e.materialId), e.morphTargetManagerId > -1 && (s.morphTargetManager = t.getMorphTargetManagerById(e.morphTargetManagerId)), e.skeletonId !== void 0 && e.skeletonId !== null && (s.skeleton = t.getLastSkeletonById(e.skeletonId), e.numBoneInfluencers && (s.numBoneInfluencers = e.numBoneInfluencers)), e.animations) {
+    if (e.type && e.type === "LinesMesh" ? s = U._LinesMeshParser(e, t) : e.type && e.type === "GroundMesh" ? s = U._GroundMeshParser(e, t) : e.type && e.type === "GoldbergMesh" ? s = U._GoldbergMeshParser(e, t) : s = new U(e.name, t), s.id = e.id, s._waitingParsedUniqueId = e.uniqueId, re && re.AddTagsTo(s, e.tags), s.position = p.FromArray(e.position), e.metadata !== void 0 && (s.metadata = e.metadata), e.rotationQuaternion ? s.rotationQuaternion = z.FromArray(e.rotationQuaternion) : e.rotation && (s.rotation = p.FromArray(e.rotation)), s.scaling = p.FromArray(e.scaling), e.localMatrix ? s.setPreTransformMatrix(R.FromArray(e.localMatrix)) : e.pivotMatrix && s.setPivotMatrix(R.FromArray(e.pivotMatrix)), s.setEnabled(e.isEnabled), s.isVisible = e.isVisible, s.infiniteDistance = e.infiniteDistance, s.showBoundingBox = e.showBoundingBox, s.showSubMeshesBoundingBox = e.showSubMeshesBoundingBox, e.applyFog !== void 0 && (s.applyFog = e.applyFog), e.pickable !== void 0 && (s.isPickable = e.pickable), e.alphaIndex !== void 0 && (s.alphaIndex = e.alphaIndex), s.receiveShadows = e.receiveShadows, e.billboardMode !== void 0 && (s.billboardMode = e.billboardMode), e.visibility !== void 0 && (s.visibility = e.visibility), s.checkCollisions = e.checkCollisions, s.overrideMaterialSideOrientation = e.overrideMaterialSideOrientation, e.isBlocker !== void 0 && (s.isBlocker = e.isBlocker), s._shouldGenerateFlatShading = e.useFlatShading, e.freezeWorldMatrix && (s._waitingData.freezeWorldMatrix = e.freezeWorldMatrix), e.parentId !== void 0 && (s._waitingParentId = e.parentId), e.parentInstanceIndex !== void 0 && (s._waitingParentInstanceIndex = e.parentInstanceIndex), e.actions !== void 0 && (s._waitingData.actions = e.actions), e.overlayAlpha !== void 0 && (s.overlayAlpha = e.overlayAlpha), e.overlayColor !== void 0 && (s.overlayColor = ee.FromArray(e.overlayColor)), e.renderOverlay !== void 0 && (s.renderOverlay = e.renderOverlay), s.isUnIndexed = !!e.isUnIndexed, s.hasVertexAlpha = e.hasVertexAlpha, e.delayLoadingFile ? (s.delayLoadState = 4, s.delayLoadingFile = i + e.delayLoadingFile, s.buildBoundingInfo(p.FromArray(e.boundingBoxMinimum), p.FromArray(e.boundingBoxMaximum)), e._binaryInfo && (s._binaryInfo = e._binaryInfo), s._delayInfo = [], e.hasUVs && s._delayInfo.push(_.UVKind), e.hasUVs2 && s._delayInfo.push(_.UV2Kind), e.hasUVs3 && s._delayInfo.push(_.UV3Kind), e.hasUVs4 && s._delayInfo.push(_.UV4Kind), e.hasUVs5 && s._delayInfo.push(_.UV5Kind), e.hasUVs6 && s._delayInfo.push(_.UV6Kind), e.hasColors && s._delayInfo.push(_.ColorKind), e.hasMatricesIndices && s._delayInfo.push(_.MatricesIndicesKind), e.hasMatricesWeights && s._delayInfo.push(_.MatricesWeightsKind), s._delayLoadingFunction = We._ImportGeometry, pe.ForceFullSceneLoadingForIncremental && s._checkDelayState()) : We._ImportGeometry(e, s), e.materialUniqueId ? s._waitingMaterialId = e.materialUniqueId : e.materialId && (s._waitingMaterialId = e.materialId), e.morphTargetManagerId > -1 && (s.morphTargetManager = t.getMorphTargetManagerById(e.morphTargetManagerId)), e.skeletonId !== void 0 && e.skeletonId !== null && (s.skeleton = t.getLastSkeletonById(e.skeletonId), e.numBoneInfluencers && (s.numBoneInfluencers = e.numBoneInfluencers)), e.animations) {
       for (let r = 0; r < e.animations.length; r++) {
         const n = e.animations[r], a = ii("BABYLON.Animation");
         a && s.animations.push(a.Parse(n));
@@ -33168,7 +33168,7 @@ const Pr = {
   lights: [],
   rollId: null,
   scene: null
-}, ge = class ge {
+}, be = class be {
   constructor(e, t) {
     // mesh = null
     Ut(this, "value", 0);
@@ -33231,10 +33231,10 @@ const Pr = {
     this.config = { ...this.config, ...e };
   }
   static setVector3(e, t, i) {
-    return ge.vector3.set(e, t, i);
+    return be.vector3.set(e, t, i);
   }
   static getVector3() {
-    return ge.vector3;
+    return be.vector3;
   }
   static getForcedFaceValue(e) {
     var t, i;
@@ -33242,7 +33242,7 @@ const Pr = {
   }
   static getForcedValue(e) {
     var t;
-    return ((t = e.config) == null ? void 0 : t.forcedValue) ?? ge.getForcedFaceValue(e);
+    return ((t = e.config) == null ? void 0 : t.forcedValue) ?? be.getForcedFaceValue(e);
   }
   static getFaceNormal(e, t) {
     const i = e.getVerticesData("position"), s = e.getVerticesData("normal"), r = e.getIndices(), n = Number(t) * 3, a = (d) => r ? r[n + d] : n + d, o = (d) => {
@@ -33287,7 +33287,7 @@ const Pr = {
     for (const [n, a] of Object.entries(t)) {
       if (Number(a) !== Number(i))
         continue;
-      const o = ge.getFaceNormal(e, n);
+      const o = be.getFaceNormal(e, n);
       o && (s.addInPlace(o), r++);
     }
     return r > 0 ? s.normalize() : null;
@@ -33299,30 +33299,20 @@ const Pr = {
   static chooseShortestQuaternion(e, t) {
     return z.Dot(e, t) < 0 ? t.scale(-1) : t;
   }
-  static chooseBestTargetQuaternion(e, t, i, s) {
-    const r = [
-      t.multiply(e),
-      e.multiply(t)
-    ];
-    return r.reduce((n, a) => {
-      const o = p.Dot(ge.transformNormalByQuaternion(i, a), s);
-      return o > n.score ? { quaternion: a, score: o } : n;
-    }, { quaternion: r[0], score: -1 / 0 }).quaternion;
-  }
   static smoothForcedResult(e, t, i = 1, s = !1) {
     var A, E;
-    const r = ge.getForcedFaceValue(e);
+    const r = be.getForcedFaceValue(e);
     if (r === void 0 || !((A = e.mesh) != null && A.rotationQuaternion))
       return;
     const n = e.config.parentMesh || e.config.meshName, a = t.themeData[n], o = (E = a == null ? void 0 : a.colliderFaceMap) == null ? void 0 : E[e.dieType], h = t.getMeshByName(`${n}_${e.dieType}_collider`);
     if (!o || !h)
       return;
-    const l = ge.getMappedFaceNormal(h, o, r);
+    const l = be.getMappedFaceNormal(h, o, r);
     if (!l)
       return;
-    const u = e.dieType === "d4" && (a != null && a.d4FaceDown) ? new p(0, -1, 0) : new p(0, 1, 0), d = (e.__rawRotationQuaternion || e.mesh.rotationQuaternion).clone().normalize(), g = ge.transformNormalByQuaternion(l, d), f = z.FromUnitVectorsToRef(g, u, z.Identity());
-    let m = ge.chooseBestTargetQuaternion(d, f, l, u).normalize();
-    m = ge.chooseShortestQuaternion(d, m);
+    const u = e.dieType === "d4" && (a != null && a.d4FaceDown) ? new p(0, -1, 0) : new p(0, 1, 0), d = (e.__rawRotationQuaternion || e.mesh.rotationQuaternion).clone().normalize(), g = l.applyRotationQuaternion ? l.applyRotationQuaternion(d).normalize() : be.transformNormalByQuaternion(l, d);
+    let m = z.FromUnitVectorsToRef(g, u, z.Identity()).multiply(d).normalize();
+    m = be.chooseShortestQuaternion(d, m);
     const b = (y) => {
       const x = Math.max(0, Math.min(1, y));
       e.mesh.rotationQuaternion = z.Slerp(d, m, x).normalize();
@@ -33356,18 +33346,18 @@ const Pr = {
         throw new Error(`No colliderFaceMap data for ${s.dieType}`);
       const l = t.getMeshByName(`${a}_${s.dieType}_collider`).createInstance(`${a}_${s.dieType}-hitbox-${s.id}`);
       l.isPickable = !0, l.isVisible = !0, l.setEnabled(!0), l.position = s.mesh.position, l.rotationQuaternion = s.mesh.rotationQuaternion;
-      let u = ge.setVector3(0, 1, 0);
-      s.dieType === "d4" && h && (u = ge.setVector3(0, -1, 0)), ge.ray.direction = u, ge.ray.origin = e.mesh.position;
-      const d = t.pickWithRay(ge.ray);
+      let u = be.setVector3(0, 1, 0);
+      s.dieType === "d4" && h && (u = be.setVector3(0, -1, 0)), be.ray.direction = u, be.ray.origin = e.mesh.position;
+      const d = t.pickWithRay(be.ray);
       l.dispose(), s.value = o[s.dieType][d.faceId];
-      const g = ge.getForcedFaceValue(s), f = ge.getForcedValue(s);
-      return g !== void 0 && ge.smoothForcedResult(s, t, 1, !0), (m = s.config) != null && m.forcedDiscarded && ge.fadeDiscarded(s), f !== void 0 && Number.isFinite(Number(f)) && (s.value = Number(f)), s.value === void 0 && (console.error(`colliderFaceMap Error: No value found for ${s.dieType} mesh face ${d.faceId}`), s.value = 0), r(s.value);
+      const g = be.getForcedFaceValue(s), f = be.getForcedValue(s);
+      return g !== void 0 && be.smoothForcedResult(s, t, 1, !0), (m = s.config) != null && m.forcedDiscarded && be.fadeDiscarded(s), f !== void 0 && Number.isFinite(Number(f)) && (s.value = Number(f)), s.value === void 0 && (console.error(`colliderFaceMap Error: No value found for ${s.dieType} mesh face ${d.faceId}`), s.value = 0), r(s.value);
     }).catch((r) => console.error(r));
     return e.mesh ? await i() : e.value;
   }
 };
-Ut(ge, "ray", new ie(p.Zero(), p.Zero(), 1)), Ut(ge, "vector3", p.Zero());
-let is = ge;
+Ut(be, "ray", new ie(p.Zero(), p.Zero(), 1)), Ut(be, "vector3", p.Zero());
+let is = be;
 export {
   Br as $,
   ci as A,
@@ -33381,7 +33371,7 @@ export {
   $t as I,
   $s as J,
   De as K,
-  be as L,
+  me as L,
   U as M,
   ke as N,
   w as O,
@@ -33434,7 +33424,7 @@ export {
   se as u,
   It as v,
   S as w,
-  pe as x,
+  ge as x,
   oi as y,
   _ as z
 };
