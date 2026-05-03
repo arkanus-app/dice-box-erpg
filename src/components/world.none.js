@@ -13,6 +13,7 @@ class WorldNone {
 		this.onInitComplete = options.onInitComplete || this.noop
 		this.onThemeLoaded = options.onThemeLoaded || this.noop
 		this.onRollResult = options.onRollResult || this.noop
+		this.onRollError = options.onRollError || this.noop
 		this.onRollComplete = options.onRollComplete || this.noop
 		this.onDieRemoved = options.onDieRemoved || this.noop
 		this.initialized = this.initScene(options)
@@ -102,6 +103,11 @@ class WorldNone {
 		this.#dieCache = {}
 		this.#count = 0
 		this.#sleeperCount = 0
+		clearTimeout(this.#rollCompleteTimer)
+	}
+
+	dispose(){
+		this.clear()
 	}
 
 	// handle the position updates from the physics worker. It's a simple flat array of numbers for quick and easy transfer
@@ -109,8 +115,12 @@ class WorldNone {
 		// mark this die as asleep
 		die.asleep = true
 	
-		// get the roll result for this die
-		await Dice.getRollResult(die)
+		try {
+			await Dice.getRollResult(die)
+		} catch(error) {
+			this.onRollError(error)
+			return
+		}
 	
 		if(die.d10Instance || die.dieParent) {
 			// if one of the pair is asleep and the other isn't then it falls through without getting the roll result

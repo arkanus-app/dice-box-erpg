@@ -54,6 +54,15 @@ self.onmessage = async (e) => {
 						value
 					}})
 				},
+				onRollError: (error) => {
+					self.postMessage({
+						action: "roll-error",
+						error: {
+							message: error?.message || String(error),
+							stack: error?.stack
+						}
+					})
+				},
 				onRollComplete: () => {
 					self.postMessage({action: "roll-complete"})
 				},

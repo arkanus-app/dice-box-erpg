@@ -30,6 +30,7 @@ class WorldOnscreen {
 		this.onInitComplete = options.onInitComplete || this.noop
 		this.onThemeLoaded = options.onThemeLoaded || this.noop
 		this.onRollResult = options.onRollResult || this.noop
+		this.onRollError = options.onRollError || this.noop
 		this.onRollComplete = options.onRollComplete || this.noop
 		this.onDieRemoved = options.onDieRemoved || this.noop
 		this.initialized = this.initScene(options)
@@ -215,6 +216,12 @@ class WorldOnscreen {
 		this.#scene.render()
 	}
 
+	dispose() {
+		this.clear()
+		this.#engine.stopRenderLoop()
+		this.#engine.dispose()
+	}
+
 	add(options) {
 		// loadDie allows you to specify sides(dieType) and theme and returns the options you passed in
 		Dice.loadDie(options, this.#scene).then(resp => {
@@ -358,7 +365,7 @@ class WorldOnscreen {
 
 	#usesPhysicsForcedResult(die) {
 		const hasForcedFace = die.config.forcedFaceValue !== undefined || die.config.forcedValue !== undefined
-		return hasForcedFace && die.config.forcedResultMode !== 'visual'
+		return hasForcedFace
 	}
 
 	#guideForcedDie(die) {
@@ -444,13 +451,6 @@ class WorldOnscreen {
 				const frames = (die.__forcedSyncFrames = (die.__forcedSyncFrames || 0) + 1)
 				if(this.#usesPhysicsForcedResult(die)) {
 					this.#guideForcedDie(die)
-				} else {
-					const isCube = die.dieType === 'd6'
-					const delay = isCube ? 24 : 18
-					const duration = isCube ? 90 : 70
-					const maxProgress = isCube ? 0.16 : 0.42
-					const progress = Math.min(maxProgress, Math.max(0, (frames - delay) / duration * maxProgress))
-					Dice.smoothForcedResult(die, this.#scene, progress)
 				}
 			}
 		}
@@ -472,8 +472,12 @@ class WorldOnscreen {
 		// mark this die as asleep
 		die.asleep = true
 	
-		// get the roll result for this die
-		await Dice.getRollResult(die, this.#scene)
+		try {
+			await Dice.getRollResult(die, this.#scene)
+		} catch(error) {
+			this.onRollError(error)
+			return
+		}
 	
 		if(die.d10Instance || die.dieParent) {
 			// if one of the pair is asleep and the other isn't then it falls through without getting the roll result

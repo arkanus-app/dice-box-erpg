@@ -435,6 +435,65 @@ class Dice {
     }
   }
 
+  static readTopFaceValue(die, scene) {
+    const meshName = die.config.parentMesh || die.config.meshName
+    const themeData = scene.themeData[meshName]
+    const meshFaceIds = themeData?.colliderFaceMap
+    const d4FaceDown = themeData?.d4FaceDown
+
+    if(!meshFaceIds?.[die.dieType]) {
+      throw new Error(`No colliderFaceMap data for ${die.dieType}`)
+    }
+
+    const collider = scene.getMeshByName(`${meshName}_${die.dieType}_collider`)
+    if(!collider) {
+      throw new Error(`No collider mesh found for ${die.dieType}`)
+    }
+
+    const dieHitbox = collider.createInstance(`${meshName}_${die.dieType}-hitbox-${die.id}-${Date.now()}`)
+    dieHitbox.isPickable = true
+    dieHitbox.isVisible = true
+    dieHitbox.setEnabled(true)
+    dieHitbox.position.copyFrom(die.mesh.position)
+    dieHitbox.rotationQuaternion = die.mesh.rotationQuaternion
+    dieHitbox.computeWorldMatrix(true)
+
+    let vector = Dice.setVector3(0, 1, 0)
+    if(die.dieType === 'd4' && d4FaceDown) {
+      vector = Dice.setVector3(0, -1, 0)
+    }
+
+    try {
+      Dice.ray.direction = vector
+      Dice.ray.origin = die.mesh.position
+      const picked = scene.pickWithRay(Dice.ray, (mesh) => mesh === dieHitbox)
+      const value = picked?.faceId !== undefined ? meshFaceIds[die.dieType][picked.faceId] : undefined
+      if(value === undefined) {
+        throw new Error(`colliderFaceMap error: no value found for ${die.dieType} mesh face ${picked?.faceId}`)
+      }
+      return Number(value)
+    } finally {
+      dieHitbox.dispose()
+    }
+  }
+
+  static lockForcedResult(die, scene) {
+    const resolvedTarget = Dice.getForcedTargetQuaternion(die, scene)
+    if(!resolvedTarget) {
+      return false
+    }
+
+    const { targetQuaternion } = resolvedTarget
+    if(die.mesh.rotationQuaternion?.copyFrom) {
+      die.mesh.rotationQuaternion.copyFrom(targetQuaternion)
+    } else {
+      die.mesh.rotationQuaternion = targetQuaternion
+    }
+    die.mesh.computeWorldMatrix?.(true)
+    scene.render?.()
+    return true
+  }
+
   static smoothForcedResult(die, scene, amount = 1, animate = false, animateFromCurrent = false) {
     const resolvedTarget = Dice.getForcedTargetQuaternion(die, scene)
 
@@ -499,67 +558,40 @@ class Dice {
     requestAnimationFrame(tick)
   }
 
-  static async getRollResult(die,scene) {
-    // TODO: Why a function in a function?? fix this
-    const getDieRoll = (d=die) => new Promise((resolve,reject) => {
-
-      const meshName = die.config.parentMesh || die.config.meshName
-      const meshFaceIds = scene.themeData[meshName].colliderFaceMap
-      const d4FaceDown = scene.themeData[meshName].d4FaceDown
-
-      if(!meshFaceIds[d.dieType]){
-        throw new Error(`No colliderFaceMap data for ${d.dieType}`)
-      }
-
-      // const dieHitbox = d.config.scene.getMeshByName(`${d.dieType}_collider`).createInstance(`${d.dieType}-hitbox-${d.id}`)
-      const dieHitbox = scene.getMeshByName(`${meshName}_${d.dieType}_collider`).createInstance(`${meshName}_${d.dieType}-hitbox-${d.id}`)
-      dieHitbox.isPickable = true
-      dieHitbox.isVisible = true
-      dieHitbox.setEnabled(true)
-      dieHitbox.position = d.mesh.position
-      dieHitbox.rotationQuaternion = d.mesh.rotationQuaternion
-
-      let vector = Dice.setVector3(0, 1, 0)
-      if(d.dieType === 'd4' && d4FaceDown) {
-        vector = Dice.setVector3(0, -1, 0)
-      }
-
-      Dice.ray.direction = vector
-      Dice.ray.origin = die.mesh.position
-
-      const picked = scene.pickWithRay(Dice.ray)
-
-      dieHitbox.dispose()
-
-      // let rayHelper = new RayHelper(Dice.ray)
-      // rayHelper.show(d.config.scene)
-			d.value = picked?.faceId !== undefined ? meshFaceIds[d.dieType][picked.faceId] : undefined
-      const forcedFaceValue = Dice.getForcedFaceValue(d)
-      const forcedValue = Dice.getForcedValue(d)
-      if(forcedFaceValue !== undefined && !d.__forcedPhysicsGuided) {
-        Dice.smoothForcedResult(d, scene, 1, true, true)
-      }
-      if(d.config?.forcedDiscarded) {
-        Dice.fadeDiscarded(d)
-      }
-      if(forcedValue !== undefined && Number.isFinite(Number(forcedValue))) {
-        d.value = Number(forcedValue)
-      }
-      if(d.value === undefined){
-        // throw new Error(`colliderFaceMap Error: No value found for ${d.dieType} mesh face ${picked.faceId}`)
-        // log error, but allow result processing to continue
-        console.error(`colliderFaceMap Error: No value found for ${d.dieType} mesh face ${picked?.faceId}`)
-        d.value = 0
-      }
-
-      return resolve(d.value)
-    }).catch(error => console.error(error))
-
+  static async getRollResult(die, scene) {
     if(!die.mesh){
       return die.value
     }
-    
-    return await getDieRoll()
+
+    const forcedFaceValue = Dice.getForcedFaceValue(die)
+    if(forcedFaceValue !== undefined) {
+      if(!Dice.lockForcedResult(die, scene)) {
+        throw new Error(`Unable to resolve target face ${forcedFaceValue} for ${die.dieType}.`)
+      }
+
+      const resolvedFaceValue = Dice.readTopFaceValue(die, scene)
+      if(Number(resolvedFaceValue) !== Number(forcedFaceValue)) {
+        if(!Dice.lockForcedResult(die, scene)) {
+          throw new Error(`Unable to correct ${die.dieType} to requested face ${forcedFaceValue}.`)
+        }
+        const correctedFaceValue = Dice.readTopFaceValue(die, scene)
+        if(Number(correctedFaceValue) !== Number(forcedFaceValue)) {
+          throw new Error(`Resolved ${die.dieType} face ${correctedFaceValue} does not match requested face ${forcedFaceValue}.`)
+        }
+      }
+    }
+
+    if(die.config?.forcedDiscarded) {
+      Dice.fadeDiscarded(die)
+    }
+
+    die.value = Dice.readTopFaceValue(die, scene)
+    const forcedValue = Dice.getForcedValue(die)
+    if(forcedValue !== undefined && Number.isFinite(Number(forcedValue))) {
+      die.value = Number(forcedValue)
+    }
+
+    return die.value
   }
 }
 

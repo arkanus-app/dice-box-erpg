@@ -9,6 +9,7 @@ class WorldOffScreen {
 	#OffscreenWorker
 	// onInitComplete = () => {} // init callback
 	onRollResult = () => {} // individual die callback
+	onRollError = () => {}
 	onRollComplete = () => {} // roll group callback
 
 	constructor(options){
@@ -64,6 +65,9 @@ class WorldOffScreen {
 				case 'roll-result':
 					this.onRollResult(e.data.die)
 					break;
+				case 'roll-error':
+					this.onRollError(e.data.error)
+					break;
 				case 'roll-complete':
 					this.onRollComplete()
 					break;
@@ -115,6 +119,11 @@ class WorldOffScreen {
 
 	clear(){
 		this.#OffscreenWorker.postMessage({action: "clearDice"})
+	}
+
+	dispose(){
+		this.clear()
+		this.#OffscreenWorker.terminate()
 	}
 
 	add(options){

@@ -50,7 +50,8 @@ const forcedGuideOptions = {
 	angularDampingStart: .94,
 	angularDampingEnd: .55,
 	centerPull: .018,
-	centerMaxVelocity: .7
+	centerMaxVelocity: .7,
+	maxLockHeight: 2.4
 }
 
 const forcedGuideByDieType = {
@@ -663,6 +664,16 @@ const getBodyQuaternion = (body) => {
 	})
 }
 
+const getBodyPositionY = (body) => {
+	const ms = body.getMotionState()
+	if(!ms) {
+		return Number.POSITIVE_INFINITY
+	}
+
+	ms.getWorldTransform(tmpBtTrans)
+	return tmpBtTrans.getOrigin().y()
+}
+
 const setBodyQuaternion = (body, quaternion) => {
 	const ms = body.getMotionState()
 	if(!ms) {
@@ -744,10 +755,12 @@ const applyAngularMotor = (body, currentQuaternion, guide, profile, progress) =>
 }
 
 const finalizeGuidedBody = (body) => {
+	body.guidedTarget.state = 'finalLock'
 	setBodyQuaternion(body, body.guidedTarget.quaternion)
 	body.setLinearVelocity(emptyVector)
 	body.setAngularVelocity(emptyVector)
 	body.guidedTarget.complete = true
+	body.guidedTarget.state = 'complete'
 }
 
 const shouldStartGuidance = (body, speed, tilt) => {
@@ -772,10 +785,12 @@ const applyGuidance = (body, delta, speed, tilt) => {
 
 	if(!guide.active) {
 		if(!shouldStartGuidance(body, speed, tilt)) {
+			guide.state = 'freeFall'
 			return
 		}
 		guide.active = true
 		guide.elapsed = 0
+		guide.state = 'guidedSettle'
 	}
 
 	guide.elapsed += delta
@@ -791,7 +806,9 @@ const applyGuidance = (body, delta, speed, tilt) => {
 
 	const angle = applyAngularMotor(body, currentQuaternion, guide, profile, progress)
 
-	if(angle < profile.angleThreshold || progress >= 1 || body.timeout < 80) {
+	const nearFloor = getBodyPositionY(body) <= profile.maxLockHeight
+	const canLock = nearFloor && (body.hasGroundContact || progress >= .7 || body.timeout < 80)
+	if(canLock && (angle < profile.angleThreshold || progress >= 1 || body.timeout < 80)) {
 		finalizeGuidedBody(body)
 	}
 }
@@ -809,6 +826,7 @@ const setGuidedTarget = (body, quaternion, dieType = body.dieType) => {
 		active: existingGuide?.active || false,
 		complete: false,
 		elapsed: existingGuide?.elapsed || 0,
+		state: existingGuide?.state || 'spawn',
 	}
 	body.guidanceProfile = profile
 	body.guidedSleepReady = false
@@ -859,6 +877,9 @@ const update = (delta) => {
 	diceBufferView[0] = bodies.length
 
 	// Detect collisions
+	bodies.forEach(body => {
+		body.hasGroundContact = false
+	})
     const numManifolds = physicsWorld.getDispatcher().getNumManifolds();
     for (let i = 0; i < numManifolds; i++) {
         const contactManifold = physicsWorld.getDispatcher().getManifoldByIndexInternal(i);
@@ -867,6 +888,12 @@ const update = (delta) => {
 
         const rb0Id = body0.id;
         const rb1Id = body1.id;
+				if(rb0Id === 'box_bottom' && body1.guidedTarget) {
+					body1.hasGroundContact = true
+				}
+				if(rb1Id === 'box_bottom' && body0.guidedTarget) {
+					body0.hasGroundContact = true
+				}
 
         let totalForce = 0;
 
