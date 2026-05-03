@@ -374,11 +374,13 @@ class WorldOnscreen {
 			const qw = this.diceBufferView[bufferIndex + 7]
 
 			die.mesh.position.set(px, py, pz)
+			const rawRotationQuaternion = die.__rawRotationQuaternion || die.mesh.rotationQuaternion.clone()
+			rawRotationQuaternion.set(qx, qy, qz, qw)
+			die.__rawRotationQuaternion = rawRotationQuaternion
 			const hasForcedFace = die.config.forcedFaceValue !== undefined || die.config.forcedValue !== undefined
 			if(!(die.asleep && hasForcedFace)) {
 				die.mesh.rotationQuaternion.set(qx, qy, qz, qw)
 			}
-			die.__rawRotationQuaternion = die.mesh.rotationQuaternion.clone()
 			if(hasForcedFace) {
 				const frames = (die.__forcedSyncFrames = (die.__forcedSyncFrames || 0) + 1)
 				const isCube = die.dieType === 'd6'

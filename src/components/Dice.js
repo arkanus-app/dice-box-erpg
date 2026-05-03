@@ -306,8 +306,26 @@ class Dice {
     return matches > 0 ? normal.normalize() : null
   }
 
+  static getMatchingFaceNormals(collider, faceMap, value) {
+    const matches = []
+
+    for(const [faceId, faceValue] of Object.entries(faceMap)) {
+      if(Number(faceValue) !== Number(value)) {
+        continue
+      }
+
+      const normal = Dice.getFaceNormal(collider, faceId)
+      if(normal) {
+        matches.push({ faceId: Number(faceId), normal })
+      }
+    }
+
+    return matches
+  }
+
   static transformNormalByQuaternion(normal, quaternion) {
-    const matrix = Matrix.FromQuaternionToRef(quaternion, Matrix.Identity())
+    const matrix = Matrix.Identity()
+    Matrix.FromQuaternionToRef(quaternion, matrix)
     return Vector3.TransformNormal(normal, matrix).normalize()
   }
 
@@ -318,10 +336,72 @@ class Dice {
     return target
   }
 
-  static smoothForcedResult(die, scene, amount = 1, animate = false) {
+  static buildForcedTargetQuaternion(sourceQuaternion, targetFaceNormal, topVector) {
+    const currentTargetNormal = targetFaceNormal.applyRotationQuaternion
+      ? targetFaceNormal.applyRotationQuaternion(sourceQuaternion).normalize()
+      : Dice.transformNormalByQuaternion(targetFaceNormal, sourceQuaternion)
+    const delta = Quaternion.FromUnitVectorsToRef(currentTargetNormal, topVector, Quaternion.Identity())
+    const targetQuaternion = delta.multiply(sourceQuaternion).normalize()
+    return Dice.chooseShortestQuaternion(sourceQuaternion, targetQuaternion)
+  }
+
+  static pickTopFaceValue(die, scene, collider, faceMap, quaternion, topVector) {
+    const hitbox = collider.createInstance(`${collider.name}-sync-candidate-${die.id}-${Date.now()}`)
+    hitbox.isPickable = true
+    hitbox.isVisible = true
+    hitbox.setEnabled(true)
+    hitbox.position.copyFrom(die.mesh.position)
+    hitbox.rotationQuaternion = quaternion.clone()
+    hitbox.computeWorldMatrix(true)
+
+    try {
+      Dice.ray.direction = topVector
+      Dice.ray.origin = die.mesh.position
+
+      const picked = scene.pickWithRay(Dice.ray, (mesh) => mesh === hitbox)
+      const faceId = picked?.faceId
+      return {
+        faceId,
+        value: faceId !== undefined ? faceMap[faceId] : undefined
+      }
+    } finally {
+      hitbox.dispose()
+    }
+  }
+
+  static resolveForcedTargetQuaternion(die, scene, collider, faceMap, forcedFaceValue, sourceQuaternion, topVector) {
+    const candidates = Dice.getMatchingFaceNormals(collider, faceMap, forcedFaceValue)
+    let bestCandidate = null
+
+    for(const candidate of candidates) {
+      const quaternion = Dice.buildForcedTargetQuaternion(sourceQuaternion, candidate.normal, topVector)
+      const picked = Dice.pickTopFaceValue(die, scene, collider, faceMap, quaternion, topVector)
+
+      if(Number(picked.value) !== Number(forcedFaceValue)) {
+        continue
+      }
+
+      const resolvedNormal = Dice.transformNormalByQuaternion(candidate.normal, quaternion)
+      const score = Vector3.Dot(resolvedNormal, topVector)
+      if(!bestCandidate || score > bestCandidate.score) {
+        bestCandidate = { quaternion, score }
+      }
+    }
+
+    if(bestCandidate) {
+      return bestCandidate.quaternion
+    }
+
+    const targetFaceNormal = Dice.getMappedFaceNormal(collider, faceMap, forcedFaceValue)
+    return targetFaceNormal
+      ? Dice.buildForcedTargetQuaternion(sourceQuaternion, targetFaceNormal, topVector)
+      : null
+  }
+
+  static smoothForcedResult(die, scene, amount = 1, animate = false, animateFromCurrent = false) {
     const forcedFaceValue = Dice.getForcedFaceValue(die)
     if(forcedFaceValue === undefined || !die.mesh?.rotationQuaternion) {
-      return
+      return false
     }
 
     const meshName = die.config.parentMesh || die.config.meshName
@@ -329,33 +409,47 @@ class Dice {
     const faceMap = themeData?.colliderFaceMap?.[die.dieType]
     const collider = scene.getMeshByName(`${meshName}_${die.dieType}_collider`)
     if(!faceMap || !collider) {
-      return
-    }
-
-    const targetFaceNormal = Dice.getMappedFaceNormal(collider, faceMap, forcedFaceValue)
-    if(!targetFaceNormal) {
-      return
+      return false
     }
 
     const topVector = die.dieType === 'd4' && themeData?.d4FaceDown
       ? new Vector3(0, -1, 0)
       : new Vector3(0, 1, 0)
     const sourceQuaternion = (die.__rawRotationQuaternion || die.mesh.rotationQuaternion).clone().normalize()
-    const currentTargetNormal = targetFaceNormal.applyRotationQuaternion
-      ? targetFaceNormal.applyRotationQuaternion(sourceQuaternion).normalize()
-      : Dice.transformNormalByQuaternion(targetFaceNormal, sourceQuaternion)
-    const delta = Quaternion.FromUnitVectorsToRef(currentTargetNormal, topVector, Quaternion.Identity())
-    let targetQuaternion = delta.multiply(sourceQuaternion).normalize()
-    targetQuaternion = Dice.chooseShortestQuaternion(sourceQuaternion, targetQuaternion)
+    const targetQuaternion = Dice.resolveForcedTargetQuaternion(
+      die,
+      scene,
+      collider,
+      faceMap,
+      forcedFaceValue,
+      sourceQuaternion,
+      topVector
+    )
+
+    if(!targetQuaternion) {
+      return false
+    }
+    const clampedAmount = Math.max(0, Math.min(1, amount))
+    const amountTargetQuaternion = Quaternion.Slerp(sourceQuaternion, targetQuaternion, clampedAmount).normalize()
+    const animationSourceQuaternion = animateFromCurrent
+      ? die.mesh.rotationQuaternion.clone().normalize()
+      : sourceQuaternion
 
     const apply = (progress) => {
       const clamped = Math.max(0, Math.min(1, progress))
-      die.mesh.rotationQuaternion = Quaternion.Slerp(sourceQuaternion, targetQuaternion, clamped).normalize()
+      const nextQuaternion = Quaternion.Slerp(animationSourceQuaternion, amountTargetQuaternion, clamped).normalize()
+      if(die.mesh.rotationQuaternion?.copyFrom) {
+        die.mesh.rotationQuaternion.copyFrom(nextQuaternion)
+      } else {
+        die.mesh.rotationQuaternion = nextQuaternion
+      }
+      die.mesh.computeWorldMatrix?.(true)
+      scene.render?.()
     }
 
     if(!animate) {
       apply(amount)
-      return
+      return true
     }
 
     const start = performance.now()
@@ -368,6 +462,7 @@ class Dice {
       }
     }
     requestAnimationFrame(tick)
+    return true
   }
 
   static fadeDiscarded(die) {
@@ -424,11 +519,11 @@ class Dice {
 
       // let rayHelper = new RayHelper(Dice.ray)
       // rayHelper.show(d.config.scene)
-			d.value = meshFaceIds[d.dieType][picked.faceId]
+			d.value = picked?.faceId !== undefined ? meshFaceIds[d.dieType][picked.faceId] : undefined
       const forcedFaceValue = Dice.getForcedFaceValue(d)
       const forcedValue = Dice.getForcedValue(d)
       if(forcedFaceValue !== undefined) {
-        Dice.smoothForcedResult(d, scene, 1, true)
+        Dice.smoothForcedResult(d, scene, 1, true, true)
       }
       if(d.config?.forcedDiscarded) {
         Dice.fadeDiscarded(d)
@@ -439,7 +534,7 @@ class Dice {
       if(d.value === undefined){
         // throw new Error(`colliderFaceMap Error: No value found for ${d.dieType} mesh face ${picked.faceId}`)
         // log error, but allow result processing to continue
-        console.error(`colliderFaceMap Error: No value found for ${d.dieType} mesh face ${picked.faceId}`)
+        console.error(`colliderFaceMap Error: No value found for ${d.dieType} mesh face ${picked?.faceId}`)
         d.value = 0
       }
 
