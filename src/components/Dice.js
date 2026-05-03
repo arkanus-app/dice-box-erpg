@@ -539,8 +539,12 @@ class Dice {
   }
 
   static fadeDiscarded(die) {
-    if(!die.mesh?.instancedBuffers?.customColor || die.__discardFadeStarted) {
-      return
+    if(!die.mesh?.instancedBuffers?.customColor) {
+      return Promise.resolve()
+    }
+
+    if(die.__discardFadePromise) {
+      return die.__discardFadePromise
     }
 
     die.__discardFadeStarted = true
@@ -548,14 +552,30 @@ class Dice {
     const endColor = Color3.FromHexString('#676a72')
     const start = performance.now()
     const duration = 320
-    const tick = (time) => {
-      const progress = Math.min(1, (time - start) / duration)
-      die.mesh.instancedBuffers.customColor = Color3.Lerp(startColor, endColor, progress)
-      if(progress < 1) {
+
+    die.__discardFadePromise = new Promise(resolve => {
+      const tick = (time) => {
+        const progress = Math.min(1, (time - start) / duration)
+        die.mesh.instancedBuffers.customColor = Color3.Lerp(startColor, endColor, progress)
+        die.mesh.computeWorldMatrix?.(true)
+        die.scene?.render?.()
+
+        if(progress >= 1) {
+          die.mesh.instancedBuffers.customColor = endColor
+          die.mesh.computeWorldMatrix?.(true)
+          die.scene?.render?.()
+          die.__discardFadeComplete = true
+          resolve()
+          return
+        }
+
         requestAnimationFrame(tick)
       }
-    }
-    requestAnimationFrame(tick)
+
+      requestAnimationFrame(tick)
+    })
+
+    return die.__discardFadePromise
   }
 
   static async getRollResult(die, scene) {
@@ -578,7 +598,7 @@ class Dice {
     }
 
     if(die.config?.forcedDiscarded) {
-      Dice.fadeDiscarded(die)
+      await Dice.fadeDiscarded(die)
     }
 
     die.value = Dice.readTopFaceValue(die, scene)

@@ -33410,15 +33410,25 @@ const Pr = {
     return requestAnimationFrame(m), !0;
   }
   static fadeDiscarded(e) {
-    var a, o;
-    if (!((o = (a = e.mesh) == null ? void 0 : a.instancedBuffers) != null && o.customColor) || e.__discardFadeStarted)
-      return;
+    var n, a;
+    if (!((a = (n = e.mesh) == null ? void 0 : n.instancedBuffers) != null && a.customColor))
+      return Promise.resolve();
+    if (e.__discardFadePromise)
+      return e.__discardFadePromise;
     e.__discardFadeStarted = !0;
-    const t = e.mesh.instancedBuffers.customColor.clone(), i = ee.FromHexString("#676a72"), s = performance.now(), r = 320, n = (h) => {
-      const c = Math.min(1, (h - s) / r);
-      e.mesh.instancedBuffers.customColor = ee.Lerp(t, i, c), c < 1 && requestAnimationFrame(n);
-    };
-    requestAnimationFrame(n);
+    const t = e.mesh.instancedBuffers.customColor.clone(), i = ee.FromHexString("#676a72"), s = performance.now(), r = 320;
+    return e.__discardFadePromise = new Promise((o) => {
+      const h = (c) => {
+        var d, g, f, m, b, T, M, v;
+        const u = Math.min(1, (c - s) / r);
+        if (e.mesh.instancedBuffers.customColor = ee.Lerp(t, i, u), (g = (d = e.mesh).computeWorldMatrix) == null || g.call(d, !0), (m = (f = e.scene) == null ? void 0 : f.render) == null || m.call(f), u >= 1) {
+          e.mesh.instancedBuffers.customColor = i, (T = (b = e.mesh).computeWorldMatrix) == null || T.call(b, !0), (v = (M = e.scene) == null ? void 0 : M.render) == null || v.call(M), e.__discardFadeComplete = !0, o();
+          return;
+        }
+        requestAnimationFrame(h);
+      };
+      requestAnimationFrame(h);
+    }), e.__discardFadePromise;
   }
   static async getRollResult(e, t) {
     var r;
@@ -33434,7 +33444,7 @@ const Pr = {
           throw new Error(`Resolved ${e.dieType} face ${n} does not match requested face ${i}.`);
       }
     }
-    (r = e.config) != null && r.forcedDiscarded && he.fadeDiscarded(e), e.value = he.readTopFaceValue(e, t);
+    (r = e.config) != null && r.forcedDiscarded && await he.fadeDiscarded(e), e.value = he.readTopFaceValue(e, t);
     const s = he.getForcedValue(e);
     return s !== void 0 && Number.isFinite(Number(s)) && (e.value = Number(s)), e.value;
   }
