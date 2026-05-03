@@ -41,12 +41,13 @@ const forcedGuideOptions = {
 	bounceGrace: 160,
 	speedThreshold: 1.6,
 	tiltThreshold: 1.4,
-	duration: 1180,
-	angleThreshold: 0.03,
+	duration: 1260,
+	angleThreshold: 0.035,
+	finalLockDuration: 220,
 	initialBias: .28,
-	angularStrength: 3.6,
-	maxAngularVelocity: 4.8,
-	motorBlend: .09,
+	angularStrength: 5.2,
+	maxAngularVelocity: 6.4,
+	motorBlend: .14,
 	linearDampingStart: 1,
 	linearDampingEnd: .76,
 	angularDampingStart: .995,
@@ -60,42 +61,42 @@ const forcedGuideByDieType = {
 	d4: {
 		minElapsed: 620,
 		forceGuideElapsed: 1600,
-		duration: 1280,
-		angularStrength: 3,
-		maxAngularVelocity: 3.7,
+		duration: 1380,
+		angularStrength: 4.2,
+		maxAngularVelocity: 5.2,
 		initialBias: .2,
 		centerPull: .014
 	},
 	d6: {
 		minElapsed: 580,
 		forceGuideElapsed: 1500,
-		duration: 1220,
-		angularStrength: 3.2,
-		maxAngularVelocity: 4,
+		duration: 1320,
+		angularStrength: 4.8,
+		maxAngularVelocity: 5.8,
 		initialBias: .24
 	},
 	d10: {
 		minElapsed: 520,
 		forceGuideElapsed: 1400,
-		duration: 1120,
-		angularStrength: 3.8,
-		maxAngularVelocity: 5.2,
+		duration: 1200,
+		angularStrength: 5.6,
+		maxAngularVelocity: 7,
 		initialBias: .3
 	},
 	d100: {
 		minElapsed: 520,
 		forceGuideElapsed: 1400,
-		duration: 1120,
-		angularStrength: 3.8,
-		maxAngularVelocity: 5.2,
+		duration: 1200,
+		angularStrength: 5.6,
+		maxAngularVelocity: 7,
 		initialBias: .3
 	},
 	d20: {
 		minElapsed: 480,
 		forceGuideElapsed: 1320,
-		duration: 1080,
-		angularStrength: 4.1,
-		maxAngularVelocity: 5.5,
+		duration: 1160,
+		angularStrength: 6.1,
+		maxAngularVelocity: 7.6,
 		initialBias: .34
 	}
 }
@@ -617,6 +618,38 @@ const getShortestTargetQuaternion = (source, target) => {
 		: target
 }
 
+const slerpQuaternion = (source, target, amount) => {
+	const t = clamp(amount, 0, 1)
+	let end = getShortestTargetQuaternion(source, target)
+	let cosHalfTheta = dotQuaternion(source, end)
+
+	if(cosHalfTheta < 0) {
+		end = {x: -end.x, y: -end.y, z: -end.z, w: -end.w}
+		cosHalfTheta = -cosHalfTheta
+	}
+
+	if(cosHalfTheta > 0.9995) {
+		return normalizeQuaternion({
+			x: lerp(source.x, end.x, t),
+			y: lerp(source.y, end.y, t),
+			z: lerp(source.z, end.z, t),
+			w: lerp(source.w, end.w, t)
+		})
+	}
+
+	const halfTheta = Math.acos(clamp(cosHalfTheta, -1, 1))
+	const sinHalfTheta = Math.sqrt(1 - cosHalfTheta * cosHalfTheta)
+	const ratioA = Math.sin((1 - t) * halfTheta) / sinHalfTheta
+	const ratioB = Math.sin(t * halfTheta) / sinHalfTheta
+
+	return normalizeQuaternion({
+		x: source.x * ratioA + end.x * ratioB,
+		y: source.y * ratioA + end.y * ratioB,
+		z: source.z * ratioA + end.z * ratioB,
+		w: source.w * ratioA + end.w * ratioB
+	})
+}
+
 const multiplyQuaternion = (a, b) => {
 	return normalizeQuaternion({
 		x: a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
@@ -783,13 +816,32 @@ const applyAngularMotor = (body, currentQuaternion, guide, profile, progress) =>
 }
 
 const finalizeGuidedBody = (body) => {
-	body.guidedTarget.state = 'finalLock'
-	setBodyQuaternion(body, body.guidedTarget.quaternion)
 	body.setLinearVelocity(emptyVector)
 	body.setAngularVelocity(emptyVector)
-	body.guidedTarget.complete = true
+	body.guidedTarget.lockSourceQuaternion = getBodyQuaternion(body) || body.guidedTarget.quaternion
+	body.guidedTarget.lockElapsed = 0
 	body.guidedFinalFrameSynced = false
-	body.guidedTarget.state = 'complete'
+	body.guidedTarget.state = 'finalLock'
+}
+
+const applyFinalLock = (body, delta) => {
+	const guide = body.guidedTarget
+	const profile = guide.profile || body.guidanceProfile || forcedGuideOptions
+	guide.lockElapsed = (guide.lockElapsed || 0) + delta
+	const duration = profile.finalLockDuration || forcedGuideOptions.finalLockDuration
+	const progress = smoothStep(guide.lockElapsed / duration)
+	const source = guide.lockSourceQuaternion || getBodyQuaternion(body) || guide.quaternion
+	const quaternion = slerpQuaternion(source, guide.quaternion, progress)
+
+	setBodyQuaternion(body, quaternion)
+	body.setLinearVelocity(emptyVector)
+	body.setAngularVelocity(emptyVector)
+
+	if(progress >= 1) {
+		setBodyQuaternion(body, guide.quaternion)
+		guide.complete = true
+		guide.state = 'complete'
+	}
 }
 
 const shouldStartGuidance = (body, speed, tilt) => {
@@ -824,6 +876,11 @@ const applyGuidance = (body, delta, speed, tilt) => {
 		return
 	}
 
+	if(guide.state === 'finalLock') {
+		applyFinalLock(body, delta)
+		return
+	}
+
 	if(!guide.active) {
 		if(!shouldStartGuidance(body, speed, tilt)) {
 			guide.state = 'freeFall'
@@ -851,9 +908,10 @@ const applyGuidance = (body, delta, speed, tilt) => {
 	const angle = applyAngularMotor(body, currentQuaternion, guide, profile, progress)
 
 	const nearFloor = getBodyPositionY(body) <= profile.maxLockHeight
-	const settled = speed < profile.speedThreshold && tilt < profile.tiltThreshold
+	const nearlyAligned = angle < profile.angleThreshold
+	const finalTimeout = body.timeout < 80
 	const canLock = nearFloor && (body.hasGroundContact || body.groundContactElapsed > 180 || body.timeout < 80)
-	if(canLock && (angle < profile.angleThreshold || (settled && progress > .78) || body.timeout < 80)) {
+	if(canLock && (nearlyAligned || finalTimeout)) {
 		finalizeGuidedBody(body)
 	}
 }
