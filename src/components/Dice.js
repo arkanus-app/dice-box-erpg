@@ -270,7 +270,7 @@ class Dice {
   }
 
   static transformNormalByQuaternion(normal, quaternion) {
-    const matrix = Matrix.FromQuaternion(quaternion)
+    const matrix = Matrix.FromQuaternionToRef(quaternion, Matrix.Identity())
     return Vector3.TransformNormal(normal, matrix).normalize()
   }
 
