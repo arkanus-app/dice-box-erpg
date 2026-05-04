@@ -1,4 +1,5 @@
 import { Color4 } from '@babylonjs/core/Maths/math.color'
+import '@babylonjs/core/Physics/physicsEngineComponent'
 import { Scene } from '@babylonjs/core/scene'
 import { SceneOptimizer, SceneOptimizerOptions } from '@babylonjs/core/Misc/sceneOptimizer'
 
