@@ -1,6 +1,6 @@
 /**
- * Havok Physics Engine - Integrado na Main Thread (Abordagem A)
- * Porta do physics.worker.js para usar PhysicsAggregate do BabylonJS + Havok
+ * Havok physics integration for Babylon Physics V2.
+ * Dice bodies live in the Babylon scene instead of the legacy split-worker path.
  */
 import { Vector3, Quaternion } from '@babylonjs/core/Maths/math.vector'
 import { PhysicsShapeType } from '@babylonjs/core/Physics/v2/IPhysicsEnginePlugin'

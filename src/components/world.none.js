@@ -110,7 +110,6 @@ class WorldNone {
 		this.clear()
 	}
 
-	// handle the position updates from the physics worker. It's a simple flat array of numbers for quick and easy transfer
 	async handleAsleep(die){
 		// mark this die as asleep
 		die.asleep = true

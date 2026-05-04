@@ -46,8 +46,6 @@ class WorldOffScreen {
 				case "init-complete":
 					this.offscreenWorkerInit() //fulfill promise so other things can run
 					break;
-				case "connect-complete":
-					break;
 				case "theme-loaded":
 					if(e.data.id){
 						this.pendingThemePromises[e.data.id]?.resolve(e.data.id)
@@ -82,14 +80,6 @@ class WorldOffScreen {
 		this.onInitComplete(true)
 
 		return true
-	}
-
-	connect(port){
-		// Setup the connection: Port 1 is for this.#OffscreenWorker
-		this.#OffscreenWorker.postMessage({
-			action : "connect",
-			port
-		},[ port ])
 	}
 
 	updateConfig(options){

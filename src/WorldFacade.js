@@ -18,7 +18,7 @@ const defaultOptions = {
 	preloadThemes: [],
 	externalThemes: {},
 	themeColor: '#2e8555',
-	offscreen: true,
+	offscreen: false,
 	assetPath: '/assets/dice-box/',
 	origin: typeof window !== 'undefined' ? window.location.origin : '',
 	maxDice: 999,

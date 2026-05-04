@@ -1,6 +1,6 @@
 # Dice-Box &middot; [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/frankieali/infima-extras/blob/main/LICENSE) [![npm version](https://img.shields.io/npm/v/@3d-dice/dice-box.svg?style=flat)](https://www.npmjs.com/package/@3d-dice/dice-box)
 
-High performance 3D dice roller module made with [BabylonJS](https://www.babylonjs.com/), [AmmoJS](https://github.com/kripken/ammo.js/) and implemented with [web workers](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Using_web_workers) and [offscreenCanvas](https://doc.babylonjs.com/divingDeeper/scene/offscreenCanvas). Designed to be easy to integrate into your own JavaScript app.
+High performance 3D dice roller module made with [BabylonJS](https://www.babylonjs.com/) and [Havok Physics](https://doc.babylonjs.com/features/featuresDeepDive/physics/havokPlugin/). The ERPG fork no longer ships the legacy Ammo worker path; dice physics runs through Babylon Physics V2 with Havok. Designed to be easy to integrate into your own JavaScript app.
 
 ![Demo Screenshot](https://github.com/3d-dice/dice-box/blob/main/dice-screenshot.jpg)
 
@@ -32,6 +32,8 @@ npm install @3d-dice/dice-box
 ```
 
 This ERPG fork does not run an install-time asset copy prompt. Serve the bundled dice-box assets from your app's public assets directory and point `assetPath` at that location.
+
+The physics runtime is bundled through `@babylonjs/havok`; no `ammo.wasm` asset is required.
 
 This is an ES module intended to be part of a build system. To import the module into your project use:
 

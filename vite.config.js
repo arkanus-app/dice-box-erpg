@@ -26,11 +26,13 @@ export default defineConfig({
 			output: [
 				{
 					format: "es",
+					inlineDynamicImports: true,
 					chunkFileNames: (chunkInfo) => `${chunkInfo.name}.js`,
 					sourcemap: true,
 				},
 				{
 					format: "esm",
+					inlineDynamicImports: true,
 					chunkFileNames: (chunkInfo) => `${chunkInfo.name}.min.js`,
 					sourcemap: false,
 					plugins: [

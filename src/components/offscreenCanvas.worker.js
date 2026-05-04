@@ -5,12 +5,6 @@ let WorldOffscreen
 // these are messages sent to this worker from World.js
 self.onmessage = async (e) => {
   switch( e.data.action ) {
-    case "rollDie":
-      // kick it over to the physics worker
-      WorldOffscreen.physicsWorkerPort.postMessage({
-        action: "roll"
-      })
-      break
     case "addDie":
 			WorldOffscreen.add(e.data.options)
       break
@@ -74,10 +68,6 @@ self.onmessage = async (e) => {
 		case "updateConfig":
 			WorldOffscreen.updateConfig(e.data.options)
 			break
-    case "connect": // These are messages sent from physics.worker.js
-			WorldOffscreen.connect(e.data.port)
-			self.postMessage({action:"connect-complete"})
-      break
     default:
       console.error("action not found in offscreen worker")
   }
