@@ -177,10 +177,10 @@ class Xt {
     return e;
   }
 }
-function Ri(c) {
-  return new W(c, !0, {
-    preserveDrawingBuffer: !0,
-    stencil: !0
+function Ri(c, e = {}) {
+  return new W(c, e.antialias !== !1, {
+    preserveDrawingBuffer: !1,
+    stencil: !1
   });
 }
 class xe {
@@ -7820,13 +7820,14 @@ A._SceneComponentInitialization = (c) => {
   e || (e = new _s(c), c._addComponent(e));
 };
 const gs = {
-  enableShadows: !0
+  enableShadows: !0,
+  shadowResolution: 1024
 };
 function jt(c = gs) {
-  const { enableShadows: e, shadowTransparency: t, intensity: i, scene: r } = c, s = new ge("DirectionalLight", new M(-0.3, -1, 0.4), r);
-  s.position = new M(-50, 65, -50), s.intensity = 0.65 * i;
-  const n = new vt("HemisphericLight", new M(1, 1, 0), r);
-  return n.intensity = 0.4 * i, e && (s.shadowMinZ = 1, s.shadowMaxZ = 70, s.shadowGenerator = new A(2048, s), s.shadowGenerator.useCloseExponentialShadowMap = !0, s.shadowGenerator.darkness = t), { directional: s, hemispheric: n };
+  const { enableShadows: e, shadowTransparency: t, intensity: i, scene: r, shadowResolution: s } = c, n = new ge("DirectionalLight", new M(-0.3, -1, 0.4), r);
+  n.position = new M(-50, 65, -50), n.intensity = 0.65 * i;
+  const a = new vt("HemisphericLight", new M(1, 1, 0), r);
+  return a.intensity = 0.4 * i, e && (n.shadowMinZ = 1, n.shadowMaxZ = 70, n.shadowGenerator = new A(s || 1024, n), n.shadowGenerator.useCloseExponentialShadowMap = !0, n.shadowGenerator.darkness = t), { directional: n, hemispheric: a };
 }
 function ri(c) {
   let t = [0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11, 12, 13, 14, 12, 14, 15, 16, 17, 18, 16, 18, 19, 20, 21, 22, 20, 22, 23];
@@ -12961,9 +12962,10 @@ class Sa {
   }
   // initialize the babylon scene
   async initScene(e) {
-    ie(this, fe, e.canvas), C(this, fe).width = e.width, C(this, fe).height = e.height, this.config = e.options, this.diceBufferView = me(this, ft, ni).call(this), ie(this, re, Ri(C(this, fe))), ie(this, Q, bi({ engine: C(this, re) })), ie(this, dt, Pi({ engine: C(this, re), scene: C(this, Q) })), ie(this, ce, jt({
+    ie(this, fe, e.canvas), C(this, fe).width = e.width, C(this, fe).height = e.height, this.config = e.options, this.diceBufferView = me(this, ft, ni).call(this), ie(this, re, Ri(C(this, fe), { antialias: this.config.antialias })), ie(this, Q, bi({ engine: C(this, re) })), ie(this, dt, Pi({ engine: C(this, re), scene: C(this, Q) })), ie(this, ce, jt({
       enableShadows: this.config.enableShadows,
       shadowTransparency: this.config.shadowTransparency,
+      shadowResolution: this.config.shadowResolution,
       intensity: this.config.lightIntensity,
       scene: C(this, Q)
     })), ie(this, Ke, new pa({
@@ -12994,6 +12996,7 @@ class Sa {
       {
         enableShadows: this.config.enableShadows,
         shadowTransparency: this.config.shadowTransparency,
+        shadowResolution: this.config.shadowResolution,
         intensity: this.config.lightIntensity,
         scene: C(this, Q)
       }

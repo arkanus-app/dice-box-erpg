@@ -1,9 +1,9 @@
 import { Engine } from '@babylonjs/core/Engines/engine'
 
-function createEngine(canvas) {
-  const engine = new Engine(canvas, true, {
-    preserveDrawingBuffer: true,
-    stencil: true,
+function createEngine(canvas, options = {}) {
+  const engine = new Engine(canvas, options.antialias !== false, {
+    preserveDrawingBuffer: false,
+    stencil: false,
   })
 
   return engine

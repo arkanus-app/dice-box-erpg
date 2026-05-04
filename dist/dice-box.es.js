@@ -138,7 +138,9 @@ const Rl = /* @__PURE__ */ new Set([4, 6, 8, 10, 12, 20, 100]), ul = (X) => {
   offscreen: !0,
   assetPath: "/assets/dice-box/",
   origin: typeof window < "u" ? window.location.origin : "",
-  maxDice: 999
+  maxDice: 999,
+  antialias: !0,
+  shadowResolution: 1024
 };
 var N, v, F, p, J, S, H, u, s, o, h, a, n, e, D, z, r, w, O, t, A, C, q, B, $, U, _, k, ll, Q, bl, x, E;
 class yl {
