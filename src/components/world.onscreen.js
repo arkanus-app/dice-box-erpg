@@ -42,8 +42,10 @@ class WorldOnscreen {
 
 	async initScene(config) {
 		this.#canvas = config.canvas
-		this.#canvas.width = config.width
-		this.#canvas.height = config.height
+		const width = Math.max(1, config.width || this.#canvas.clientWidth || this.#canvas.parentElement?.clientWidth || this.#canvas.width || 300)
+		const height = Math.max(1, config.height || this.#canvas.clientHeight || this.#canvas.parentElement?.clientHeight || this.#canvas.height || 150)
+		this.#canvas.width = width
+		this.#canvas.height = height
 
 		this.config = config.options
 
@@ -189,7 +191,7 @@ class WorldOnscreen {
 				const key = `${meshName}_${colliderData.name}`
 				const colliderMesh = this.#scene.getMeshByName(key)
 				if(colliderMesh) {
-					this.#physics?.registerColliderMesh(key, colliderMesh)
+					this.#physics?.registerColliderMesh(key, colliderMesh, colliderData)
 				}
 			})
 		}
@@ -220,8 +222,13 @@ class WorldOnscreen {
 	}
 
 	resize({ width, height }) {
+		const nextWidth = Math.max(1, width || this.#canvas?.clientWidth || this.#canvas?.parentElement?.clientWidth || this.#canvas?.width || 300)
+		const nextHeight = Math.max(1, height || this.#canvas?.clientHeight || this.#canvas?.parentElement?.clientHeight || this.#canvas?.height || 150)
+		this.#canvas.width = nextWidth
+		this.#canvas.height = nextHeight
 		this.#engine.resize()
-		this.#physics?.resize(width, height)
+		this.#container?.create({ aspect: nextWidth / nextHeight })
+		this.#physics?.resize(nextWidth, nextHeight)
 	}
 
 	add(options) {
@@ -266,7 +273,8 @@ class WorldOnscreen {
 			scale: this.config.scale,
 			id: newDie.id,
 			meshName: options.meshName,
-			forcedTargetQuaternion
+			forcedTargetQuaternion,
+			newStartPoint: options.newStartPoint
 		})
 
 		// Handle d100 = d100 + d10 pair

@@ -12,6 +12,7 @@ import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder'
 
 export const DICE_PHYSICS_TIME_STEP = 1 / 90
 export const DICE_PHYSICS_SUB_TIME_STEP_MS = 1000 / 90
+const DICE_COLLISION_MASK = 0xffff
 
 const defaultOptions = {
 	size: 9.5,
@@ -190,6 +191,8 @@ export class DicePhysics {
 			const pb = new PhysicsBody(m, PhysicsMotionType.STATIC, false, sc)
 			const shape = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(...halfSize), sc)
 			shape.material = { friction: this.#config.friction, restitution: this.#config.restitution }
+			shape.filterMembershipMask = DICE_COLLISION_MASK
+			shape.filterCollideMask = DICE_COLLISION_MASK
 			pb.shape = shape
 			pb.setMassProperties({ mass: 0 })
 			if(name === 'dice_floor') {
@@ -212,12 +215,21 @@ export class DicePhysics {
 		this.buildBox()
 	}
 
-	registerColliderMesh(key, mesh) {
+	registerColliderMesh(key, mesh, colliderData = {}) {
+		mesh.metadata = {
+			...mesh.metadata,
+			physicsMass: colliderData.physicsMass ?? mesh.metadata?.physicsMass,
+			physicsFriction: colliderData.physicsFriction ?? mesh.metadata?.physicsFriction,
+			physicsRestitution: colliderData.physicsRestitution ?? mesh.metadata?.physicsRestitution,
+		}
 		this.#colliders[key] = mesh
 	}
 
 	addDie(options) {
-		const { sides, id, meshName, forcedTargetQuaternion } = options
+		const { sides, id, meshName, forcedTargetQuaternion, newStartPoint } = options
+		if(newStartPoint) {
+			this.#setStartPosition()
+		}
 		const dieType = Number.isInteger(sides) ? `d${sides}` : sides
 		const comboKey = `${meshName}_${dieType}_collider`
 		const colliderMesh = this.#colliders[comboKey]
@@ -235,6 +247,11 @@ export class DicePhysics {
 		physMesh.isVisible = false
 		physMesh.isPickable = false
 		physMesh.setEnabled(true)
+		physMesh.scaling.set(
+			colliderMesh.scaling.x * this.#config.scale,
+			colliderMesh.scaling.y * this.#config.scale,
+			colliderMesh.scaling.z * this.#config.scale
+		)
 		physMesh.position.set(startPos[0], startPos[1], startPos[2])
 		if(biasedQ) {
 			physMesh.rotationQuaternion = new Quaternion(biasedQ.x, biasedQ.y, biasedQ.z, biasedQ.w)
@@ -247,9 +264,13 @@ export class DicePhysics {
 
 		const pb = new PhysicsBody(physMesh, PhysicsMotionType.DYNAMIC, false, this.#scene)
 		const shape = new PhysicsShapeConvexHull(physMesh, this.#scene)
-		shape.material = { friction: this.#config.friction, restitution: this.#config.restitution }
+		const friction = colliderMesh.metadata?.physicsFriction ?? this.#config.friction
+		const restitution = colliderMesh.metadata?.physicsRestitution ?? this.#config.restitution
+		shape.material = { friction, restitution }
+		shape.filterMembershipMask = DICE_COLLISION_MASK
+		shape.filterCollideMask = DICE_COLLISION_MASK
 		pb.shape = shape
-		pb.setMassProperties({ mass, restitution: this.#config.restitution })
+		pb.setMassProperties({ mass })
 		pb.setLinearDamping(this.#config.linearDamping)
 		pb.setAngularDamping(this.#config.angularDamping)
 		pb.disablePreStep = false
@@ -319,11 +340,8 @@ export class DicePhysics {
 	#handleCollision(entry, event) {
 		if(!entry || entry.asleep || event?.type === PhysicsEventType.COLLISION_FINISHED) return
 		const floor = this.#floorBody
-		if(!floor || (event.collider !== floor && event.collidedAgainst !== floor)) return
-
 		const force = Math.abs(Number(event.impulse) || 0)
-		entry.currentGroundContact = true
-		entry.currentGroundImpactForce = Math.max(entry.currentGroundImpactForce || 0, force)
+
 		if(force > 0) {
 			this.#onCollision({
 				action: 'collision',
@@ -332,6 +350,10 @@ export class DicePhysics {
 				force
 			})
 		}
+
+		if(!floor || (event.collider !== floor && event.collidedAgainst !== floor)) return
+		entry.currentGroundContact = true
+		entry.currentGroundImpactForce = Math.max(entry.currentGroundImpactForce || 0, force)
 	}
 
 	#syncGroundContactState(entry, delta) {
