@@ -22,6 +22,7 @@ const defaultOptions = {
 	gravity: 1,
 	mass: 1,
 	scale: 5,
+	wallPadding: 1.15,
 	friction: .8,
 	restitution: .1,
 	linearDamping: .22,
@@ -171,11 +172,11 @@ export class DicePhysics {
 	}
 
 	#setStartPosition() {
-		const { size = 9.5, startingHeight = 8 } = this.#config
-		const aspect = this.#aspect
+		const { startingHeight = 8 } = this.#config
+		const { halfX, halfZ } = this.#getBounds()
 		const edge = .5
-		const xMin = size*aspect/2-edge, xMax = size*aspect/-2+edge
-		const yMin = size/2-edge, yMax = size/-2+edge
+		const xMin = halfX-edge, xMax = -halfX+edge
+		const yMin = halfZ-edge, yMax = -halfZ+edge
 		const tossX = Math.round(Math.random())
 		const fromTop = Math.round(Math.random())
 		const fromLeft = Math.round(Math.random())
@@ -186,11 +187,21 @@ export class DicePhysics {
 		]
 	}
 
+	#getBounds() {
+		const { size = 9.5 } = this.#config
+		const padding = clamp(Number(this.#config.wallPadding) || 0, 0, size * .35)
+		return {
+			halfX: Math.max(1, size * this.#aspect / 2 - padding),
+			halfZ: Math.max(1, size / 2 - padding)
+		}
+	}
+
 	// Build the invisible box walls as static physics bodies
 	buildBox() {
 		const { size = 9.5, startingHeight = 8 } = this.#config
 		const height = startingHeight + 10
 		const a = this.#aspect
+		const { halfX, halfZ } = this.#getBounds()
 		const sc = this.#scene
 		const make = (name, pos, halfSize) => {
 			const m = MeshBuilder.CreateBox(name, { width: halfSize[0]*2, height: halfSize[1]*2, depth: halfSize[2]*2 }, sc)
@@ -211,10 +222,10 @@ export class DicePhysics {
 		}
 		make('dice_floor',   [0, -.5, 0],                [size*a, 1, size])
 		make('dice_ceiling', [0, height-.5, 0],           [size*a, 1, size])
-		make('dice_wallN',   [0, 0, -size/2-.5],          [size*a, height, 1])
-		make('dice_wallS',   [0, 0, size/2+.5],           [size*a, height, 1])
-		make('dice_wallE',   [-size*a/2-.5, 0, 0],        [1, height, size])
-		make('dice_wallW',   [size*a/2+.5, 0, 0],         [1, height, size])
+		make('dice_wallN',   [0, 0, -halfZ-1],            [size*a, height, 1])
+		make('dice_wallS',   [0, 0, halfZ+1],             [size*a, height, 1])
+		make('dice_wallE',   [-halfX-1, 0, 0],            [1, height, size])
+		make('dice_wallW',   [halfX+1, 0, 0],             [1, height, size])
 	}
 
 	#rebuildBox() {
