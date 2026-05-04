@@ -134,7 +134,7 @@ class WorldOnscreen {
 
 	updateConfig(options) {
 		const prevConfig = this.config
-		this.config = options
+		this.config = { ...this.config, ...(options || {}) }
 		if(prevConfig.enableShadows !== this.config.enableShadows) {
 			Object.values(this.#lights).forEach(light => light.dispose())
 			this.#lights = createLights({
@@ -160,7 +160,7 @@ class WorldOnscreen {
 			this.#lights.directional.intensity = .65 * this.config.lightIntensity
 			this.#lights.hemispheric.intensity = .4 * this.config.lightIntensity
 		}
-		this.#physics?.updateConfig(options)
+		this.#physics?.updateConfig(this.config)
 	}
 
 	render(newStartPoint) {

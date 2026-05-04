@@ -4,7 +4,7 @@
  */
 import { Vector3, Quaternion } from '@babylonjs/core/Maths/math.vector'
 import { PhysicsBody } from '@babylonjs/core/Physics/v2/physicsBody'
-import { PhysicsEventType, PhysicsMotionType } from '@babylonjs/core/Physics/v2/IPhysicsEnginePlugin'
+import { PhysicsActivationControl, PhysicsEventType, PhysicsMotionType } from '@babylonjs/core/Physics/v2/IPhysicsEnginePlugin'
 import { PhysicsShapeConvexHull } from '@babylonjs/core/Physics/v2/physicsShape'
 import { PhysicsShapeBox } from '@babylonjs/core/Physics/v2/physicsShape'
 import { lerp } from '../helpers'
@@ -21,6 +21,7 @@ const defaultOptions = {
 	throwForce: 5,
 	gravity: 1,
 	mass: 1,
+	scale: 5,
 	friction: .8,
 	restitution: .1,
 	linearDamping: .22,
@@ -108,6 +109,7 @@ const createBiasedInitialQuat = (targetQuat, profile) => {
 // --- Physics Engine Class ---
 export class DicePhysics {
 	#scene
+	#rawConfig = {...defaultOptions}
 	#config = {...defaultOptions}
 	#bodies = []   // {id, dieType, physicsBody, mesh, elapsed, timeout, guidedTarget, ...}
 	#boxBodies = []
@@ -123,7 +125,7 @@ export class DicePhysics {
 
 	constructor({ scene, config, onCollision }) {
 		this.#scene = scene
-		this.#config = { ...this.#config, ...config }
+		this.#rawConfig = { ...this.#rawConfig, ...(config || {}) }
 		this.#onCollision = onCollision || (() => {})
 		this.#applyComputedConfig()
 		this.#syncPhysicsEngine()
@@ -131,12 +133,13 @@ export class DicePhysics {
 	}
 
 	#applyComputedConfig() {
-		const c = this.#config
+		const c = { ...this.#rawConfig }
 		c.gravity = c.gravity === 0 ? 0 : c.gravity + (c.mass||1)/3
 		c.mass = 1 + (c.mass||1)/3
 		c.spinForce = (c.spinForce||6) / 40
 		c.throwForce = (c.throwForce||5) / 2 / c.mass * (1 + (c.scale||5)/6)
 		c.startingHeight = Math.max(1, c.startingHeight||8)
+		this.#config = c
 	}
 
 	#syncPhysicsEngine() {
@@ -148,10 +151,15 @@ export class DicePhysics {
 	}
 
 	updateConfig(options) {
-		this.#config = { ...this.#config, ...options }
+		const previousScale = this.#config.scale
+		this.#rawConfig = { ...this.#rawConfig, ...(options || {}) }
 		this.#applyComputedConfig()
 		this.#rebuildBox()
 		this.#syncPhysicsEngine()
+		this.#setStartPosition()
+		if(previousScale !== this.#config.scale) {
+			this.#rescaleActiveBodies()
+		}
 	}
 
 	resize(width, height) {
@@ -159,6 +167,7 @@ export class DicePhysics {
 		this.#height = height
 		this.#aspect = width / height
 		this.#rebuildBox()
+		this.#setStartPosition()
 	}
 
 	#setStartPosition() {
@@ -225,6 +234,51 @@ export class DicePhysics {
 		this.#colliders[key] = mesh
 	}
 
+	#setActivationControl(body, controlMode) {
+		try {
+			this.#scene.getPhysicsEngine?.()?.getPhysicsPlugin?.()?.setActivationControl?.(body, controlMode)
+		} catch {}
+	}
+
+	#applyShapeMaterial(shape) {
+		shape.material = {
+			friction: this.#config.friction,
+			restitution: this.#config.restitution
+		}
+		shape.filterMembershipMask = DICE_COLLISION_MASK
+		shape.filterCollideMask = DICE_COLLISION_MASK
+	}
+
+	#getColliderMass(colliderMesh) {
+		return colliderMesh.metadata?.physicsMass || .1
+	}
+
+	#getBodyMass(colliderMesh) {
+		return this.#getColliderMass(colliderMesh) * this.#config.mass * this.#config.scale
+	}
+
+	#scalePhysicsMesh(physMesh, colliderMesh) {
+		physMesh.scaling.set(
+			colliderMesh.scaling.x * this.#config.scale,
+			colliderMesh.scaling.y * this.#config.scale,
+			colliderMesh.scaling.z * this.#config.scale
+		)
+	}
+
+	#rescaleActiveBodies() {
+		for(const entry of this.#bodies) {
+			if(!entry.colliderMesh || !entry.physicsBody || entry.asleep) continue
+			this.#scalePhysicsMesh(entry.physMesh, entry.colliderMesh)
+			const shape = new PhysicsShapeConvexHull(entry.physMesh, this.#scene)
+			this.#applyShapeMaterial(shape)
+			try { entry.physicsBody.shape?.dispose?.() } catch {}
+			entry.physicsBody.shape = shape
+			entry.mass = this.#getBodyMass(entry.colliderMesh)
+			entry.physicsBody.setMassProperties({ mass: entry.mass })
+			this.#setActivationControl(entry.physicsBody, PhysicsActivationControl.ALWAYS_ACTIVE)
+		}
+	}
+
 	addDie(options) {
 		const { sides, id, meshName, forcedTargetQuaternion, newStartPoint } = options
 		if(newStartPoint) {
@@ -247,11 +301,7 @@ export class DicePhysics {
 		physMesh.isVisible = false
 		physMesh.isPickable = false
 		physMesh.setEnabled(true)
-		physMesh.scaling.set(
-			colliderMesh.scaling.x * this.#config.scale,
-			colliderMesh.scaling.y * this.#config.scale,
-			colliderMesh.scaling.z * this.#config.scale
-		)
+		this.#scalePhysicsMesh(physMesh, colliderMesh)
 		physMesh.position.set(startPos[0], startPos[1], startPos[2])
 		if(biasedQ) {
 			physMesh.rotationQuaternion = new Quaternion(biasedQ.x, biasedQ.y, biasedQ.z, biasedQ.w)
@@ -259,24 +309,20 @@ export class DicePhysics {
 			physMesh.rotationQuaternion = Quaternion.Random()
 		}
 
-		const colliderMass = colliderMesh.metadata?.physicsMass || .1
-		const mass = colliderMass * this.#config.mass * this.#config.scale
+		const mass = this.#getBodyMass(colliderMesh)
 
 		const pb = new PhysicsBody(physMesh, PhysicsMotionType.DYNAMIC, false, this.#scene)
 		const shape = new PhysicsShapeConvexHull(physMesh, this.#scene)
-		const friction = colliderMesh.metadata?.physicsFriction ?? this.#config.friction
-		const restitution = colliderMesh.metadata?.physicsRestitution ?? this.#config.restitution
-		shape.material = { friction, restitution }
-		shape.filterMembershipMask = DICE_COLLISION_MASK
-		shape.filterCollideMask = DICE_COLLISION_MASK
+		this.#applyShapeMaterial(shape)
 		pb.shape = shape
 		pb.setMassProperties({ mass })
 		pb.setLinearDamping(this.#config.linearDamping)
 		pb.setAngularDamping(this.#config.angularDamping)
 		pb.disablePreStep = false
+		this.#setActivationControl(pb, PhysicsActivationControl.ALWAYS_ACTIVE)
 
 		const bodyEntry = {
-			id, dieType, physicsBody: pb, physMesh,
+			id, dieType, physicsBody: pb, physMesh, colliderMesh,
 			timeout: this.#config.settleTimeout,
 			elapsed: 0, mass,
 			guidanceProfile: profile,
@@ -340,7 +386,7 @@ export class DicePhysics {
 	#handleCollision(entry, event) {
 		if(!entry || entry.asleep || event?.type === PhysicsEventType.COLLISION_FINISHED) return
 		const floor = this.#floorBody
-		const force = Math.abs(Number(event.impulse) || 0)
+		const force = this.#getCollisionForce(event)
 
 		if(force > 0) {
 			this.#onCollision({
@@ -354,6 +400,18 @@ export class DicePhysics {
 		if(!floor || (event.collider !== floor && event.collidedAgainst !== floor)) return
 		entry.currentGroundContact = true
 		entry.currentGroundImpactForce = Math.max(entry.currentGroundImpactForce || 0, force)
+	}
+
+	#getCollisionForce(event) {
+		const impulseForce = Math.abs(Number(event?.impulse) || 0)
+		const normal = event?.normal
+		if(!normal) return impulseForce
+
+		const colliderVelocity = event.collider?.getLinearVelocity?.() || Vector3.Zero()
+		const collidedVelocity = event.collidedAgainst?.getLinearVelocity?.() || Vector3.Zero()
+		const relativeVelocity = colliderVelocity.subtract(collidedVelocity)
+		const velocityForce = Math.abs(Vector3.Dot(normal, relativeVelocity))
+		return Number.isFinite(velocityForce) && velocityForce > 0 ? velocityForce : impulseForce
 	}
 
 	#syncGroundContactState(entry, delta) {
@@ -390,6 +448,7 @@ export class DicePhysics {
 	#sleepEntry(entry) {
 		entry.asleep = true
 		try {
+			this.#setActivationControl(entry.physicsBody, PhysicsActivationControl.ALWAYS_INACTIVE)
 			entry.physicsBody.setLinearVelocity(Vector3.Zero())
 			entry.physicsBody.setAngularVelocity(Vector3.Zero())
 			entry.physicsBody.setMassProperties({ mass: 0 })

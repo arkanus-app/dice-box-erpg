@@ -110,6 +110,8 @@ class Dice {
     const {meshFilePath, meshName, scale, d4FaceDown = true} = options
     let has_d100 = false
     let has_d10 = false
+    let has_d100_collider = false
+    let has_d10_collider = false
 
     //TODO: cache model files so it won't have to be fetched by other themes using the same models
     // using fetch to get modelData so we can pull out data unrelated to mesh importing
@@ -155,6 +157,12 @@ class Dice {
       if (!has_d10) {
         has_d10 = model.name === "d10"
       }
+      if (!has_d100_collider) {
+        has_d100_collider = model.name === "d100_collider"
+      }
+      if (!has_d10_collider) {
+        has_d10_collider = model.name === "d10_collider"
+      }
       model.setEnabled(false)
       model.freezeNormals()
       model.freezeWorldMatrix()
@@ -171,8 +179,22 @@ class Dice {
     if(!has_d100 && has_d10) {
       // console.log("create a d100 from a d10")  
       scene.getMeshByName(meshName + '_d10').clone(meshName + '_d100')
-      scene.getMeshByName(meshName + '_d10_collider').clone(meshName + '_d100_collider')
-      if(modelData.colliderFaceMap) {
+    }
+    if(!has_d100_collider && has_d10_collider) {
+      const d10ColliderMesh = scene.getMeshByName(meshName + '_d10_collider')
+      if(d10ColliderMesh && !scene.getMeshByName(meshName + '_d100_collider')) {
+        d10ColliderMesh.clone(meshName + '_d100_collider')
+      }
+      const hasD100ColliderData = modelData.meshes.some(model => model.name === 'd100_collider')
+      const d10ColliderData = modelData.meshes.find(model => model.name === 'd10_collider')
+      if(d10ColliderData && !hasD100ColliderData) {
+        const d100ColliderData = deepCopy(d10ColliderData)
+        d100ColliderData.name = 'd100_collider'
+        modelData.meshes.push(d100ColliderData)
+      }
+    }
+    if((!has_d100 || !has_d100_collider) && has_d10) {
+      if(modelData.colliderFaceMap?.d10) {
         modelData.colliderFaceMap['d100'] = deepCopy(modelData.colliderFaceMap['d10'])
         Object.values(modelData.colliderFaceMap['d100']).forEach((val,i) => {
           modelData.colliderFaceMap['d100'][i] = val * (val === 10 ? 0 : 10)
