@@ -81,7 +81,8 @@ class WorldFacade {
 		const sharedOptions = {
 			canvas: this.canvas,
 			options: this.config,
-			onInitComplete
+			onInitComplete,
+			onCollision: event => this.onCollision(event)
 		}
 
 		if(!this.#webgl_support) {

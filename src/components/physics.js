@@ -3,13 +3,15 @@
  * Dice bodies live in the Babylon scene instead of the legacy split-worker path.
  */
 import { Vector3, Quaternion } from '@babylonjs/core/Maths/math.vector'
-import { PhysicsShapeType } from '@babylonjs/core/Physics/v2/IPhysicsEnginePlugin'
 import { PhysicsBody } from '@babylonjs/core/Physics/v2/physicsBody'
-import { PhysicsMotionType } from '@babylonjs/core/Physics/v2/IPhysicsEnginePlugin'
+import { PhysicsEventType, PhysicsMotionType } from '@babylonjs/core/Physics/v2/IPhysicsEnginePlugin'
 import { PhysicsShapeConvexHull } from '@babylonjs/core/Physics/v2/physicsShape'
 import { PhysicsShapeBox } from '@babylonjs/core/Physics/v2/physicsShape'
 import { lerp } from '../helpers'
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder'
+
+export const DICE_PHYSICS_TIME_STEP = 1 / 90
+export const DICE_PHYSICS_SUB_TIME_STEP_MS = 1000 / 90
 
 const defaultOptions = {
 	size: 9.5,
@@ -113,6 +115,8 @@ export class DicePhysics {
 	#aspect = 1
 	#startPosition = [0, 8, 0]
 	#colliders = {}  // meshName_dType_collider -> BJS mesh
+	#floorBody = null
+	#sleepingBodies = []
 	#onCollision
 	#last = Date.now()
 
@@ -121,6 +125,7 @@ export class DicePhysics {
 		this.#config = { ...this.#config, ...config }
 		this.#onCollision = onCollision || (() => {})
 		this.#applyComputedConfig()
+		this.#syncPhysicsEngine()
 		this.#setStartPosition()
 	}
 
@@ -133,13 +138,19 @@ export class DicePhysics {
 		c.startingHeight = Math.max(1, c.startingHeight||8)
 	}
 
+	#syncPhysicsEngine() {
+		const engine = this.#scene.getPhysicsEngine?.()
+		if(!engine) return
+		engine.setTimeStep?.(DICE_PHYSICS_TIME_STEP)
+		engine.setSubTimeStep?.(DICE_PHYSICS_SUB_TIME_STEP_MS)
+		engine.setGravity?.(new Vector3(0, -9.81 * this.#config.gravity, 0))
+	}
+
 	updateConfig(options) {
 		this.#config = { ...this.#config, ...options }
 		this.#applyComputedConfig()
 		this.#rebuildBox()
-		// Update gravity
-		const plugin = this.#scene.getPhysicsEngine()
-		if(plugin) plugin.setGravity(new Vector3(0, -9.81 * this.#config.gravity, 0))
+		this.#syncPhysicsEngine()
 	}
 
 	resize(width, height) {
@@ -181,7 +192,10 @@ export class DicePhysics {
 			shape.material = { friction: this.#config.friction, restitution: this.#config.restitution }
 			pb.shape = shape
 			pb.setMassProperties({ mass: 0 })
-			this.#boxBodies.push({ mesh: m, body: pb })
+			if(name === 'dice_floor') {
+				this.#floorBody = pb
+			}
+			this.#boxBodies.push({ name, mesh: m, body: pb })
 		}
 		make('dice_floor',   [0, -.5, 0],                [size*a, 1, size])
 		make('dice_ceiling', [0, height-.5, 0],           [size*a, 1, size])
@@ -194,6 +208,7 @@ export class DicePhysics {
 	#rebuildBox() {
 		this.#boxBodies.forEach(({mesh,body}) => { body.dispose(); mesh.dispose() })
 		this.#boxBodies = []
+		this.#floorBody = null
 		this.buildBox()
 	}
 
@@ -251,6 +266,10 @@ export class DicePhysics {
 			firstGroundContactElapsed: null,
 			hasGroundContact: false,
 			wasGroundContact: false,
+			currentGroundContact: false,
+			currentGroundImpactForce: 0,
+			lastGroundImpactForce: 0,
+			collisionObserver: null,
 		}
 
 		if(forcedTargetQuaternion) {
@@ -263,6 +282,11 @@ export class DicePhysics {
 				state: 'spawn',
 			}
 		}
+
+		pb.setCollisionCallbackEnabled?.(true)
+		bodyEntry.collisionObserver = pb.getCollisionObservable?.().add(event => {
+			this.#handleCollision(bodyEntry, event)
+		})
 
 		this.#bodies.push(bodyEntry)
 		this.#rollDie(bodyEntry)
@@ -282,10 +306,75 @@ export class DicePhysics {
 
 		const flippy = Math.random()>.5?1:-1
 		const spinny = lerp(c.spinForce*.5, c.spinForce, Math.random())
-		const av = new Vector3(spinny*flippy, spinny*-flippy, spinny*flippy)
-		pb.setAngularVelocity(av)
+		const impulse = new Vector3(spinny*flippy, spinny*-flippy, spinny*flippy)
+		const impulseOffset = Math.abs(c.scale - 1) + c.scale*c.scale*(entry.mass/c.mass)*.75
+		pb.applyImpulse(
+			impulse,
+			entry.physMesh.position.add(new Vector3(impulseOffset, impulseOffset, impulseOffset))
+		)
 
 		this.#applyLaunchGuidance(entry, spinny)
+	}
+
+	#handleCollision(entry, event) {
+		if(!entry || entry.asleep || event?.type === PhysicsEventType.COLLISION_FINISHED) return
+		const floor = this.#floorBody
+		if(!floor || (event.collider !== floor && event.collidedAgainst !== floor)) return
+
+		const force = Math.abs(Number(event.impulse) || 0)
+		entry.currentGroundContact = true
+		entry.currentGroundImpactForce = Math.max(entry.currentGroundImpactForce || 0, force)
+		if(force > 0) {
+			this.#onCollision({
+				action: 'collision',
+				body0Id: event.collider?.transformNode?.name,
+				body1Id: event.collidedAgainst?.transformNode?.name,
+				force
+			})
+		}
+	}
+
+	#syncGroundContactState(entry, delta) {
+		const hasContact = Boolean(entry.currentGroundContact)
+		if(hasContact) {
+			entry.groundContactElapsed = (entry.groundContactElapsed || 0) + delta
+			if(!entry.wasGroundContact) {
+				entry.groundImpactCount = (entry.groundImpactCount || 0) + 1
+				entry.firstGroundContactElapsed ??= entry.elapsed
+			}
+		} else {
+			entry.groundContactElapsed = 0
+		}
+
+		entry.lastGroundImpactForce = Math.max(entry.lastGroundImpactForce || 0, entry.currentGroundImpactForce || 0)
+		entry.hasGroundContact = hasContact
+		entry.wasGroundContact = hasContact
+		entry.currentGroundContact = false
+		entry.currentGroundImpactForce = 0
+	}
+
+	#disposeEntry(entry) {
+		try {
+			if(entry.collisionObserver) {
+				entry.physicsBody.getCollisionObservable?.().remove(entry.collisionObserver)
+				entry.collisionObserver = null
+			}
+			entry.physicsBody.setCollisionCallbackEnabled?.(false)
+		} catch{}
+		try { entry.physicsBody.dispose() } catch{}
+		try { entry.physMesh.dispose() } catch{}
+	}
+
+	#sleepEntry(entry) {
+		entry.asleep = true
+		try {
+			entry.physicsBody.setLinearVelocity(Vector3.Zero())
+			entry.physicsBody.setAngularVelocity(Vector3.Zero())
+			entry.physicsBody.setMassProperties({ mass: 0 })
+			entry.physicsBody.setMotionType?.(PhysicsMotionType.STATIC)
+			entry.physicsBody.setCollisionCallbackEnabled?.(false)
+		} catch{}
+		this.#sleepingBodies.push(entry)
 	}
 
 	guideDie({ id, quaternion, dieType }) {
@@ -309,17 +398,21 @@ export class DicePhysics {
 		const idx = this.#bodies.findIndex(b => b.id === id)
 		if(idx >= 0) {
 			const entry = this.#bodies.splice(idx, 1)[0]
-			entry.physicsBody.dispose()
-			entry.physMesh.dispose()
+			this.#disposeEntry(entry)
+			return
+		}
+		const sleepingIdx = this.#sleepingBodies.findIndex(b => b.id === id)
+		if(sleepingIdx >= 0) {
+			const entry = this.#sleepingBodies.splice(sleepingIdx, 1)[0]
+			this.#disposeEntry(entry)
 		}
 	}
 
 	clearDice() {
-		this.#bodies.forEach(entry => {
-			try { entry.physicsBody.dispose() } catch{}
-			try { entry.physMesh.dispose() } catch{}
-		})
+		this.#bodies.forEach(entry => this.#disposeEntry(entry))
+		this.#sleepingBodies.forEach(entry => this.#disposeEntry(entry))
 		this.#bodies = []
+		this.#sleepingBodies = []
 	}
 
 	// Called every frame from the scene's onBeforePhysicsObservable or renderLoop
@@ -336,6 +429,7 @@ export class DicePhysics {
 			const speed = lv ? Math.sqrt(lv.x*lv.x+lv.y*lv.y+lv.z*lv.z) : 0
 			const tilt  = av ? Math.sqrt(av.x*av.x+av.y*av.y+av.z*av.z) : 0
 
+			this.#syncGroundContactState(entry, delta)
 			this.#applyGuidance(entry, delta, speed, tilt)
 
 			// If guided and final frame synced, mark sleep-ready
@@ -348,6 +442,7 @@ export class DicePhysics {
 
 			if(shouldSleep) {
 				this.#bodies.splice(i, 1)
+				this.#sleepEntry(entry)
 				return { id: entry.id, physMesh: entry.physMesh, asleep: true }
 			}
 			entry.timeout -= delta

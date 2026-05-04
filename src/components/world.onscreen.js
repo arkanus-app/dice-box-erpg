@@ -8,7 +8,7 @@ import { createLights } from './world/lights'
 import Container from './Container'
 import Dice from './Dice'
 import ThemeLoader from './ThemeLoader'
-import { DicePhysics } from './physics'
+import { DICE_PHYSICS_SUB_TIME_STEP_MS, DicePhysics } from './physics'
 
 class WorldOnscreen {
 	config
@@ -27,7 +27,6 @@ class WorldOnscreen {
 	#meshList = {}
 	#physics = null
 	#physicsObserver = null
-	#last = Date.now()
 	noop = () => {}
 
 	constructor(options){
@@ -37,6 +36,7 @@ class WorldOnscreen {
 		this.onRollError = options.onRollError || this.noop
 		this.onRollComplete = options.onRollComplete || this.noop
 		this.onDieRemoved = options.onDieRemoved || this.noop
+		this.onCollision = options.onCollision || this.noop
 		this.initialized = this.initScene(options)
 	}
 
@@ -82,15 +82,13 @@ class WorldOnscreen {
 		this.#physics = new DicePhysics({
 			scene: this.#scene,
 			config: this.config,
-			onCollision: () => {}
+			onCollision: event => this.onCollision(event)
 		})
 		this.#physics.buildBox()
 
 		// Hook into Babylon's before-physics step to run our guidance system
 		this.#physicsObserver = this.#scene.onBeforePhysicsObservable.add(() => {
-			const now = Date.now()
-			const delta = now - this.#last
-			this.#last = now
+			const delta = this.#scene.getPhysicsEngine?.()?.getSubTimeStep?.() || DICE_PHYSICS_SUB_TIME_STEP_MS
 			this.#tickPhysics(delta)
 		})
 
