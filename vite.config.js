@@ -6,11 +6,13 @@ import minifyEs from './rollup-plugin-minifyEs'
 
 export default defineConfig({
 	base: process.env.NODE_ENV === 'production' ? './' : './src',
+	worker: {
+		format: 'es',
+	},
   build: {
     lib: {
       entry: path.resolve(__dirname, 'src/index.js'),
       name: 'dice-box',
-			// format: ['es','esm'],
 			fileName: (format) => ({
         es: `dice-box.es.js`,
         esm: `dice-box.es.min.js`,
@@ -40,7 +42,6 @@ export default defineConfig({
 				copy({
 					targets: [
 						{
-							// src: path.resolve(__dirname, 'src/assets/*'),
 							src: [
 								path.resolve(__dirname, 'dist/assets/dice-box/*')
 							],
@@ -53,10 +54,6 @@ export default defineConfig({
 					targets: path.resolve(__dirname, 'dist/assets/dice-box'),
 					hook: 'closeBundle'
 				})
-				// visualizer({
-				// 	open: true,
-				// 	brotliSize: true
-				// })
 			]
     },
   }

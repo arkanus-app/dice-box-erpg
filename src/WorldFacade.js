@@ -1,5 +1,4 @@
 import { createCanvas } from './components/world/canvas'
-import physicsWorker from './components/physics.worker.js?worker&inline'
 import { debounce, createAsyncQueue, hexToRGB, webgl_support } from './helpers'
 import {
 	getDisplayRollBodyCount,
@@ -22,7 +21,10 @@ const defaultOptions = {
 	offscreen: true,
 	assetPath: '/assets/dice-box/',
 	origin: typeof window !== 'undefined' ? window.location.origin : '',
-	maxDice: 999
+	maxDice: 999,
+	antialias: true,
+	shadowResolution: 1024,
+	gravity: 1
 }
 
 class WorldFacade {
@@ -36,9 +38,6 @@ class WorldFacade {
 	#DiceWorld = {}
 	#diceWorldPromise
 	#diceWorldResolve
-	#DicePhysics
-	#dicePhysicsPromise
-	#dicePhysicsResolve
 	#resizeHandler
 	#webgl_support = true
 	#disposed = false
@@ -101,50 +100,12 @@ class WorldFacade {
 		}
 	}
 
-	#loadPhysics() {
-		this.#DicePhysics = new physicsWorker()
-		this.#dicePhysicsPromise = new Promise((resolve) => {
-			this.#dicePhysicsResolve = resolve
-		})
-		this.#DicePhysics.onmessage = (event) => {
-			switch(event.data.action) {
-				case 'init-complete':
-					this.#dicePhysicsResolve()
-					break
-				case 'collision':
-					this.onCollision(event.data.body0Id, event.data.body1Id, event.data.force)
-					break
-			}
-		}
-		this.#DicePhysics.postMessage({
-			action: 'init',
-			width: this.canvas.clientWidth,
-			height: this.canvas.clientHeight,
-			options: this.config
-		})
-	}
-
-	#connectWorld() {
-		const channel = new MessageChannel()
-		this.#DiceWorld.connect(channel.port1)
-		this.#DicePhysics.postMessage({
-			action: 'connect'
-		}, [channel.port2])
-	}
-
 	resizeWorld() {
 		const resizeWorkers = () => {
 			if(this.#disposed || !this.canvas) {
 				return
 			}
 			this.#DiceWorld.resize({width: this.canvas.clientWidth, height: this.canvas.clientHeight})
-			if(this.#DicePhysics) {
-				this.#DicePhysics.postMessage({
-					action: 'resize',
-					width: this.canvas.clientWidth,
-					height: this.canvas.clientHeight
-				})
-			}
 		}
 
 		if(this.#resizeHandler) {
@@ -159,12 +120,6 @@ class WorldFacade {
 			throw new Error('Cannot init a disposed DiceBox.')
 		}
 
-		if(this.#webgl_support) {
-			this.#loadPhysics()
-		} else {
-			this.#dicePhysicsPromise = Promise.resolve()
-		}
-
 		await this.#loadWorld()
 		this.resizeWorld()
 
@@ -175,11 +130,7 @@ class WorldFacade {
 			this.#handleRollError(error)
 		}
 
-		await Promise.all([this.#diceWorldPromise, this.#dicePhysicsPromise])
-
-		if(this.#DicePhysics) {
-			this.#connectWorld()
-		}
+		await Promise.all([this.#diceWorldPromise])
 
 		await this.loadThemeQueue.push(() => this.loadTheme(this.config.theme))
 		for(const theme of this.config.preloadThemes) {
@@ -285,12 +236,6 @@ class WorldFacade {
 		}
 
 		this.#DiceWorld.updateConfig(newConfig)
-		if(this.#DicePhysics) {
-			this.#DicePhysics.postMessage({
-				action: 'updateConfig',
-				options: newConfig
-			})
-		}
 	}
 
 	clear() {
@@ -300,9 +245,6 @@ class WorldFacade {
 		})
 		this.#resetRollState()
 		this.#DiceWorld.clear?.()
-		if(this.#DicePhysics) {
-			this.#DicePhysics.postMessage({action: 'clearDice'})
-		}
 	}
 
 	dispose() {
@@ -318,10 +260,6 @@ class WorldFacade {
 		}
 
 		this.#DiceWorld.dispose?.()
-		if(this.#DicePhysics) {
-			this.#DicePhysics.terminate()
-			this.#DicePhysics = null
-		}
 	}
 
 	hide(className) {

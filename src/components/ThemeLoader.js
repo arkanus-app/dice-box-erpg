@@ -1,16 +1,24 @@
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial'
 import { Texture } from '@babylonjs/core/Materials/Textures/texture'
 import { CustomMaterial } from '@babylonjs/materials/custom/customMaterial';
-import { SerializationHelper } from '@babylonjs/core/Misc/decorators'
 import { deepCopy } from '../helpers'
 
-// this is a monkey patch for cloning CustomMaterial in BabylonJS
+// Monkey-patch for cloning CustomMaterial in BabylonJS v7+
+// SerializationHelper.Clone was removed in v7, replaced with manual copy
 CustomMaterial.prototype.clone = function (name)  {
   const th = this
-  const result = SerializationHelper.Clone(() => new CustomMaterial(name, this.getScene()), this)
+  const result = new CustomMaterial(name, this.getScene())
 
   result.name = name
-  result.id = name  
+  result.id = name
+  result.diffuseColor = th.diffuseColor?.clone?.() || th.diffuseColor
+  result.specularColor = th.specularColor?.clone?.() || th.specularColor
+  result.emissiveColor = th.emissiveColor?.clone?.() || th.emissiveColor
+  result.ambientColor = th.ambientColor?.clone?.() || th.ambientColor
+  result.diffuseTexture = th.diffuseTexture
+  result.bumpTexture = th.bumpTexture
+  result.specularTexture = th.specularTexture
+  result.allowShaderHotSwapping = th.allowShaderHotSwapping
   result.CustomParts.Fragment_Begin = th.CustomParts.Fragment_Begin
   result.CustomParts.Fragment_Definitions = th.CustomParts.Fragment_Definitions
   result.CustomParts.Fragment_MainBegin = th.CustomParts.Fragment_MainBegin
@@ -25,7 +33,7 @@ CustomMaterial.prototype.clone = function (name)  {
   result.CustomParts.Vertex_Before_PositionUpdated = th.CustomParts.Vertex_Before_PositionUpdated
   result.CustomParts.Vertex_Before_NormalUpdated = th.CustomParts.Vertex_Before_NormalUpdated
   result.CustomParts.Vertex_After_WorldPosComputed = th.CustomParts.Vertex_After_WorldPosComputed
-  result.CustomParts.Vertex_MainEnd = th.CustomParts.Vertex_MainEnd 
+  result.CustomParts.Vertex_MainEnd = th.CustomParts.Vertex_MainEnd
 
   return result
 }
@@ -39,10 +47,8 @@ class ThemeLoader {
 
   async loadStandardMaterial(options) {
     const {theme, material: matParams} = options
-    //TODO: apply more matParams
     const diceMaterial = new StandardMaterial(theme, this.scene);
 
-    // TODO: make these methods reusable getDiffuseTexture(matParams, material)
     if(matParams.diffuseTexture){
       diceMaterial.diffuseTexture = await this.getTexture('diffuse', options)
     }
@@ -54,31 +60,11 @@ class ThemeLoader {
     }
 
     diceMaterial.allowShaderHotSwapping = false
-
-    // other fun params for the future
-    // diceMaterial.useAlphaFromDiffuseTexture
-    // diceMaterial.useEmissiveAsIllumination
-    // diceMaterial.opacityTexture
-    // diceMaterial.emissiveTexture
-    // diceMaterial.ambientTexture
-    // diceMaterial.reflectionTexture
-    // diceMaterial.refractionTexture
-    // diceMaterial.lightmapTexture
-
   }
 
-  // this will create two materials - one with light text and one with dark text, the underlying color can be changed by color instance buffers
   async loadColorMaterial(options) {
     const {theme, material: matParams} = options
-    // create the custom color material with white/light numbers
     const diceMatLight = new CustomMaterial(theme+'_light',this.scene)
-    // Other fun params for the future
-    // diceMatLight.useEmissiveAsIllumination = true
-    // diceMatLight.useAlphaFromDiffuseTexture = true
-    // diceMatLight.ambientColor = Color3.White()
-    // diceMatLight.ambientTexture = diceTexture
-    // diceMatLight.emissiveTexture = diceTexture
-    // diceMatLight.opacityTexture = diceTexture
     const opts = deepCopy(options)
     if(matParams.diffuseTexture && matParams.diffuseTexture.light){
       opts.material.diffuseTexture = options.material.diffuseTexture.light
@@ -93,7 +79,6 @@ class ThemeLoader {
   
     diceMatLight.allowShaderHotSwapping = false
   
-    // the magic that allows for the material color to be changed on instances
     diceMatLight.Vertex_Definitions(`
       attribute vec3 customColor;
       varying vec3 vColor;
@@ -110,13 +95,11 @@ class ThemeLoader {
 
     diceMatLight.AddAttribute('customColor')
   
-    // create the custom color material with black/dark numbers
     const diceMatDark = diceMatLight.clone(theme+'_dark')
     if(matParams.diffuseTexture && matParams.diffuseTexture.dark){
       opts.material.diffuseTexture = options.material.diffuseTexture.dark
       diceMatDark.diffuseTexture = await this.getTexture('diffuse', opts)
     }
-    // this must be set again for some reason - does not clone
     diceMatDark.AddAttribute('customColor')
   }
 
@@ -125,7 +108,6 @@ class ThemeLoader {
     let texture
     const level = type + 'Level'
     const textureKey = type + 'Texture'
-    // const power = type + 'Power'
     switch (type) {
       case "diffuse":
         texture = await this.importTextureAsync(`${basePath}/${matParams[textureKey]}`, theme)
@@ -156,13 +138,13 @@ class ThemeLoader {
     return new Promise((resolve, reject) => {
       let fileName = url.match(/^(.*\/)(.*)$/)
       let texture = new Texture(
-          url, // url: Nullable<string>
-          this.scene, // sceneOrEngine: Nullable<Scene | ThinEngine>
-          undefined, // noMipmapOrOptions?: boolean | ITextureCreationOptions
-          true, // invertY?: boolean
-          undefined, // samplingMode?: number
-          () => resolve(texture), // onLoad?: Nullable<() => void>
-          () => reject(new Error(`Unable to load texture '${fileName[2]}' for theme: '${theme}'. Check that your assetPath is configured correctly and that the files exist at path: '${fileName[1]}'`)) // onError?: Nullable<(message?: string
+          url,
+          this.scene,
+          undefined,
+          true,
+          undefined,
+          () => resolve(texture),
+          () => reject(new Error(`Unable to load texture '${fileName[2]}' for theme: '${theme}'. Check that your assetPath is configured correctly and that the files exist at path: '${fileName[1]}'`))
         )
     })
   }
@@ -176,15 +158,10 @@ class ThemeLoader {
     else if (material.type === "standard") {
       await this.loadStandardMaterial(options)
     } 
-    //TODO: more material options
-    // else if (material.type === "semiTransparent") {
-    //   await this.loadSemiTransparentMaterial(options)
-    // }
     else {
       throw new Error(`Material type: ${material.type} not supported`)
     }
   }
 }
-
 
 export default ThemeLoader
