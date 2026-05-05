@@ -1,6 +1,6 @@
 {
-  "name": "@3d-dice/dice-box",
-  "version": "1.1.7",
+  "name": "@erpg/dice3dview",
+  "version": "1.0.0",
   "author": {
     "name": "Quir and Codex"
   },
@@ -8,7 +8,7 @@
     "type": "git",
     "url": "https://github.com/arkanus-app/dice-box-erpg"
   },
-  "main": "./dist/dice-box.es.js",
+  "main": "./dist/dice3dview.es.js",
   "devDependencies": {
     "rollup-plugin-copy": "^3.5.0",
     "rollup-plugin-delete": "^2.0.0",
@@ -30,7 +30,7 @@
   "bugs": {
     "url": "https://github.com/arkanus-app/dice-box-erpg/issues"
   },
-  "description": "A 3D environment for rolling game dice",
+  "description": "ERPG 3D dice display layer for showing resolved dice results with BabylonJS and Havok.",
   "files": [
     "dist"
   ],

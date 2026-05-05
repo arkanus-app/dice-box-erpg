@@ -12,10 +12,10 @@ export default defineConfig({
   build: {
     lib: {
       entry: path.resolve(__dirname, 'src/index.js'),
-      name: 'dice-box',
+      name: 'dice3dview',
 			fileName: (format) => ({
-        es: `dice-box.es.js`,
-        esm: `dice-box.es.min.js`,
+        es: `dice3dview.es.js`,
+        esm: `dice3dview.es.min.js`,
       })[format]
     },
     rollupOptions: {

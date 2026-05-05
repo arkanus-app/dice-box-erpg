@@ -1,6 +1,6 @@
-# ERPG Dice Box Fork
+# ERPG Dice 3D View
 
-This fork keeps the public `@3d-dice/dice-box` source as the base and adds ERPG-specific visual roll controls.
+`@erpg/dice3dview` keeps the public `@3d-dice/dice-box` source as the base and adds ERPG-specific visual roll controls.
 
 ## Changes
 

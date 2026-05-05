@@ -1,204 +1,67 @@
-# Dice-Box &middot; [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/frankieali/infima-extras/blob/main/LICENSE) [![npm version](https://img.shields.io/npm/v/@3d-dice/dice-box.svg?style=flat)](https://www.npmjs.com/package/@3d-dice/dice-box)
+# @erpg/dice3dview
 
-High performance 3D dice roller module made with [BabylonJS](https://www.babylonjs.com/) and [Havok Physics](https://doc.babylonjs.com/features/featuresDeepDive/physics/havokPlugin/). The ERPG fork no longer ships the legacy Ammo worker path; dice physics runs through Babylon Physics V2 with Havok. Designed to be easy to integrate into your own JavaScript app.
+ERPG Dice 3D View is the visual dice display package used by ERPG projects.
+It is responsible for rendering already-resolved dice results in 3D with BabylonJS and Havok.
 
-![Demo Screenshot](https://github.com/3d-dice/dice-box/blob/main/dice-screenshot.jpg)
+It is not the authority for dice math.
+Use `@erpg/dicecore` to resolve notation and pass the final die values into this package.
 
-## Docs
+## Install
 
-The docs site is available at [fantasticdice.games](https://fantasticdice.games)
-
-## Demo
-__New demo for version 1.0.11__ <br>
-The latest code running on AWS [Dice Box](https://d3rivgcgaqw1jo.cloudfront.net/index.html)
-
-__New demo for version 1.0.8__ <br>
-Use this module as an ES6 module from [UNPKG CDN](https://unpkg.com/browse/@3d-dice/dice-box@1.0.8/) <br>
-No need to use npm install or serve these files yourself. [Static CDN Demo](https://codesandbox.io/s/dice-es6-module-cdn-lhbs99?file=/src/index.js) <br><br>
-__New demos for version 1.0.5__ <br>
-Try out the kitchen sink demo at https://d3rivgcgaqw1jo.cloudfront.net/index.html <br>
-See the kitchen sink code demo here: https://codesandbox.io/s/3d-dice-demo-v1-0-5-sm4ien <br>
-Here's a simple React Demo for rolling attributes (using 3d6): https://codesandbox.io/s/react-roller-attributes-v1-0-5-65uqhv <br>
-Here's a React Demo with support for advanced dice notation: https://codesandbox.io/s/react-roller-advanced-notation-v1-0-5-rz0nmr
-
-Note: Some demos includes other `@3d-dice` modules such as [dice-roller-parser](https://github.com/3d-dice/dice-roller-parser), [dice-ui](https://github.com/3d-dice/dice-ui), and [dice-parser-interface](https://github.com/3d-dice/dice-parser-interface). Advanced dice notation, such as `4d6dl1` or `4d6!r<2`, is supported with these modules
-
-## Quickstart (sort of)
-
-Install the library using:
-
-```
-npm install @3d-dice/dice-box
+```bash
+npm install @erpg/dice3dview
 ```
 
-This ERPG fork does not run an install-time asset copy prompt. Serve the bundled dice-box assets from your app's public assets directory and point `assetPath` at that location.
+For ERPG internal projects the package can also be consumed from Git:
 
-The physics runtime is bundled through `@babylonjs/havok`; no `ammo.wasm` asset is required.
-
-This is an ES module intended to be part of a build system. To import the module into your project use:
-
-```javascript
-import DiceBox from "@3d-dice/dice-box";
+```json
+{
+  "@erpg/dice3dview": "git+https://github.com/arkanus-app/dice-box-erpg.git"
+}
 ```
 
-Then create a new instance of the `DiceBox` class. The arguments are first a selector for the target DOM node followed by an object of config options. Be sure to set the path to the assets folder copied earlier. It's the only required config option.
+## Quickstart
 
-```javascript
-const diceBox = new DiceBox("#dice-box", {
-  assetPath: "/assets/dice-box", // required
-});
-```
+```js
+import DiceBox from '@erpg/dice3dview';
 
-Next you initialize the class object then it will be ready to roll some dice. The `init` method is an async method so it can be awaited or followed by a `.then()` method.
-
-```javascript
-diceBox.init().then(() => {
-  diceBox.roll("2d20");
-});
-```
-
-## Usage
-
-Dice-Box can only accept simple dice notations and a modifier such as `2d20` or `2d6+4` It returns a result object once the dice have stopped rolling. For more advanced rolling features you'll want to look at adding [dice-parser-interface](https://github.com/3d-dice/dice-parser-interface) which supports the full [Roll20 Dice Specification](https://help.roll20.net/hc/en-us/articles/360037773133-Dice-Reference#DiceReference-RollTemplates).
-
-This ERPG fork also accepts resolved values in roll objects. When `value`, `values`, or `faceValues` are provided, `forcedResultMode: "physics"` guides the physics body toward that result by default. The assisted mode keeps the normal throw and collisions early in the roll, then uses a late angular motor, damping, and light landing assist so the die settles on the requested face. Use `forcedResultMode: "visual"` to keep the older final visual correction behavior.
-
-### Configuration Options
-See [Configuration Options](https://fantasticdice.games/docs/usage/config#configuration-options) on the docs site
-
-### Common Objects
-
-See [Common Objects](https://fantasticdice.games/docs/usage/objects) on the docs site
-
-### Methods
-See [Methods](https://fantasticdice.games/docs/usage/methods) on the docs site
-
-### Callbacks
-See [Callbacks](https://fantasticdice.games/docs/usage/callbacks) on the docs site
-
-## Other setup options
-
-In my demo project I have it set up as seen below. You probably won't need the `BoxControls` but they're fun to play with. See this demo in Code Sandbox here: https://codesandbox.io/s/3d-dice-demo-v1-0-2-sm4ien
-
-```javascript
-import './style.css'
-import DiceBox from '@3d-dice/dice-box'
-import { DisplayResults, AdvancedRoller, BoxControls } from '@3d-dice/dice-ui'
-
-let Box = new DiceBox("#dice-box",{
+const diceBox = new DiceBox('#dice-box', {
   assetPath: '/assets/dice-box/',
-})
+  forcedResultMode: 'physics',
+});
 
-document.addEventListener("DOMContentLoaded", async() => {
+await diceBox.init();
 
-  Box.init().then(() => {
-
-    // create dat.gui controls
-    const Controls = new BoxControls({
-      themes: ["default", "rust", "diceOfRolling", "gemstone"],
-      themeColor: world.config.themeColor,
-      onUpdate: (updates) => {
-        Box.updateConfig(updates);
-      }
-    });
-    Controls.themeSelect.setValue(world.config.theme);
-    Box.onThemeConfigLoaded = (themeData) => {
-      if (themeData.themeColor) {
-        Controls.themeColorPicker.setValue(themeData.themeColor);
-      }
-    };
-
-    // create display overlay
-    const Display = new DisplayResults("#dice-box")
-
-    // create Roller Input
-    const Roller = new AdvancedRoller({
-      target: '#dice-box',
-      onSubmit: (notation) => Box.roll(notation),
-      onClear: () => {
-        Box.clear()
-        Display.clear()
-      },
-      onReroll: (rolls) => {
-        // loop through parsed roll notations and send them to the Box
-        rolls.forEach(roll => Box.add(roll))
-      },
-      onResults: (results) => {
-        Display.showResults(results)
-      }
-    })
-
-    // pass dice rolls to Advanced Roller to handle
-    Box.onRollComplete = (results) => {
-      Roller.handleResults(results)
-    }
-  }) // end Box.init
-}) // end DOMContentLoaded
+await diceBox.displayRoll({
+  id: 'roll-1',
+  dice: [
+    { id: 'die-1', sides: 20, value: 17 },
+    { id: 'die-2', sides: 6, value: 4, discarded: true },
+  ],
+});
 ```
 
-```css
-html,
-body {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  overflow: hidden;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-}
+## Role in ERPG
 
-#dice-box {
-  position: relative;
-  box-sizing: border-box;
-  width: 100%;
-  height: 100%;
-  background-image: url(./assets/woodgrain2.jpg);
-  background-size: cover;
-}
+`@erpg/dice3dview` is intentionally display-only for advanced ERPG rolling flows:
 
-#dice-box canvas {
-  width: 100%;
-  height: 100%;
-}
-```
+- accepts resolved die values from `@erpg/dicecore`
+- animates dice through Babylon Physics V2 and Havok
+- supports assisted physical landing through `forcedResultMode: "physics"`
+- supports visual correction through `forcedResultMode: "visual"`
+- exposes `displayRoll(request)` for deterministic result display
+- keeps 3D concerns separate from parsing, normalization, Discord formatting, and chat output
 
-## Other Projects
+The default `assetPath` remains `/assets/dice-box/` for compatibility with existing ERPG static assets.
 
-### [Dice UI](https://github.com/3d-dice/dice-ui)
-A collection of vanilla UI modules for Dice Box.
+## Attribution
 
-Including:
+This package is an ERPG-owned derivative of the open-source `@3d-dice/dice-box` project by 3Ddice.
+The original project provided the BabylonJS dice-rendering foundation; ERPG has since adapted the package for Havok-only runtime usage, install-time simplicity, result-display workflows, forced resolved values, and ERPG integration.
 
-  1. Advanced Roller Input - a simple form input that allows advanced roll notations
-  2. Dice Picker - clickable dice icons for adding dice to a roll. Good for mobile devices.
-  3. Display Results - shows the roll results in a modal popup
-  4. Box Controls - uses [dat.gui](https://github.com/dataarts/dat.gui) to display configurable dice-box options.
+The original project remains credited in `LICENSE`.
+This package keeps the MIT license and preserves the upstream copyright notice.
 
-### [Dice Themes](https://github.com/3d-dice/dice-themes)
-A collection of [CC0](https://creativecommons.org/share-your-work/public-domain/cc0/) models and themes you can use with Dice Box.
+## License
 
-### [Dice Roller Parser](https://github.com/3d-dice/dice-roller-parser)
-A string parser that returns an object containing the component parts of a dice roll. It supports the full [Roll20 Dice Specification](https://roll20.zendesk.com/hc/en-us/articles/360037773133-Dice-Reference#DiceReference-Roll20DiceSpecification)
-
-
-### [Dice Parser Interface](https://github.com/3d-dice/dice-parser-interface)
-Offers a simple interface between `Dice Roller Parser` and `Dice Box`. This module sends string notations to the parser and breaks them down into notations Dice Box can use. Also sends Dice Box results to the parser to generate the final roll results. Will also handle events that trigger rerolls and exploding dice.
-
-
-## Plugs
-
-### Quest Portal
-Special thanks to the team at [Quest Portal](https://www.questportal.com/) for supporting and assisting with the development of this dice roller. They've been kind enough to supply some license free dice models that I can distribute with this project. In addition to that, they've provided some good feedback and testing while incorporating `@3d-dice/dice-box` into their platform. Sign up for [early access](https://app.questportal.com/signup) at Quest Portal to see what they're cooking up.
-
-### Dice So Nice
-
-If you're looking for a 3D dice roller that works with [three.js](https://threejs.org/) than I would recommend looking into [Dice So Nice](https://gitlab.com/riccisi/foundryvtt-dice-so-nice/-/tree/master)
-
-### Dice of Rolling
-
-My favorite theme for this project has been the Dice of Rolling theme based on the real [Dice of Rolling](https://diceofrolling.com/#dice). Great product and I really enjoy using them in real life.
-
-### Owlbear Rodeo
-Another great platform if all you need is an interactive virtual map and dice. [Owlbear Rodeo](https://www.owlbear.rodeo/) has created really amazing tools that work well for any platform. Bring your own character sheets.
+MIT.
