@@ -113,6 +113,7 @@ export class DicePhysics {
 	#rawConfig = {...defaultOptions}
 	#config = {...defaultOptions}
 	#bodies = []   // {id, dieType, physicsBody, mesh, elapsed, timeout, guidedTarget, ...}
+	#bodyIndexById = new Map()
 	#boxBodies = []
 	#width = 150
 	#height = 150
@@ -121,6 +122,7 @@ export class DicePhysics {
 	#colliders = {}  // meshName_dType_collider -> BJS mesh
 	#floorBody = null
 	#sleepingBodies = []
+	#sleepingBodyIndexById = new Map()
 	#onCollision
 	#last = Date.now()
 
@@ -290,6 +292,58 @@ export class DicePhysics {
 		}
 	}
 
+	#storeActiveEntry(entry) {
+		entry.activeIndex = this.#bodies.length
+		entry.sleepingIndex = -1
+		this.#bodies.push(entry)
+		this.#bodyIndexById.set(entry.id, entry.activeIndex)
+	}
+
+	#storeSleepingEntry(entry) {
+		entry.sleepingIndex = this.#sleepingBodies.length
+		entry.activeIndex = -1
+		this.#sleepingBodies.push(entry)
+		this.#sleepingBodyIndexById.set(entry.id, entry.sleepingIndex)
+	}
+
+	#removeActiveEntryAt(index) {
+		if(index < 0 || index >= this.#bodies.length) {
+			return null
+		}
+
+		const removedEntry = this.#bodies[index]
+		const lastIndex = this.#bodies.length - 1
+		if(index !== lastIndex) {
+			const lastEntry = this.#bodies[lastIndex]
+			this.#bodies[index] = lastEntry
+			lastEntry.activeIndex = index
+			this.#bodyIndexById.set(lastEntry.id, index)
+		}
+		this.#bodies.pop()
+		this.#bodyIndexById.delete(removedEntry.id)
+		removedEntry.activeIndex = -1
+		return removedEntry
+	}
+
+	#removeSleepingEntryAt(index) {
+		if(index < 0 || index >= this.#sleepingBodies.length) {
+			return null
+		}
+
+		const removedEntry = this.#sleepingBodies[index]
+		const lastIndex = this.#sleepingBodies.length - 1
+		if(index !== lastIndex) {
+			const lastEntry = this.#sleepingBodies[lastIndex]
+			this.#sleepingBodies[index] = lastEntry
+			lastEntry.sleepingIndex = index
+			this.#sleepingBodyIndexById.set(lastEntry.id, index)
+		}
+		this.#sleepingBodies.pop()
+		this.#sleepingBodyIndexById.delete(removedEntry.id)
+		removedEntry.sleepingIndex = -1
+		return removedEntry
+	}
+
 	addDie(options) {
 		const { sides, id, meshName, forcedTargetQuaternion, newStartPoint } = options
 		if(newStartPoint) {
@@ -366,7 +420,7 @@ export class DicePhysics {
 			this.#handleCollision(bodyEntry, event)
 		})
 
-		this.#bodies.push(bodyEntry)
+		this.#storeActiveEntry(bodyEntry)
 		this.#rollDie(bodyEntry)
 		return bodyEntry
 	}
@@ -466,11 +520,12 @@ export class DicePhysics {
 			entry.physicsBody.setMotionType?.(PhysicsMotionType.STATIC)
 			entry.physicsBody.setCollisionCallbackEnabled?.(false)
 		} catch{}
-		this.#sleepingBodies.push(entry)
+		this.#storeSleepingEntry(entry)
 	}
 
 	guideDie({ id, quaternion, dieType }) {
-		const entry = this.#bodies.find(b => b.id === id)
+		const activeIndex = this.#bodyIndexById.get(id)
+		const entry = activeIndex === undefined ? null : this.#bodies[activeIndex]
 		if(!entry) return
 		const profile = getGuideProfile(dieType || entry.dieType)
 		const existing = entry.guidedTarget
@@ -487,15 +542,15 @@ export class DicePhysics {
 	}
 
 	removeDie(id) {
-		const idx = this.#bodies.findIndex(b => b.id === id)
-		if(idx >= 0) {
-			const entry = this.#bodies.splice(idx, 1)[0]
+		const activeIndex = this.#bodyIndexById.get(id)
+		if(activeIndex !== undefined) {
+			const entry = this.#removeActiveEntryAt(activeIndex)
 			this.#disposeEntry(entry)
 			return
 		}
-		const sleepingIdx = this.#sleepingBodies.findIndex(b => b.id === id)
-		if(sleepingIdx >= 0) {
-			const entry = this.#sleepingBodies.splice(sleepingIdx, 1)[0]
+		const sleepingIndex = this.#sleepingBodyIndexById.get(id)
+		if(sleepingIndex !== undefined) {
+			const entry = this.#removeSleepingEntryAt(sleepingIndex)
 			this.#disposeEntry(entry)
 		}
 	}
@@ -504,7 +559,9 @@ export class DicePhysics {
 		this.#bodies.forEach(entry => this.#disposeEntry(entry))
 		this.#sleepingBodies.forEach(entry => this.#disposeEntry(entry))
 		this.#bodies = []
+		this.#bodyIndexById.clear()
 		this.#sleepingBodies = []
+		this.#sleepingBodyIndexById.clear()
 	}
 
 	// Called every frame from the scene's onBeforePhysicsObservable or renderLoop
@@ -533,7 +590,7 @@ export class DicePhysics {
 				(!entry.guidedTarget && (speed < .01 && tilt < .005 || entry.timeout < 0))
 
 			if(shouldSleep) {
-				this.#bodies.splice(i, 1)
+				this.#removeActiveEntryAt(i)
 				this.#sleepEntry(entry)
 				return { id: entry.id, physMesh: entry.physMesh, asleep: true }
 			}
@@ -542,21 +599,18 @@ export class DicePhysics {
 		return null
 	}
 
-	// Returns array of { id, position, quaternion } for each live body
-	getBodiesState() {
-		return this.#bodies.map(entry => {
-			const m = entry.physMesh
-			return {
-				id: entry.id,
-				position: m.position,
-				rotationQuaternion: m.rotationQuaternion,
-				asleep: false,
-			}
-		})
+	forEachActiveBody(callback) {
+		for(const entry of this.#bodies) {
+			callback(entry)
+		}
 	}
 
-	getSleepingIds() {
-		return []
+	getActiveBodyCount() {
+		return this.#bodies.length
+	}
+
+	getSleepingBodyCount() {
+		return this.#sleepingBodies.length
 	}
 
 	// ----- Guidance System (portado do worker) -----

@@ -1,5 +1,5 @@
 import { createCanvas } from './components/world/canvas'
-import { debounce, createAsyncQueue, hexToRGB, webgl_support } from './helpers'
+import { debounce, hexToRGB, webgl_support } from './helpers'
 import {
 	getDisplayRollBodyCount,
 	normalizeDisplayRollRequest,
@@ -41,6 +41,9 @@ class WorldFacade {
 	#resizeHandler
 	#webgl_support = true
 	#disposed = false
+	#themeConfigPromises = new Map()
+	#themeLoadPromises = new Map()
+	#colorSuffixCache = new Map()
 	noop = () => {}
 
 	constructor(options = {}) {
@@ -50,7 +53,6 @@ class WorldFacade {
 
 		const { onCollision, onThemeConfigLoaded, onThemeLoaded, ...boxOptions } = options
 		this.config = {...defaultOptions, ...boxOptions}
-		this.config.maxDice = this.#normalizeMaxDice(this.config.maxDice)
 
 		this.onThemeLoaded = onThemeLoaded || this.noop
 		this.onThemeConfigLoaded = onThemeConfigLoaded || this.noop
@@ -65,8 +67,10 @@ class WorldFacade {
 		if(!webgl_support()) {
 			this.#webgl_support = false
 		}
-
-		this.loadThemeQueue = createAsyncQueue()
+		if(boxOptions.offscreen === undefined) {
+			this.config.offscreen = this.#supportsOffscreenCanvas()
+		}
+		this.config.maxDice = this.#normalizeMaxDice(this.config.maxDice)
 	}
 
 	async #loadWorld() {
@@ -132,16 +136,32 @@ class WorldFacade {
 		}
 
 		await Promise.all([this.#diceWorldPromise])
-
-		await this.loadThemeQueue.push(() => this.loadTheme(this.config.theme))
-		for(const theme of this.config.preloadThemes) {
-			await this.loadThemeQueue.push(() => this.loadTheme(theme))
-		}
+		await this.#loadThemes([this.config.theme, ...this.config.preloadThemes])
 
 		return this
 	}
 
 	async getThemeConfig(theme) {
+		if(this.themesLoadedData[theme]) {
+			return this.themesLoadedData[theme]
+		}
+
+		const pendingConfig = this.#themeConfigPromises.get(theme)
+		if(pendingConfig) {
+			return pendingConfig
+		}
+
+		const configPromise = this.#resolveThemeConfig(theme)
+		this.#themeConfigPromises.set(theme, configPromise)
+
+		try {
+			return await configPromise
+		} finally {
+			this.#themeConfigPromises.delete(theme)
+		}
+	}
+
+	async #resolveThemeConfig(theme) {
 		let basePath = `${this.config.origin}${this.config.assetPath}themes/${theme}`
 
 		if(this.config.externalThemes[theme]) {
@@ -189,6 +209,7 @@ class WorldFacade {
 				newDice[die] = themeData.systemName
 			})
 			target.diceExtended = {...target.diceExtended, ...newDice}
+			target.diceExtendedSet = new Set(Object.keys(target.diceExtended))
 			this.config.theme = themeData.extends
 		}
 
@@ -196,7 +217,10 @@ class WorldFacade {
 			basePath,
 			meshFilePath,
 			meshName,
-			theme
+			theme,
+			diceAvailableSet: new Set(themeData.diceAvailable || []),
+			diceExtended: themeData.diceExtended || {},
+			diceExtendedSet: new Set(Object.keys(themeData.diceExtended || {}))
 		})
 
 		return themeData
@@ -207,17 +231,31 @@ class WorldFacade {
 			return this.themesLoadedData[theme]
 		}
 
+		const pendingLoad = this.#themeLoadPromises.get(theme)
+		if(pendingLoad) {
+			return pendingLoad
+		}
+
+		const loadPromise = this.#loadTheme(theme)
+		this.#themeLoadPromises.set(theme, loadPromise)
+
 		try {
-			const themeConfig = await this.getThemeConfig(theme)
-			this.themesLoadedData[theme] = themeConfig
-			this.onThemeConfigLoaded(themeConfig)
-			await this.#DiceWorld.loadTheme(themeConfig)
-			this.onThemeLoaded(themeConfig)
-			return themeConfig
+			return await loadPromise
 		} catch(error) {
 			delete this.themesLoadedData[theme]
 			throw error
+		} finally {
+			this.#themeLoadPromises.delete(theme)
 		}
+	}
+
+	async #loadTheme(theme) {
+		const themeConfig = await this.getThemeConfig(theme)
+		this.themesLoadedData[theme] = themeConfig
+		this.onThemeConfigLoaded(themeConfig)
+		await this.#DiceWorld.loadTheme(themeConfig)
+		this.onThemeLoaded(themeConfig)
+		return themeConfig
 	}
 
 	async updateConfig(options = {}) {
@@ -225,12 +263,14 @@ class WorldFacade {
 		if(options.maxDice !== undefined) {
 			newConfig.maxDice = this.#normalizeMaxDice(options.maxDice)
 		}
+		if(options.offscreen === undefined && !('offscreen' in options)) {
+			newConfig.offscreen = this.config.offscreen
+		}
 
 		this.config = newConfig
 
 		if(options.theme) {
-			const config = await this.loadThemeQueue.push(() => this.loadTheme(newConfig.theme))
-			const themeData = config.at(-1)
+			const themeData = await this.loadTheme(newConfig.theme)
 			if(themeData.hasOwnProperty('extends')) {
 				this.config.theme = themeData.extends
 			}
@@ -326,8 +366,10 @@ class WorldFacade {
 
 		const themeNames = new Set(collection.request.dice.map(die => die.theme))
 		themeNames.add(collection.request.theme)
-		for(const theme of themeNames) {
-			await this.loadThemeQueue.push(() => this.loadTheme(theme))
+		await this.#loadThemes(themeNames)
+
+		if(collection.token !== this.#activeRollToken) {
+			return
 		}
 
 		await this.#makeDisplayRoll(collection)
@@ -341,7 +383,7 @@ class WorldFacade {
 				return
 			}
 
-			const prepared = await this.#prepareDie(displayDie, collection)
+			const prepared = await this.#prepareDie(displayDie)
 			const roll = {
 				sides: displayDie.sides,
 				data: displayDie.sides === 100 ? undefined : displayDie.data,
@@ -376,37 +418,30 @@ class WorldFacade {
 
 	async #prepareDie(displayDie) {
 		let theme = displayDie.theme
-		let themeConfig = this.themesLoadedData[theme]
+		let themeConfig = await this.loadTheme(theme)
 		let meshName = themeConfig.meshName
-		let diceAvailable = themeConfig?.diceAvailable || []
+		let diceAvailable = themeConfig?.diceAvailableSet || new Set(themeConfig?.diceAvailable || [])
 		let diceExtended = themeConfig.diceExtended || {}
+		let diceExtendedSet = themeConfig.diceExtendedSet || new Set(Object.keys(diceExtended))
 		let materialType = themeConfig?.material?.type
 		const dieType = `d${displayDie.sides}`
-		const diceExtra = Object.keys(diceExtended)
 
-		if(!diceAvailable.includes(dieType) && diceExtra.includes(dieType)) {
+		if(!diceAvailable.has(dieType) && diceExtendedSet.has(dieType)) {
 			theme = diceExtended[dieType]
-			await this.loadThemeQueue.push(() => this.loadTheme(theme))
-			themeConfig = this.themesLoadedData[theme]
+			themeConfig = await this.loadTheme(theme)
 			meshName = themeConfig.meshName
-			diceAvailable = themeConfig?.diceAvailable || []
+			diceAvailable = themeConfig?.diceAvailableSet || new Set(themeConfig?.diceAvailable || [])
 			materialType = themeConfig?.material?.type
 		}
 
-		if(!diceAvailable.includes(dieType) && !diceExtra.includes(dieType)) {
+		if(!diceAvailable.has(dieType) && !diceExtendedSet.has(dieType)) {
 			throw new Error(`${dieType} is unavailable in '${displayDie.theme}' theme.`)
-		}
-
-		let colorSuffix = ''
-		if(materialType === 'color') {
-			const color = hexToRGB(displayDie.themeColor)
-			colorSuffix = ((color.r * 0.299 + color.g * 0.587 + color.b * 0.114) > 175) ? '_dark' : '_light'
 		}
 
 		return {
 			theme,
 			meshName,
-			colorSuffix
+			colorSuffix: this.#getColorSuffix(theme, displayDie.themeColor, materialType)
 		}
 	}
 
@@ -460,6 +495,37 @@ class WorldFacade {
 			throw new Error('Config option "maxDice" must be a positive integer.')
 		}
 		return maxDice
+	}
+
+	#supportsOffscreenCanvas() {
+		return this.#webgl_support
+			&& typeof window !== 'undefined'
+			&& 'OffscreenCanvas' in window
+			&& typeof this.canvas?.transferControlToOffscreen === 'function'
+	}
+
+	async #loadThemes(themes) {
+		const uniqueThemes = [...new Set(Array.from(themes || []).filter(Boolean))]
+		if(!uniqueThemes.length) {
+			return []
+		}
+		return Promise.all(uniqueThemes.map(theme => this.loadTheme(theme)))
+	}
+
+	#getColorSuffix(theme, themeColor, materialType) {
+		if(materialType !== 'color') {
+			return ''
+		}
+
+		const cacheKey = `${theme}|${themeColor}|${materialType}`
+		if(this.#colorSuffixCache.has(cacheKey)) {
+			return this.#colorSuffixCache.get(cacheKey)
+		}
+
+		const color = hexToRGB(themeColor)
+		const colorSuffix = ((color.r * 0.299 + color.g * 0.587 + color.b * 0.114) > 175) ? '_dark' : '_light'
+		this.#colorSuffixCache.set(cacheKey, colorSuffix)
+		return colorSuffix
 	}
 }
 

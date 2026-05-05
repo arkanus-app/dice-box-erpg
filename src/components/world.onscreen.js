@@ -14,6 +14,7 @@ class WorldOnscreen {
 	config
 	initialized = false
 	#dieCache = {}
+	#dieCount = 0
 	#count = 0
 	#sleeperCount = 0
 	#dieRollTimer = []
@@ -27,6 +28,7 @@ class WorldOnscreen {
 	#meshList = {}
 	#physics = null
 	#physicsObserver = null
+	#boundRenderLoop = () => this.renderLoop()
 	noop = () => {}
 
 	constructor(options){
@@ -103,33 +105,20 @@ class WorldOnscreen {
 		if(sleeping) {
 			const die = this.#dieCache[`${sleeping.id}`]
 			if(die) {
-				// Copy final transform from physics mesh to visual mesh
-				if(sleeping.physMesh?.rotationQuaternion && die.mesh?.rotationQuaternion) {
-					die.mesh.rotationQuaternion.copyFrom(sleeping.physMesh.rotationQuaternion)
-				}
+				this.#syncDieTransform(die, sleeping.physMesh)
 				this.handleAsleep(die)
 			}
 		}
 
-		// Sync all live physics bodies -> visual meshes
-		const bodies = this.#physics.getBodiesState()
-		for(const b of bodies) {
-			const die = this.#dieCache[`${b.id}`]
-			if(!die?.mesh) continue
-			die.mesh.position.copyFrom(b.position)
-			if(b.rotationQuaternion) {
-				const rawQ = die.__rawRotationQuaternion || new Quaternion()
-				rawQ.copyFrom(b.rotationQuaternion)
-				die.__rawRotationQuaternion = rawQ
-				if(!die.asleep) die.mesh.rotationQuaternion.copyFrom(b.rotationQuaternion)
-			}
-			// Trigger guide update if this die needs a forced result
-			const hasForcedFace = die.config.forcedFaceValue !== undefined || die.config.forcedValue !== undefined
-			if(hasForcedFace) {
+		this.#physics.forEachActiveBody((entry) => {
+			const die = this.#dieCache[`${entry.id}`]
+			if(!die?.mesh) return
+			this.#syncDieTransform(die, entry.physMesh)
+			if(this.#usesPhysicsForcedResult(die) && !die.__forcedPhysicsGuided && !die.__forcedPhysicsGuideFailed) {
 				die.__forcedSyncFrames = (die.__forcedSyncFrames || 0) + 1
 				this.#guideForcedDie(die)
 			}
-		}
+		})
 	}
 
 	updateConfig(options) {
@@ -164,11 +153,15 @@ class WorldOnscreen {
 	}
 
 	render(newStartPoint) {
-		this.#engine.runRenderLoop(this.renderLoop.bind(this))
+		this.#engine.runRenderLoop(this.#boundRenderLoop)
 	}
 
 	renderLoop() {
-		if(this.#sleeperCount > 0 && this.#sleeperCount === Object.keys(this.#dieCache).length) {
+		const activeBodies = this.#physics?.getActiveBodyCount?.() || 0
+		const sleepingBodies = this.#physics?.getSleepingBodyCount?.() || 0
+		const allPhysicsBodiesSettled = this.#dieCount > 0 && activeBodies === 0 && sleepingBodies >= this.#dieCount
+		const allFallbackDiceSettled = this.#sleeperCount > 0 && this.#sleeperCount >= this.#dieCount
+		if(allPhysicsBodiesSettled || allFallbackDiceSettled) {
 			this.#engine.stopRenderLoop()
 			this.onRollComplete()
 		} else {
@@ -199,14 +192,16 @@ class WorldOnscreen {
 	}
 
 	clear() {
-		if(!Object.keys(this.#dieCache).length && !this.#sleeperCount) return
+		if(!this.#dieCount && !this.#sleeperCount) return
 		this.#dieRollTimer.forEach(timer => clearTimeout(timer))
+		this.#dieRollTimer = []
 		this.#engine.stopRenderLoop()
 		Object.values(this.#dieCache).forEach(die => {
 			if(die.mesh) die.mesh.dispose()
 		})
 		this.#physics?.clearDice()
 		this.#dieCache = {}
+		this.#dieCount = 0
 		this.#count = 0
 		this.#sleeperCount = 0
 		this.#scene.render()
@@ -243,7 +238,7 @@ class WorldOnscreen {
 		if(this.#engine.activeRenderLoops.length === 0) this.render(false)
 		const {id, value, ...rest} = die
 		const newDie = { id, value, config: rest }
-		this.#dieCache[id] = newDie
+		this.#cacheDie(newDie)
 		setTimeout(() => {
 			this.#dieRollTimer.push(setTimeout(() => {
 				this.handleAsleep(newDie)
@@ -263,7 +258,7 @@ class WorldOnscreen {
 		}
 
 		const newDie = new Dice(diceOptions, this.#scene)
-		this.#dieCache[newDie.id] = newDie
+		this.#cacheDie(newDie)
 
 		const forcedTargetQuaternion = this.#getForcedPhysicsTarget(newDie)
 
@@ -297,7 +292,7 @@ class WorldOnscreen {
 				return d10Instance
 			})
 
-			this.#dieCache[`${newDie.d10Instance.id}`] = newDie.d10Instance
+			this.#cacheDie(newDie.d10Instance)
 			const forcedD10Q = this.#getForcedPhysicsTarget(newDie.d10Instance)
 			this.#physics?.addDie({
 				sides: 10,
@@ -313,20 +308,24 @@ class WorldOnscreen {
 
 	remove(data) {
 		const dieData = this.#dieCache[data.id]
-
-		if(dieData.hasOwnProperty('d10Instance')) {
-			if(this.#dieCache[dieData.d10Instance.id].mesh) {
-				this.#dieCache[dieData.d10Instance.id].mesh.dispose()
-				this.#physics?.removeDie(dieData.d10Instance.id)
-			}
-			delete this.#dieCache[dieData.d10Instance.id]
-			this.#sleeperCount--
+		if(!dieData) {
+			return
 		}
 
-		if(this.#dieCache[data.id].mesh) this.#dieCache[data.id].mesh.dispose()
+		if(dieData.hasOwnProperty('d10Instance')) {
+			const d10Instance = this.#dieCache[dieData.d10Instance.id]
+			if(d10Instance?.mesh) {
+				d10Instance.mesh.dispose()
+				this.#physics?.removeDie(dieData.d10Instance.id)
+			}
+			this.#removeCachedDie(dieData.d10Instance.id)
+			this.#sleeperCount = Math.max(0, this.#sleeperCount - 1)
+		}
+
+		if(this.#dieCache[data.id]?.mesh) this.#dieCache[data.id].mesh.dispose()
 		this.#physics?.removeDie(data.id)
-		delete this.#dieCache[data.id]
-		this.#sleeperCount--
+		this.#removeCachedDie(data.id)
+		this.#sleeperCount = Math.max(0, this.#sleeperCount - 1)
 		this.#scene.render()
 		this.onDieRemoved(data.rollId)
 	}
@@ -359,8 +358,13 @@ class WorldOnscreen {
 	#getForcedPhysicsTarget(die) {
 		if(!this.#usesPhysicsForcedResult(die)) return null
 		const resolvedTarget = Dice.getForcedTargetQuaternion(die, this.#scene)
-		if(!resolvedTarget) return null
+		if(!resolvedTarget) {
+			die.__forcedPhysicsGuided = false
+			return null
+		}
 		const q = resolvedTarget.targetQuaternion
+		die.__forcedPhysicsGuided = true
+		die.__forcedSyncFrames = 0
 		return { x: q.x, y: q.y, z: q.z, w: q.w }
 	}
 
@@ -389,6 +393,47 @@ class WorldOnscreen {
 		} else {
 			this.#sleeperCount++
 			this.onRollResult(die)
+		}
+	}
+
+	#cacheDie(die) {
+		const key = `${die.id}`
+		if(!this.#dieCache[key]) {
+			this.#dieCount += 1
+		}
+		this.#dieCache[key] = die
+	}
+
+	#removeCachedDie(id) {
+		const key = `${id}`
+		if(this.#dieCache[key]) {
+			delete this.#dieCache[key]
+			this.#dieCount = Math.max(0, this.#dieCount - 1)
+		}
+	}
+
+	#syncDieTransform(die, physMesh) {
+		if(!die?.mesh || !physMesh) {
+			return
+		}
+
+		die.mesh.position.copyFrom(physMesh.position)
+		if(!physMesh.rotationQuaternion) {
+			return
+		}
+
+		const rawQ = die.__rawRotationQuaternion || new Quaternion()
+		rawQ.copyFrom(physMesh.rotationQuaternion)
+		die.__rawRotationQuaternion = rawQ
+
+		if(die.asleep) {
+			return
+		}
+
+		if(die.mesh.rotationQuaternion?.copyFrom) {
+			die.mesh.rotationQuaternion.copyFrom(physMesh.rotationQuaternion)
+		} else {
+			die.mesh.rotationQuaternion = physMesh.rotationQuaternion.clone()
 		}
 	}
 }

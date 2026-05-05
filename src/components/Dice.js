@@ -6,8 +6,88 @@ import { Ray } from "@babylonjs/core/Culling/ray";
 import '../helpers/babylonFileLoader'
 import '@babylonjs/core/Meshes/instancedMesh'
 
-import { deepCopy } from '../helpers';
+const modelSourceCache = new Map()
 
+const cloneMeshDefinition = (mesh) => ({
+  ...mesh,
+  metadata: mesh?.metadata ? { ...mesh.metadata } : mesh?.metadata
+})
+
+const cloneColliderFaceMap = (faceMap = {}) => Object.fromEntries(
+  Object.entries(faceMap).map(([dieType, values]) => [
+    dieType,
+    Array.isArray(values) ? [...values] : { ...values }
+  ])
+)
+
+const normalizeModelSource = (source) => {
+  const modelData = {
+    ...source,
+    meshes: Array.isArray(source?.meshes) ? source.meshes.map(cloneMeshDefinition) : [],
+    colliderFaceMap: cloneColliderFaceMap(source?.colliderFaceMap)
+  }
+
+  const meshNames = new Set(modelData.meshes.map(mesh => mesh.name))
+  const hasD100 = meshNames.has('d100')
+  const hasD10 = meshNames.has('d10')
+  const hasD100Collider = meshNames.has('d100_collider')
+  const hasD10Collider = meshNames.has('d10_collider')
+
+  if(!hasD100Collider && hasD10Collider) {
+    const d10ColliderData = modelData.meshes.find(mesh => mesh.name === 'd10_collider')
+    if(d10ColliderData) {
+      modelData.meshes.push({
+        ...cloneMeshDefinition(d10ColliderData),
+        name: 'd100_collider'
+      })
+    }
+  }
+
+  if((!hasD100 || !hasD100Collider) && hasD10 && modelData.colliderFaceMap?.d10) {
+    const d100FaceMap = Array.isArray(modelData.colliderFaceMap.d10)
+      ? [...modelData.colliderFaceMap.d10]
+      : { ...modelData.colliderFaceMap.d10 }
+    Object.keys(d100FaceMap).forEach((key) => {
+      const value = d100FaceMap[key]
+      d100FaceMap[key] = value === 10 ? 0 : value * 10
+    })
+    modelData.colliderFaceMap.d100 = d100FaceMap
+  }
+
+  return modelData
+}
+
+const getModelSource = async (meshFilePath) => {
+  if(modelSourceCache.has(meshFilePath)) {
+    return modelSourceCache.get(meshFilePath)
+  }
+
+  const sourcePromise = fetch(`${meshFilePath}`).then(resp => {
+    if(resp.ok) {
+      const contentType = resp.headers.get("content-type")
+      if (contentType && contentType.indexOf("application/json") !== -1) {
+        return resp.json()
+      } 
+      else if (resp.type && resp.type === 'basic') {
+        return resp.json()
+      }
+      throw new Error(`Incorrect contentType: ${contentType}. Expected "application/json" or "basic"`)
+    }
+    throw new Error(`Unable to load 3D mesh file: '${meshFilePath}'. Request rejected with status ${resp.status}: ${resp.statusText}`)
+  }).then(normalizeModelSource).catch(error => {
+    modelSourceCache.delete(meshFilePath)
+    throw error
+  })
+
+  modelSourceCache.set(meshFilePath, sourcePromise)
+  return sourcePromise
+}
+
+const cloneModelSource = (source) => ({
+  ...source,
+  meshes: Array.isArray(source?.meshes) ? source.meshes.map(cloneMeshDefinition) : [],
+  colliderFaceMap: cloneColliderFaceMap(source?.colliderFaceMap)
+})
 
 const defaultOptions = {
   assetPath: '',
@@ -113,25 +193,7 @@ class Dice {
     let has_d100_collider = false
     let has_d10_collider = false
 
-    //TODO: cache model files so it won't have to be fetched by other themes using the same models
-    // using fetch to get modelData so we can pull out data unrelated to mesh importing
-    const modelData = await fetch(`${meshFilePath}`).then(resp => {
-      if(resp.ok) {
-        const contentType = resp.headers.get("content-type")
-        if (contentType && contentType.indexOf("application/json") !== -1) {
-          return resp.json()
-        } 
-        else if (resp.type && resp.type === 'basic') {
-          return resp.json()
-        }
-        else {
-          // return resp
-          throw new Error(`Incorrect contentType: ${contentType}. Expected "application/json" or "basic"`)
-        }
-      } else {
-        throw new Error(`Unable to load 3D mesh file: '${meshFilePath}'. Request rejected with status ${resp.status}: ${resp.statusText}`)
-      }
-    })
+    const modelData = cloneModelSource(await getModelSource(meshFilePath))
 
     if(!modelData){
       return
@@ -184,21 +246,6 @@ class Dice {
       const d10ColliderMesh = scene.getMeshByName(meshName + '_d10_collider')
       if(d10ColliderMesh && !scene.getMeshByName(meshName + '_d100_collider')) {
         d10ColliderMesh.clone(meshName + '_d100_collider')
-      }
-      const hasD100ColliderData = modelData.meshes.some(model => model.name === 'd100_collider')
-      const d10ColliderData = modelData.meshes.find(model => model.name === 'd10_collider')
-      if(d10ColliderData && !hasD100ColliderData) {
-        const d100ColliderData = deepCopy(d10ColliderData)
-        d100ColliderData.name = 'd100_collider'
-        modelData.meshes.push(d100ColliderData)
-      }
-    }
-    if((!has_d100 || !has_d100_collider) && has_d10) {
-      if(modelData.colliderFaceMap?.d10) {
-        modelData.colliderFaceMap['d100'] = deepCopy(modelData.colliderFaceMap['d10'])
-        Object.values(modelData.colliderFaceMap['d100']).forEach((val,i) => {
-          modelData.colliderFaceMap['d100'][i] = val * (val === 10 ? 0 : 10)
-        })
       }
     }
     // save colliderFaceMap to scene - couldn't find a better place to stash this
