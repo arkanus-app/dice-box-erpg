@@ -546,7 +546,7 @@ class Dice {
     }
   }
 
-  static lockForcedResult(die, scene) {
+  static lockForcedResult(die, scene, options = {}) {
     const resolvedTarget = Dice.getForcedTargetQuaternion(die, scene)
     if(!resolvedTarget) {
       return false
@@ -559,7 +559,9 @@ class Dice {
       die.mesh.rotationQuaternion = targetQuaternion
     }
     die.mesh.computeWorldMatrix?.(true)
-    scene.render?.()
+    if(options.render) {
+      scene.render?.()
+    }
     return true
   }
 
@@ -654,15 +656,9 @@ class Dice {
 
     const forcedFaceValue = Dice.getForcedFaceValue(die)
     if(forcedFaceValue !== undefined) {
-      let resolvedFaceValue = Dice.readTopFaceValue(die, scene)
+      const resolvedFaceValue = Dice.readTopFaceValue(die, scene)
       if(Number(resolvedFaceValue) !== Number(forcedFaceValue)) {
-        if(!Dice.lockForcedResult(die, scene)) {
-          throw new Error(`Unable to correct ${die.dieType} to requested face ${forcedFaceValue}.`)
-        }
-        resolvedFaceValue = Dice.readTopFaceValue(die, scene)
-        if(Number(resolvedFaceValue) !== Number(forcedFaceValue)) {
-          throw new Error(`Resolved ${die.dieType} face ${resolvedFaceValue} does not match requested face ${forcedFaceValue}.`)
-        }
+        throw new Error(`Resolved ${die.dieType} face ${resolvedFaceValue} does not match requested face ${forcedFaceValue}.`)
       }
     }
 
@@ -672,7 +668,7 @@ class Dice {
 
     die.value = Dice.readTopFaceValue(die, scene)
     const forcedValue = Dice.getForcedValue(die)
-    if(forcedValue !== undefined && Number.isFinite(Number(forcedValue))) {
+    if(forcedValue !== undefined && Number.isFinite(Number(forcedValue)) && !(die.config?.sides === 100 && die.d10Instance)) {
       die.value = Number(forcedValue)
     }
 

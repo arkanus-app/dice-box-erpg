@@ -1,4 +1,4 @@
-import worldWorker from './offscreenCanvas.worker?worker&inline' // using vite.js worker import - this will be compiled away
+import worldWorker from './offscreenCanvas.worker?worker'
 
 class WorldOffScreen {
 	initialized = false

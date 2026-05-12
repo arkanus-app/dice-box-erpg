@@ -1,4 +1,4 @@
-import { Vector3, Quaternion } from '@babylonjs/core/Maths/math.vector'
+ import { Vector3, Quaternion } from '@babylonjs/core/Maths/math.vector'
 import HavokPhysics from '@babylonjs/havok'
 import { HavokPlugin } from '@babylonjs/core/Physics/v2/Plugins/havokPlugin'
 import { createEngine } from './world/engine'
@@ -28,6 +28,7 @@ class WorldOnscreen {
 	#meshList = {}
 	#physics = null
 	#physicsObserver = null
+	#physicsTickedThisFrame = false
 	#boundRenderLoop = () => this.renderLoop()
 	noop = () => {}
 
@@ -93,6 +94,7 @@ class WorldOnscreen {
 		// Hook into Babylon's before-physics step to run our guidance system
 		this.#physicsObserver = this.#scene.onBeforePhysicsObservable.add(() => {
 			const delta = this.#scene.getPhysicsEngine?.()?.getSubTimeStep?.() || DICE_PHYSICS_SUB_TIME_STEP_MS
+			this.#physicsTickedThisFrame = true
 			this.#tickPhysics(delta)
 		})
 
@@ -165,7 +167,11 @@ class WorldOnscreen {
 			this.#engine.stopRenderLoop()
 			this.onRollComplete()
 		} else {
+			this.#physicsTickedThisFrame = false
 			this.#scene.render()
+			if(!this.#physicsTickedThisFrame) {
+				this.#tickPhysics(DICE_PHYSICS_SUB_TIME_STEP_MS)
+			}
 		}
 	}
 
@@ -301,8 +307,10 @@ class WorldOnscreen {
 				meshName: options.meshName,
 				forcedTargetQuaternion: forcedD10Q
 			})
+			this.#scheduleSettleFallback(newDie.d10Instance)
 		}
 
+		this.#scheduleSettleFallback(newDie)
 		return newDie
 	}
 
@@ -331,6 +339,10 @@ class WorldOnscreen {
 	}
 
 	#usesPhysicsForcedResult(die) {
+		return this.#hasForcedResult(die) && die.config.forcedResultMode !== 'visual'
+	}
+
+	#hasForcedResult(die) {
 		return die.config.forcedFaceValue !== undefined || die.config.forcedValue !== undefined
 	}
 
@@ -368,13 +380,94 @@ class WorldOnscreen {
 		return { x: q.x, y: q.y, z: q.z, w: q.w }
 	}
 
-	async handleAsleep(die) {
+	#ensureForcedResultReady(die) {
+		if(!this.#hasForcedResult(die) || !die.mesh) {
+			return
+		}
+
+		const forcedFaceValue = Dice.getForcedFaceValue(die)
+		if(forcedFaceValue === undefined) {
+			return
+		}
+
+		const resolvedFaceValue = Dice.readTopFaceValue(die, this.#scene)
+		if(Number(resolvedFaceValue) === Number(forcedFaceValue)) {
+			return
+		}
+
+		if(!Dice.lockForcedResult(die, this.#scene, { render: false })) {
+			throw new Error(`Unable to correct ${die.dieType} to requested face ${forcedFaceValue}.`)
+		}
+
+		const correctedFaceValue = Dice.readTopFaceValue(die, this.#scene)
+		if(Number(correctedFaceValue) !== Number(forcedFaceValue)) {
+			throw new Error(`Resolved ${die.dieType} face ${correctedFaceValue} does not match requested face ${forcedFaceValue}.`)
+		}
+
+		die.config.forcedResultMode = 'visual'
+		die.__forcedVisualCorrection = true
+	}
+
+	#scheduleSettleFallback(die) {
+		if(!this.#hasForcedResult(die)) {
+			return
+		}
+		const timeout = Math.max(1000, Number(this.config.settleTimeout) || 4200) + 350
+		const timer = setTimeout(() => {
+			const targetDie = this.#dieCache[`${die.id}`] || die
+			if(targetDie && !targetDie.__rollResultEmitted) {
+				const sleeping = this.#physics?.forceSleepDie?.(targetDie.id)
+				if(sleeping?.physMesh) {
+					this.#syncDieTransform(targetDie, sleeping.physMesh)
+				}
+				this.#forceCompleteDie(targetDie)
+			}
+		}, timeout)
+		this.#dieRollTimer.push(timer)
+	}
+
+	#forceCompleteDie(die) {
+		if(die.__rollResultEmitted) {
+			return
+		}
 		die.asleep = true
 
 		try {
+			if(this.#hasForcedResult(die) && die.mesh) {
+				Dice.lockForcedResult(die, this.#scene, { render: false })
+			}
+			const forcedFaceValue = Dice.getForcedFaceValue(die)
+			const forcedValue = Dice.getForcedValue(die)
+			if(forcedFaceValue !== undefined) {
+				die.value = Number(die.config?.sides === 100 && die.d10Instance ? forcedFaceValue : forcedValue)
+			}
+		} catch(error) {
+			this.onRollError(error)
+			return
+		}
+
+		this.#emitRollResult(die)
+	}
+
+	async handleAsleep(die) {
+		if(die.__rollResultEmitted) {
+			return
+		}
+		die.asleep = true
+
+		try {
+			this.#ensureForcedResultReady(die)
 			await Dice.getRollResult(die, this.#scene)
 		} catch(error) {
 			this.onRollError(error)
+			return
+		}
+
+		this.#emitRollResult(die)
+	}
+
+	#emitRollResult(die) {
+		if(die.__rollResultEmitted) {
 			return
 		}
 
@@ -382,17 +475,32 @@ class WorldOnscreen {
 			if(die?.d10Instance?.asleep || die?.dieParent?.asleep) {
 				const d100 = die.config.sides === 100 ? die : die.dieParent
 				const d10  = die.config.sides === 10  ? die : die.d10Instance
+				if(d100.__rollResultEmitted || d10.__rollResultEmitted) {
+					return
+				}
 				if(d100.rawValue) d100.value = d100.rawValue
 				d100.rawValue = d100.value
 				d100.value = d100.value + d10.value
 				if(d100.value > 100) d100.value = d100.value - 100
 				if(d100.value === 0) d100.value = 100
 				this.#sleeperCount++
-				this.onRollResult(d100)
+				d100.__rollResultEmitted = true
+				d10.__rollResultEmitted = true
+				this.onRollResult(this.#toRollResult(d100))
 			}
 		} else {
 			this.#sleeperCount++
-			this.onRollResult(die)
+			die.__rollResultEmitted = true
+			this.onRollResult(this.#toRollResult(die))
+		}
+	}
+
+	#toRollResult(die) {
+		return {
+			...die.config,
+			id: die.id,
+			rollId: die.config?.rollId,
+			value: die.value
 		}
 	}
 

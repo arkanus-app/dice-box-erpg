@@ -31,6 +31,28 @@ describe('normalizeDisplayRollRequest', () => {
 		assert.equal(request.dice[0].faceValue, 13)
 	})
 
+	it('defaults forced result mode to physics and allows per-die visual mode', () => {
+		const request = normalizeDisplayRollRequest({
+			id: 'roll-mode',
+			forcedResultMode: 'physics',
+			dice: [
+				{sides: 20, value: 13},
+				{sides: 6, value: 4, forcedResultMode: 'visual'}
+			]
+		})
+
+		assert.equal(request.forcedResultMode, 'physics')
+		assert.equal(request.dice[0].forcedResultMode, 'physics')
+		assert.equal(request.dice[1].forcedResultMode, 'visual')
+	})
+
+	it('rejects unsupported forced result modes', () => {
+		assert.throws(
+			() => normalizeDisplayRollRequest({dice: [{sides: 20, value: 13}], forcedResultMode: 'snap'}),
+			/Invalid forcedResultMode/
+		)
+	})
+
 	it('expands d100 values into a tens face and two physics bodies', () => {
 		const request = normalizeDisplayRollRequest({
 			id: 'roll-100',

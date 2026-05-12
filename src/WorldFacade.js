@@ -24,7 +24,18 @@ const defaultOptions = {
 	maxDice: 999,
 	antialias: true,
 	shadowResolution: 1024,
-	gravity: 1
+	gravity: 1.85,
+	mass: 1.08,
+	startingHeight: 6.4,
+	spinForce: 5.8,
+	throwForce: 4.55,
+	wallPadding: 1.35,
+	friction: .86,
+	restitution: .16,
+	linearDamping: .28,
+	angularDamping: .24,
+	settleTimeout: 4200,
+	forcedResultMode: 'physics'
 }
 
 class WorldFacade {
@@ -399,6 +410,7 @@ class WorldFacade {
 				forcedValue: displayDie.value,
 				forcedFaceValue: displayDie.faceValue,
 				forcedDiscarded: displayDie.discarded,
+				forcedResultMode: displayDie.forcedResultMode,
 				newStartPoint,
 				colorSuffix: prepared.colorSuffix
 			}

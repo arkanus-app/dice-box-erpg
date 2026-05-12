@@ -1,6 +1,13 @@
 node_modules
 .DS_Store
-dist
+dist/*
+!dist/dice3dview.es.js
+!dist/dice3dview.es.min.js
+!dist/style.css
+!dist/assets/
+!dist/assets/**
+!dist/chunks/
+!dist/chunks/**
 dist-ssr
 *.local
 newModelFiles

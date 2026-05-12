@@ -16,51 +16,53 @@ const DICE_COLLISION_MASK = 0xffff
 
 const defaultOptions = {
 	size: 9.5,
-	startingHeight: 8,
-	spinForce: 6,
-	throwForce: 5,
-	gravity: 1,
-	mass: 1,
+	startingHeight: 6.4,
+	spinForce: 5.8,
+	throwForce: 4.55,
+	gravity: 1.85,
+	mass: 1.08,
 	scale: 5,
-	wallPadding: 1.15,
-	friction: .8,
-	restitution: .1,
-	linearDamping: .22,
-	angularDamping: .18,
-	settleTimeout: 5000,
+	wallPadding: 1.35,
+	friction: .86,
+	restitution: .16,
+	linearDamping: .28,
+	angularDamping: .24,
+	settleTimeout: 4200,
 }
 
 const forcedGuideOptions = {
-	minElapsed: 520,
-	forceGuideElapsed: 1450,
+	minElapsed: 500,
+	forceGuideElapsed: 1320,
 	minGroundImpacts: 1,
-	bounceGrace: 160,
+	bounceGrace: 130,
 	speedThreshold: 1.6,
 	tiltThreshold: 1.4,
-	duration: 1260,
-	angleThreshold: 0.035,
-	finalLockDuration: 220,
-	initialBias: .28,
-	launchSpinBias: .18,
-	launchAlignmentStrength: 1.35,
-	angularStrength: 5.2,
-	maxAngularVelocity: 6.4,
-	motorBlend: .14,
-	linearDampingStart: 1,
-	linearDampingEnd: .76,
-	angularDampingStart: .995,
-	angularDampingEnd: .72,
-	centerPull: .012,
-	centerMaxVelocity: .42,
-	maxLockHeight: 2.4
+	duration: 1080,
+	angleThreshold: 0.04,
+	finalLockDuration: 140,
+	initialBias: .24,
+	launchSpinBias: .14,
+	launchAlignmentStrength: 1.25,
+	angularStrength: 5.8,
+	maxAngularVelocity: 7,
+	motorBlend: .16,
+	linearDampingStart: .92,
+	linearDampingEnd: .68,
+	angularDampingStart: .94,
+	angularDampingEnd: .66,
+	centerPull: .007,
+	centerMaxVelocity: .3,
+	maxLockHeight: 2.05,
+	maxGuideStartHeight: 3.2,
+	timeoutWindow: 650
 }
 
 const forcedGuideByDieType = {
-	d4: { minElapsed:620, forceGuideElapsed:1600, duration:1380, angularStrength:4.2, maxAngularVelocity:5.2, initialBias:.2, launchSpinBias:.12, launchAlignmentStrength:1.05, centerPull:.014 },
-	d6: { minElapsed:580, forceGuideElapsed:1500, duration:1320, angularStrength:4.8, maxAngularVelocity:5.8, initialBias:.24, launchSpinBias:.15, launchAlignmentStrength:1.2 },
-	d10: { minElapsed:520, forceGuideElapsed:1400, duration:1200, angularStrength:5.6, maxAngularVelocity:7, initialBias:.3, launchSpinBias:.2, launchAlignmentStrength:1.45 },
-	d100: { minElapsed:520, forceGuideElapsed:1400, duration:1200, angularStrength:5.6, maxAngularVelocity:7, initialBias:.3, launchSpinBias:.2, launchAlignmentStrength:1.45 },
-	d20: { minElapsed:480, forceGuideElapsed:1320, duration:1160, angularStrength:6.1, maxAngularVelocity:7.6, initialBias:.34, launchSpinBias:.22, launchAlignmentStrength:1.6 },
+	d4: { minElapsed:580, forceGuideElapsed:1500, duration:1240, angularStrength:4.6, maxAngularVelocity:5.5, initialBias:.18, launchSpinBias:.1, launchAlignmentStrength:1, centerPull:.009, maxGuideStartHeight:2.8 },
+	d6: { minElapsed:540, forceGuideElapsed:1400, duration:1160, angularStrength:5.1, maxAngularVelocity:6.1, initialBias:.22, launchSpinBias:.12, launchAlignmentStrength:1.12 },
+	d10: { minElapsed:500, forceGuideElapsed:1300, duration:1040, angularStrength:6, maxAngularVelocity:7.2, initialBias:.27, launchSpinBias:.17, launchAlignmentStrength:1.35 },
+	d100: { minElapsed:500, forceGuideElapsed:1300, duration:1040, angularStrength:6, maxAngularVelocity:7.2, initialBias:.27, launchSpinBias:.17, launchAlignmentStrength:1.35 },
+	d20: { minElapsed:460, forceGuideElapsed:1220, duration:980, angularStrength:6.6, maxAngularVelocity:7.8, initialBias:.3, launchSpinBias:.18, launchAlignmentStrength:1.45 },
 }
 
 // --- Math helpers (independentes de engine, portados do worker) ---
@@ -555,6 +557,16 @@ export class DicePhysics {
 		}
 	}
 
+	forceSleepDie(id) {
+		const activeIndex = this.#bodyIndexById.get(id)
+		if(activeIndex === undefined) {
+			return null
+		}
+		const entry = this.#removeActiveEntryAt(activeIndex)
+		this.#sleepEntry(entry)
+		return { id: entry.id, physMesh: entry.physMesh, asleep: true }
+	}
+
 	clearDice() {
 		this.#bodies.forEach(entry => this.#disposeEntry(entry))
 		this.#sleepingBodies.forEach(entry => this.#disposeEntry(entry))
@@ -586,7 +598,8 @@ export class DicePhysics {
 				entry.guidedSleepReady = true
 			}
 
-			const shouldSleep = entry.guidedSleepReady ||
+			const guidedTimedOut = entry.guidedTarget && entry.timeout < 0
+			const shouldSleep = entry.guidedSleepReady || guidedTimedOut ||
 				(!entry.guidedTarget && (speed < .01 && tilt < .005 || entry.timeout < 0))
 
 			if(shouldSleep) {
@@ -688,7 +701,11 @@ export class DicePhysics {
 	#shouldStartGuidance(entry, speed, tilt) {
 		const profile = entry.guidedTarget?.profile || entry.guidanceProfile || forcedGuideOptions
 		if(entry.elapsed < profile.minElapsed) return false
-		if(entry.elapsed >= profile.forceGuideElapsed || entry.timeout < (profile.timeoutWindow||0)) return true
+		const nearGuideHeight = entry.physMesh.position.y <= (profile.maxGuideStartHeight || profile.maxLockHeight || forcedGuideOptions.maxGuideStartHeight)
+		if(entry.timeout < (profile.timeoutWindow||0)) return true
+		if(entry.elapsed >= profile.forceGuideElapsed) {
+			return (entry.groundImpactCount||0) >= profile.minGroundImpacts || nearGuideHeight
+		}
 		if((entry.groundImpactCount||0) < profile.minGroundImpacts) return false
 		if(entry.firstGroundContactElapsed !== null && entry.elapsed - entry.firstGroundContactElapsed < profile.bounceGrace) return false
 		return true
@@ -735,7 +752,14 @@ export class DicePhysics {
 		const profile = guide.profile || entry.guidanceProfile || forcedGuideOptions
 		const progress = Math.min(1, guide.elapsed / profile.duration)
 		const assistP = smoothStep((progress-.18)/.82)
-		if(assistP > 0) { this.#dampVelocity(entry, profile, assistP); this.#applyLandingAssist(entry, profile, assistP) }
+		const nearGuideHeight = entry.physMesh.position.y <= (profile.maxGuideStartHeight || profile.maxLockHeight || forcedGuideOptions.maxGuideStartHeight)
+		const canAssistLanding = entry.hasGroundContact || (entry.groundImpactCount||0) > 0 || nearGuideHeight
+		if(assistP > 0) {
+			this.#dampVelocity(entry, profile, assistP)
+			if(canAssistLanding) {
+				this.#applyLandingAssist(entry, profile, assistP)
+			}
+		}
 		const curQ = this.#getBodyQuat(entry)
 		if(!curQ) return
 		const angle = this.#applyAngularMotor(entry, curQ, guide, profile, progress)

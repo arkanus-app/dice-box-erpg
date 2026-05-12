@@ -4,6 +4,10 @@ import copy from 'rollup-plugin-copy'
 import del from 'rollup-plugin-delete'
 import minifyEs from './rollup-plugin-minifyEs'
 
+const assetFileNames = (assetInfo) => assetInfo.name === 'style.css'
+	? 'style.css'
+	: 'assets/[name]-[hash][extname]'
+
 export default defineConfig({
 	base: process.env.NODE_ENV === 'production' ? './' : './src',
 	worker: {
@@ -26,14 +30,16 @@ export default defineConfig({
 			output: [
 				{
 					format: "es",
-					inlineDynamicImports: true,
-					chunkFileNames: (chunkInfo) => `${chunkInfo.name}.js`,
-					sourcemap: true,
+					entryFileNames: 'dice3dview.es.js',
+					chunkFileNames: 'chunks/[name]-[hash].js',
+					assetFileNames,
+					sourcemap: false,
 				},
 				{
 					format: "esm",
-					inlineDynamicImports: true,
-					chunkFileNames: (chunkInfo) => `${chunkInfo.name}.min.js`,
+					entryFileNames: 'dice3dview.es.min.js',
+					chunkFileNames: 'chunks/[name]-[hash].min.js',
+					assetFileNames,
 					sourcemap: false,
 					plugins: [
 						minifyEs(),

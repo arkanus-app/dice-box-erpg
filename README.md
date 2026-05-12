@@ -25,7 +25,8 @@ For ERPG internal projects the package can also be consumed from Git:
 ```js
 import DiceBox from '@erpg/dice3dview';
 
-const diceBox = new DiceBox('#dice-box', {
+const diceBox = new DiceBox({
+  container: '#dice-box',
   assetPath: '/assets/dice-box/',
   forcedResultMode: 'physics',
 });
@@ -53,6 +54,15 @@ await diceBox.displayRoll({
 - keeps 3D concerns separate from parsing, normalization, Discord formatting, and chat output
 
 The default `assetPath` remains `/assets/dice-box/` for compatibility with existing ERPG static assets.
+
+## Forced Result Modes
+
+`forcedResultMode` is optional and defaults to `"physics"`.
+
+- `"physics"`: guides the physical body toward the requested face while it is still rolling.
+- `"visual"`: lets the die roll freely, then applies the requested face before the roll result is emitted.
+
+Both modes keep `displayRoll()` display-only. The caller still provides the resolved die values; this package only renders those values.
 
 ## Attribution
 

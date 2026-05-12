@@ -1,6 +1,6 @@
 {
   "name": "@erpg/dice3dview",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": {
     "name": "Quir and Codex"
   },
@@ -61,7 +61,6 @@
   "dependencies": {
     "@babylonjs/core": "^7.0.0",
     "@babylonjs/havok": "^1.3.0",
-    "@babylonjs/loaders": "^7.0.0",
     "@babylonjs/materials": "^7.0.0"
   }
 }
