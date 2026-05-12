@@ -181,7 +181,11 @@ class WorldOnscreen {
 
 		if(!Object.keys(this.#meshList).includes(meshName)) {
 			this.#meshList[meshName] = meshFilePath
-			const colliders = await Dice.loadModels({meshFilePath, meshName}, this.#scene)
+			const colliders = await Dice.loadModels({
+				meshFilePath,
+				meshName,
+				colliderScale: this.config.colliderScale
+			}, this.#scene)
 			if(!colliders) {
 				throw new Error("No colliders returned from the 3D mesh file.")
 			}

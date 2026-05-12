@@ -23,6 +23,8 @@ const defaultOptions = {
 	mass: 1.08,
 	scale: 5,
 	wallPadding: 1.35,
+	spawnSpacing: .72,
+	spawnHeightStep: .18,
 	friction: .86,
 	restitution: .16,
 	linearDamping: .28,
@@ -54,6 +56,7 @@ const forcedGuideOptions = {
 	centerMaxVelocity: .3,
 	maxLockHeight: 2.05,
 	maxGuideStartHeight: 3.2,
+	bodyContactSettleDelay: 180,
 	timeoutWindow: 650
 }
 
@@ -189,6 +192,32 @@ export class DicePhysics {
 			startingHeight,
 			tossX ? (fromTop ? yMax : yMin) : lerp(yMin,yMax,Math.random())
 		]
+	}
+
+	#getSpawnPosition() {
+		const position = [...this.#startPosition]
+		const bodyIndex = this.#bodies.length + this.#sleepingBodies.length
+		const spacing = Math.max(0, Number(this.#config.spawnSpacing) || 0)
+		if(bodyIndex <= 0 || spacing <= 0) {
+			return position
+		}
+
+		const lane = Math.ceil(bodyIndex / 2) * (bodyIndex % 2 === 1 ? 1 : -1)
+		const spreadOnX = Math.abs(position[0]) <= Math.abs(position[2])
+		if(spreadOnX) {
+			position[0] += lane * spacing
+		} else {
+			position[2] += lane * spacing
+		}
+
+		const heightStep = Math.max(0, Number(this.#config.spawnHeightStep) || 0)
+		position[1] += Math.min(bodyIndex, 3) * heightStep
+
+		const { halfX, halfZ } = this.#getBounds()
+		const dieRadius = Math.max(.45, (Number(this.#config.scale) || 5) * .12)
+		position[0] = clamp(position[0], -Math.max(.5, halfX - dieRadius), Math.max(.5, halfX - dieRadius))
+		position[2] = clamp(position[2], -Math.max(.5, halfZ - dieRadius), Math.max(.5, halfZ - dieRadius))
+		return position
 	}
 
 	#getBounds() {
@@ -361,12 +390,14 @@ export class DicePhysics {
 
 		const profile = getGuideProfile(dieType)
 		const biasedQ = createBiasedInitialQuat(forcedTargetQuaternion, profile)
-		const startPos = [...this.#startPosition]
+		const startPos = this.#getSpawnPosition()
 
 		// Clone for physics (Havok needs individual body per die)
 		const physMesh = colliderMesh.clone(`phys_${dieType}_${id}`)
 		physMesh.isVisible = false
 		physMesh.isPickable = false
+		physMesh.doNotSyncBoundingInfo = false
+		physMesh.unfreezeWorldMatrix?.()
 		physMesh.setEnabled(true)
 		this.#scalePhysicsMesh(physMesh, colliderMesh)
 		physMesh.position.set(startPos[0], startPos[1], startPos[2])
@@ -375,6 +406,8 @@ export class DicePhysics {
 		} else {
 			physMesh.rotationQuaternion = Quaternion.Random()
 		}
+		physMesh.refreshBoundingInfo?.()
+		physMesh.computeWorldMatrix(true)
 
 		const mass = this.#getBodyMass(colliderMesh)
 
@@ -403,6 +436,13 @@ export class DicePhysics {
 			currentGroundContact: false,
 			currentGroundImpactForce: 0,
 			lastGroundImpactForce: 0,
+			bodyContactElapsed: 0,
+			lastBodyContactElapsed: null,
+			hasBodyContact: false,
+			wasBodyContact: false,
+			currentBodyContact: false,
+			currentBodyImpactForce: 0,
+			lastBodyImpactForce: 0,
 			collisionObserver: null,
 		}
 
@@ -450,18 +490,29 @@ export class DicePhysics {
 		this.#applyLaunchGuidance(entry, spinny)
 	}
 
+	#isDiceBodyName(name) {
+		return typeof name === 'string' && name.startsWith('phys_')
+	}
+
 	#handleCollision(entry, event) {
 		if(!entry || entry.asleep || event?.type === PhysicsEventType.COLLISION_FINISHED) return
 		const floor = this.#floorBody
 		const force = this.#getCollisionForce(event)
+		const colliderName = event.collider?.transformNode?.name
+		const collidedName = event.collidedAgainst?.transformNode?.name
 
 		if(force > 0) {
 			this.#onCollision({
 				action: 'collision',
-				body0Id: event.collider?.transformNode?.name,
-				body1Id: event.collidedAgainst?.transformNode?.name,
+				body0Id: colliderName,
+				body1Id: collidedName,
 				force
 			})
+		}
+
+		if(this.#isDiceBodyName(colliderName) && this.#isDiceBodyName(collidedName)) {
+			entry.currentBodyContact = true
+			entry.currentBodyImpactForce = Math.max(entry.currentBodyImpactForce || 0, force)
 		}
 
 		if(!floor || (event.collider !== floor && event.collidedAgainst !== floor)) return
@@ -498,6 +549,20 @@ export class DicePhysics {
 		entry.wasGroundContact = hasContact
 		entry.currentGroundContact = false
 		entry.currentGroundImpactForce = 0
+
+		const hasBodyContact = Boolean(entry.currentBodyContact)
+		if(hasBodyContact) {
+			entry.bodyContactElapsed = (entry.bodyContactElapsed || 0) + delta
+			entry.lastBodyContactElapsed = entry.elapsed
+		} else {
+			entry.bodyContactElapsed = 0
+		}
+
+		entry.lastBodyImpactForce = Math.max(entry.lastBodyImpactForce || 0, entry.currentBodyImpactForce || 0)
+		entry.hasBodyContact = hasBodyContact
+		entry.wasBodyContact = hasBodyContact
+		entry.currentBodyContact = false
+		entry.currentBodyImpactForce = 0
 	}
 
 	#disposeEntry(entry) {
@@ -711,6 +776,11 @@ export class DicePhysics {
 		return true
 	}
 
+	#hasRecentBodyContact(entry, profile) {
+		const delay = profile.bodyContactSettleDelay ?? forcedGuideOptions.bodyContactSettleDelay
+		return entry.lastBodyContactElapsed !== null && entry.elapsed - entry.lastBodyContactElapsed < delay
+	}
+
 	#finalizeGuided(entry) {
 		entry.physicsBody.setLinearVelocity(Vector3.Zero())
 		entry.physicsBody.setAngularVelocity(Vector3.Zero())
@@ -767,7 +837,8 @@ export class DicePhysics {
 		const nearFloor = posY <= profile.maxLockHeight
 		const nearlyAligned = angle < profile.angleThreshold
 		const finalTimeout = entry.timeout < 80
-		const canLock = nearFloor && (entry.hasGroundContact || entry.groundContactElapsed > 180 || entry.timeout < 80)
+		const recentBodyContact = this.#hasRecentBodyContact(entry, profile)
+		const canLock = nearFloor && (entry.hasGroundContact || entry.groundContactElapsed > 180 || finalTimeout) && (!recentBodyContact || finalTimeout)
 		if(canLock && (nearlyAligned || finalTimeout)) this.#finalizeGuided(entry)
 	}
 }

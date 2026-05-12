@@ -130,6 +130,9 @@ const fe = /* @__PURE__ */ new Set([4, 6, 8, 10, 12, 20, 100]), ue = /* @__PURE_
   spinForce: 5.8,
   throwForce: 4.55,
   wallPadding: 1.35,
+  colliderScale: 1.02,
+  spawnSpacing: 0.72,
+  spawnHeightStep: 0.18,
   friction: 0.86,
   restitution: 0.16,
   linearDamping: 0.28,
@@ -283,15 +286,15 @@ E = new WeakMap(), T = new WeakMap(), R = new WeakMap(), p = new WeakMap(), h = 
   };
   if (n(this, y))
     if ("OffscreenCanvas" in window && "transferControlToOffscreen" in this.canvas && this.config.offscreen) {
-      const i = await import("./chunks/world.offscreen-d10ad3fb.js").then((o) => o.default);
+      const i = await import("./chunks/world.offscreen-812ade94.js").then((o) => o.default);
       f(this, h, new i(t));
     } else {
       this.config.offscreen && (console.warn("This browser does not support OffscreenCanvas. Using standard canvas fallback."), this.config.offscreen = !1);
-      const i = await import("./chunks/world.onscreen-7bb050b6.js").then((o) => o.default);
+      const i = await import("./chunks/world.onscreen-e470226e.js").then((o) => o.default);
       f(this, h, new i(t));
     }
   else {
-    const i = await import("./chunks/world.none-ddb73fcf.js").then((o) => o.default);
+    const i = await import("./chunks/world.none-2af05a80.js").then((o) => o.default);
     f(this, h, new i(t));
   }
 }, I = new WeakSet(), K = async function(e) {

@@ -64,6 +64,10 @@ The default `assetPath` remains `/assets/dice-box/` for compatibility with exist
 
 Both modes keep `displayRoll()` display-only. The caller still provides the resolved die values; this package only renders those values.
 
+## Physics Contact Tuning
+
+The default theme uses collision hulls that are slightly larger than the visible dice mesh (`colliderScale: 1.02`). This avoids visible edge overlap before Havok registers contact. Dense rolls also stagger spawn positions with `spawnSpacing` and `spawnHeightStep`, so multiple dice do not start at the exact same point.
+
 ## Attribution
 
 This package is an ERPG-owned derivative of the open-source `@3d-dice/dice-box` project by 3Ddice.

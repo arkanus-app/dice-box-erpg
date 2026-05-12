@@ -187,7 +187,10 @@ class Dice {
   // load all the dice models
   static async loadModels(options, scene) {
     // can we get scene without passing it in?
-    const {meshFilePath, meshName, scale, d4FaceDown = true} = options
+    const {meshFilePath, meshName, colliderScale = 1.02, d4FaceDown = true} = options
+    const safeColliderScale = Number.isFinite(Number(colliderScale))
+      ? Math.max(.85, Number(colliderScale))
+      : 1.02
     let has_d100 = false
     let has_d10 = false
     let has_d100_collider = false
@@ -204,12 +207,13 @@ class Dice {
       if(model.name === "__root__") {
         model.dispose()
       }
-      // shrink the colliders
+      // Keep physics colliders close to, or slightly larger than, the visual mesh.
+      // A smaller collider lets dice visibly intersect before Havok sees contact.
       if( model.name.includes("collider")) {
         model.scaling = new Vector3(
-          model.scaling.x * .9,
-          model.scaling.y * .9,
-          model.scaling.z * .9
+          model.scaling.x * safeColliderScale,
+          model.scaling.y * safeColliderScale,
+          model.scaling.z * safeColliderScale
         )
       }
       // check if d100 is available as a mesh - otherwise we'll clone a d10
