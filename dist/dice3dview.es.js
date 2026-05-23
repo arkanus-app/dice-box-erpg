@@ -286,11 +286,11 @@ E = new WeakMap(), T = new WeakMap(), R = new WeakMap(), p = new WeakMap(), h = 
   };
   if (n(this, y))
     if ("OffscreenCanvas" in window && "transferControlToOffscreen" in this.canvas && this.config.offscreen) {
-      const i = await import("./chunks/world.offscreen-812ade94.js").then((o) => o.default);
+      const i = await import("./chunks/world.offscreen-898bd0b5.js").then((o) => o.default);
       f(this, h, new i(t));
     } else {
       this.config.offscreen && (console.warn("This browser does not support OffscreenCanvas. Using standard canvas fallback."), this.config.offscreen = !1);
-      const i = await import("./chunks/world.onscreen-e470226e.js").then((o) => o.default);
+      const i = await import("./chunks/world.onscreen-67c90abe.js").then((o) => o.default);
       f(this, h, new i(t));
     }
   else {

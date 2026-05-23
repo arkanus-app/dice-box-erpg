@@ -17,6 +17,7 @@ const DICE_COLLISION_MASK = 0xffff
 const defaultOptions = {
 	size: 9.5,
 	startingHeight: 6.4,
+	startingHeightJitter: .8,
 	spinForce: 5.8,
 	throwForce: 4.55,
 	gravity: 1.85,
@@ -25,11 +26,23 @@ const defaultOptions = {
 	wallPadding: 1.35,
 	spawnSpacing: .72,
 	spawnHeightStep: .18,
-	friction: .86,
-	restitution: .16,
-	linearDamping: .28,
-	angularDamping: .24,
+	friction: .55,
+	restitution: .28,
+	linearDamping: .14,
+	angularDamping: .12,
 	settleTimeout: 4200,
+}
+
+// Per-die-type inertia tuning so a d4 doesn't feel as heavy as a d20.
+// Values are multipliers applied on top of the per-collider physicsMass.
+const massByDieType = {
+	d4:  .82,
+	d6:  1.00,
+	d8:  .92,
+	d10: .88,
+	d12: 1.08,
+	d20: 1.18,
+	d100: .88,
 }
 
 const forcedGuideOptions = {
@@ -48,12 +61,12 @@ const forcedGuideOptions = {
 	angularStrength: 5.8,
 	maxAngularVelocity: 7,
 	motorBlend: .16,
-	linearDampingStart: .92,
-	linearDampingEnd: .68,
-	angularDampingStart: .94,
-	angularDampingEnd: .66,
-	centerPull: .007,
-	centerMaxVelocity: .3,
+	linearDampingStart: .72,
+	linearDampingEnd: .58,
+	angularDampingStart: .78,
+	angularDampingEnd: .62,
+	centerPull: 0,
+	centerMaxVelocity: 0,
 	maxLockHeight: 2.05,
 	maxGuideStartHeight: 3.2,
 	bodyContactSettleDelay: 180,
@@ -61,7 +74,7 @@ const forcedGuideOptions = {
 }
 
 const forcedGuideByDieType = {
-	d4: { minElapsed:580, forceGuideElapsed:1500, duration:1240, angularStrength:4.6, maxAngularVelocity:5.5, initialBias:.18, launchSpinBias:.1, launchAlignmentStrength:1, centerPull:.009, maxGuideStartHeight:2.8 },
+	d4: { minElapsed:580, forceGuideElapsed:1500, duration:1240, angularStrength:4.6, maxAngularVelocity:5.5, initialBias:.18, launchSpinBias:.1, launchAlignmentStrength:1, centerPull:0, maxGuideStartHeight:2.8 },
 	d6: { minElapsed:540, forceGuideElapsed:1400, duration:1160, angularStrength:5.1, maxAngularVelocity:6.1, initialBias:.22, launchSpinBias:.12, launchAlignmentStrength:1.12 },
 	d10: { minElapsed:500, forceGuideElapsed:1300, duration:1040, angularStrength:6, maxAngularVelocity:7.2, initialBias:.27, launchSpinBias:.17, launchAlignmentStrength:1.35 },
 	d100: { minElapsed:500, forceGuideElapsed:1300, duration:1040, angularStrength:6, maxAngularVelocity:7.2, initialBias:.27, launchSpinBias:.17, launchAlignmentStrength:1.35 },
@@ -212,6 +225,10 @@ export class DicePhysics {
 
 		const heightStep = Math.max(0, Number(this.#config.spawnHeightStep) || 0)
 		position[1] += Math.min(bodyIndex, 3) * heightStep
+		const jitter = Math.max(0, Number(this.#config.startingHeightJitter) || 0)
+		if(jitter > 0) {
+			position[1] += (Math.random() - .5) * jitter
+		}
 
 		const { halfX, halfZ } = this.#getBounds()
 		const dieRadius = Math.max(.45, (Number(this.#config.scale) || 5) * .12)
@@ -297,8 +314,9 @@ export class DicePhysics {
 		return colliderMesh.metadata?.physicsMass || .1
 	}
 
-	#getBodyMass(colliderMesh) {
-		return this.#getColliderMass(colliderMesh) * this.#config.mass * this.#config.scale
+	#getBodyMass(colliderMesh, dieType) {
+		const typeMul = (dieType && massByDieType[dieType]) || 1
+		return this.#getColliderMass(colliderMesh) * this.#config.mass * this.#config.scale * typeMul
 	}
 
 	#scalePhysicsMesh(physMesh, colliderMesh) {
@@ -317,9 +335,12 @@ export class DicePhysics {
 			this.#applyShapeMaterial(shape)
 			try { entry.physicsBody.shape?.dispose?.() } catch {}
 			entry.physicsBody.shape = shape
-			entry.mass = this.#getBodyMass(entry.colliderMesh)
+			entry.mass = this.#getBodyMass(entry.colliderMesh, entry.dieType)
 			entry.physicsBody.setMassProperties({ mass: entry.mass })
-			this.#setActivationControl(entry.physicsBody, PhysicsActivationControl.ALWAYS_ACTIVE)
+			const activation = entry.guidedTarget
+				? PhysicsActivationControl.ALWAYS_ACTIVE
+				: PhysicsActivationControl.SIMULATION_CONTROLLED
+			this.#setActivationControl(entry.physicsBody, activation)
 		}
 	}
 
@@ -409,7 +430,7 @@ export class DicePhysics {
 		physMesh.refreshBoundingInfo?.()
 		physMesh.computeWorldMatrix(true)
 
-		const mass = this.#getBodyMass(colliderMesh)
+		const mass = this.#getBodyMass(colliderMesh, dieType)
 
 		const pb = new PhysicsBody(physMesh, PhysicsMotionType.DYNAMIC, false, this.#scene)
 		const shape = new PhysicsShapeConvexHull(physMesh, this.#scene)
@@ -419,7 +440,12 @@ export class DicePhysics {
 		pb.setLinearDamping(this.#config.linearDamping)
 		pb.setAngularDamping(this.#config.angularDamping)
 		pb.disablePreStep = false
-		this.#setActivationControl(pb, PhysicsActivationControl.ALWAYS_ACTIVE)
+		// Forced-result dice need to stay awake so the guidance motor can run.
+		// Free dice use Havok's auto-sleep for cheaper settling and a more natural rest pose.
+		const activation = forcedTargetQuaternion
+			? PhysicsActivationControl.ALWAYS_ACTIVE
+			: PhysicsActivationControl.SIMULATION_CONTROLLED
+		this.#setActivationControl(pb, activation)
 
 		const bodyEntry = {
 			id, dieType, physicsBody: pb, physMesh, colliderMesh,
@@ -478,13 +504,18 @@ export class DicePhysics {
 		)
 		pb.setLinearVelocity(lv)
 
-		const flippy = Math.random()>.5?1:-1
 		const spinny = lerp(c.spinForce*.5, c.spinForce, Math.random())
-		const impulse = new Vector3(spinny*flippy, spinny*-flippy, spinny*flippy)
+		const sx = Math.random()>.5?1:-1
+		const sy = Math.random()>.5?1:-1
+		const sz = Math.random()>.5?1:-1
+		const impulse = new Vector3(spinny*sx, spinny*sy, spinny*sz)
 		const impulseOffset = Math.abs(c.scale - 1) + c.scale*c.scale*(entry.mass/c.mass)*.75
+		const ox = Math.random()>.5?1:-1
+		const oy = Math.random()>.5?1:-1
+		const oz = Math.random()>.5?1:-1
 		pb.applyImpulse(
 			impulse,
-			entry.physMesh.position.add(new Vector3(impulseOffset, impulseOffset, impulseOffset))
+			entry.physMesh.position.add(new Vector3(impulseOffset*ox, impulseOffset*oy, impulseOffset*oz))
 		)
 
 		this.#applyLaunchGuidance(entry, spinny)
