@@ -1,0 +1,17 @@
+{
+  "name": "Default Colors",
+  "systemName": "default-v2",
+  "author": "Frank Ali",
+  "version": 0.3,
+  "material": {
+    "type": "color",
+    "diffuseTexture": {
+      "light": "../default/diffuse-light.webp",
+      "dark": "../default/diffuse-dark.webp"
+    },
+    "diffuseLevel": 1,
+    "bumpTexture": "../default/normal.webp",
+    "bumpLevel": 0.5
+  },
+  "diceAvailable": ["d4", "d6", "d8", "d10", "d12", "d20", "d100"]
+}
