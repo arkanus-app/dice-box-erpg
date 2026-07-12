@@ -13,8 +13,11 @@ import { SceneEnvironment } from './sceneEnvironment'
 
 export interface VisualEntry {
 	readonly node: AbstractMesh | TransformNode
+	readonly physicsCollider?: Mesh
+	readonly sides: number
 	readonly start: Vector3
 	readonly end: Vector3
+	readonly supportHeight: number
 	readonly target: Quaternion
 	readonly spinX: number
 	readonly spinY: number
@@ -23,6 +26,52 @@ export interface VisualEntry {
 
 const easeOutCubic = (value: number): number => 1 - Math.pow(1 - value, 3)
 const clamp01 = (value: number): number => Math.max(0, Math.min(1, value))
+const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5))
+
+interface TrajectoryLayoutInput {
+	readonly index: number
+	readonly count: number
+	readonly scale: number
+	readonly startingHeight: number
+	readonly coin: boolean
+}
+
+export const createScatteredLanding = (
+	input: TrajectoryLayoutInput,
+	random: ReturnType<typeof createSeededRandom>
+): Vector3 => {
+	const naturalSpacing = Math.max(0.78, input.scale * (input.coin ? 0.25 : 0.29))
+	const fittedSpacing = Math.min(naturalSpacing, 7.2 / Math.sqrt(Math.max(1, input.count)))
+	const radius = input.count === 1
+		? random.range(0.15, 0.55)
+		: fittedSpacing * Math.sqrt(input.index + 0.65)
+	const angle = input.index * GOLDEN_ANGLE + random.range(-0.38, 0.38)
+	const jitter = fittedSpacing * 0.16
+	return new Vector3(
+		Math.cos(angle) * radius + random.range(-jitter, jitter),
+		input.coin ? input.scale * 0.01 : input.scale * 0.12,
+		Math.sin(angle) * radius + random.range(-jitter, jitter)
+	)
+}
+
+export const createSideLaunch = (
+	input: TrajectoryLayoutInput,
+	landing: Vector3,
+	random: ReturnType<typeof createSeededRandom>
+): Vector3 => {
+	const fromLeft = input.index % 2 === 0
+	const sideInset = Math.min(1.35, input.scale * (input.coin ? 0.12 : 0.16))
+	const sideX = 8.65 - sideInset + random.range(-0.22, 0.22)
+	const launchHeight = Math.min(
+		input.startingHeight,
+		Math.max(2.8, input.scale * 0.68 + random.range(0.45, 1.25))
+	)
+	return new Vector3(
+		(fromLeft ? -1 : 1) * sideX,
+		launchHeight,
+		Math.max(-3.6, Math.min(3.6, landing.z * 0.35 + random.range(-2.4, 2.4)))
+	)
+}
 
 export class KinematicRenderer implements DisplayRenderer {
 	readonly mode: DisplayMode = 'kinematic'
@@ -105,7 +154,16 @@ export class KinematicRenderer implements DisplayRenderer {
 		const coin = this.coinFactory!.create(theme, id, value, this.options!.scale, discarded)
 		this.activeNodes.push(coin.root)
 		for(const mesh of coin.meshes) this.environment?.addShadowCaster(mesh)
-		return this.createTrajectory(coin.root, coin.targetQuaternion, index, count, random, true)
+		return this.createTrajectory(
+			coin.root,
+			coin.targetQuaternion,
+			index,
+			count,
+			random,
+			true,
+			2,
+			coin.supportHeight
+		)
 	}
 
 	protected async createDieEntry(
@@ -118,42 +176,63 @@ export class KinematicRenderer implements DisplayRenderer {
 		count: number,
 		random: ReturnType<typeof createSeededRandom>
 	): Promise<VisualEntry> {
-		const instance = await this.polyhedra!.create(theme, die, sides, faceValue, id, this.options!.scale)
+		const instance = await this.polyhedra!.create(
+			theme,
+			die,
+			sides,
+			faceValue,
+			id,
+			this.options!.scale,
+			this.options!.colliderScale
+		)
 		this.environment?.addShadowCaster(instance.mesh)
 		this.activeNodes.push(instance.mesh)
-		return this.createTrajectory(instance.mesh, instance.targetQuaternion, index, count, random, false)
+		return this.createTrajectory(
+			instance.mesh,
+			instance.targetQuaternion,
+			index,
+			count,
+			random,
+			false,
+			sides,
+			instance.supportHeight,
+			instance.physicsCollider
+		)
 	}
 
 	protected createTrajectory(
 		node: AbstractMesh | TransformNode,
-		target: Quaternion,
+		canonicalTarget: Quaternion,
 		index: number,
 		count: number,
 		random: ReturnType<typeof createSeededRandom>,
-		coin: boolean
+		coin: boolean,
+		sides: number,
+		supportHeight: number,
+		physicsCollider?: Mesh
 	): VisualEntry {
-		const columns = Math.max(1, Math.ceil(Math.sqrt(count)))
-		const rows = Math.ceil(count / columns)
-		const spacing = Math.max(0.7, this.options!.scale * 0.28)
-		const column = index % columns
-		const row = Math.floor(index / columns)
-		const end = new Vector3(
-			(column - (columns - 1) / 2) * spacing,
-			coin ? this.options!.scale * 0.01 : this.options!.scale * 0.12,
-			(row - (rows - 1) / 2) * spacing
-		)
-		const fromLeft = index % 2 === 0
-		const start = new Vector3(
-			(fromLeft ? -1 : 1) * (4.5 + random.range(0, 1.5)),
-			this.options!.startingHeight + random.range(0, 1.5),
-			random.range(-3, 3)
-		)
+		const layout = {
+			index,
+			count,
+			scale: this.options!.scale,
+			startingHeight: this.options!.startingHeight,
+			coin
+		}
+		const end = createScatteredLanding(layout, random)
+		end.y = supportHeight
+		const start = createSideLaunch(layout, end, random)
+		const target = Quaternion.RotationAxis(Vector3.Up(), random.range(-Math.PI, Math.PI))
+			.multiply(canonicalTarget)
+			.normalize()
 		node.position.copyFrom(start)
 		node.rotationQuaternion = Quaternion.Identity()
 		return {
 			node,
+			...(physicsCollider ? { physicsCollider } : {}),
+			sides,
 			start,
 			end,
+			supportHeight,
 			target,
 			spinX: random.range(coin ? 8 : 3, coin ? 14 : 7) * Math.PI,
 			spinY: random.range(2, 7) * Math.PI,

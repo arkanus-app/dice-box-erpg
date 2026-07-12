@@ -17,6 +17,9 @@ export interface SceneLights {
 	readonly hemispheric: HemisphericLight
 }
 
+export const DISPLAY_CAMERA_HEIGHT = 30
+export const DISPLAY_CAMERA_FOV = 0.28
+
 export class SceneEnvironment {
 	readonly engine: Engine
 	readonly scene: Scene
@@ -37,9 +40,9 @@ export class SceneEnvironment {
 		this.scene = new Scene(this.engine)
 		this.scene.clearColor = new Color4(0, 0, 0, 0)
 		this.scene.skipPointerMovePicking = true
-		this.camera = new TargetCamera('display-camera', new Vector3(0, 14, 0), this.scene)
+		this.camera = new TargetCamera('display-camera', new Vector3(0, DISPLAY_CAMERA_HEIGHT, 0), this.scene)
 		this.camera.setTarget(Vector3.Zero())
-		this.camera.fov = 0.58
+		this.camera.fov = DISPLAY_CAMERA_FOV
 		this.scene.activeCamera = this.camera
 		const directional = new DirectionalLight('display-directional', new Vector3(-0.35, -1, 0.25), this.scene) as SceneLights['directional']
 		directional.position = new Vector3(4, 12, -4)

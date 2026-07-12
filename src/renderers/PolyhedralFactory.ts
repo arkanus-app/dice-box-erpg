@@ -1,7 +1,8 @@
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial'
+import { MaterialPluginBase } from '@babylonjs/core/Materials/materialPluginBase'
 import { Texture } from '@babylonjs/core/Materials/Textures/texture'
 import { Color3 } from '@babylonjs/core/Maths/math.color'
-import { Quaternion, Vector3 } from '@babylonjs/core/Maths/math.vector'
+import { Matrix, Quaternion, Vector3 } from '@babylonjs/core/Maths/math.vector'
 import { Mesh } from '@babylonjs/core/Meshes/mesh'
 import type { Scene } from '@babylonjs/core/scene'
 import type { NormalizedResolvedDie, ResolvedThemeConfig } from '../types'
@@ -17,8 +18,40 @@ interface LoadedModel {
 	readonly faceMaps: BabylonModelSource['colliderFaceMap']
 }
 
+/**
+ * Color themes store the labels in the diffuse texture alpha channel. The
+ * transparent texels mean "use the selected dice color", not "hide the die".
+ * Keeping this composition in a core material plugin preserves the original
+ * theme contract without pulling @babylonjs/materials back into the bundle.
+ */
+class ColorTextureMaskPlugin extends MaterialPluginBase {
+	constructor(material: StandardMaterial) {
+		super(material, 'dice-color-texture-mask', 200, {}, true, true)
+	}
+
+	override getCustomCode(shaderType: string): Record<string, string> | null {
+		if(shaderType !== 'fragment') return null
+		return {
+			CUSTOM_FRAGMENT_UPDATE_DIFFUSE: `
+#ifdef DIFFUSE
+	baseColor.rgb = mix(diffuseColor, baseColor.rgb, baseColor.a);
+	baseColor.a = 1.0;
+	diffuseColor = vec3(1.0);
+#endif
+`
+		}
+	}
+}
+
 export interface PolyhedralInstance {
 	readonly mesh: Mesh
+	readonly physicsCollider: Mesh
+	readonly supportHeight: number
+	readonly targetQuaternion: Quaternion
+}
+
+interface CachedOrientation {
+	readonly supportHeight: number
 	readonly targetQuaternion: Quaternion
 }
 
@@ -39,7 +72,7 @@ const getPoint = (positions: ArrayLike<number>, indices: ArrayLike<number> | nul
 	return new Vector3(positions[index * 3] ?? 0, positions[index * 3 + 1] ?? 0, positions[index * 3 + 2] ?? 0)
 }
 
-const getFaceNormal = (collider: Mesh, triangle: number): Vector3 | null => {
+export const getFaceNormal = (collider: Mesh, triangle: number): Vector3 | null => {
 	const positions = collider.getVerticesData('position')
 	if(!positions) return null
 	const indices = collider.getIndices()
@@ -53,7 +86,7 @@ const getFaceNormal = (collider: Mesh, triangle: number): Vector3 | null => {
 	return normal.normalize()
 }
 
-const getTargetQuaternion = (collider: Mesh, faceMap: Readonly<Record<string, number>>, value: number, d4: boolean): Quaternion => {
+export const getTargetQuaternion = (collider: Mesh, faceMap: Readonly<Record<string, number>>, value: number, d4: boolean): Quaternion => {
 	const aggregate = Vector3.Zero()
 	let matches = 0
 	for(const [triangle, faceValue] of Object.entries(faceMap)) {
@@ -71,10 +104,29 @@ const getTargetQuaternion = (collider: Mesh, faceMap: Readonly<Record<string, nu
 	return Quaternion.FromUnitVectorsToRef(aggregate.normalize(), targetDirection, Quaternion.Identity()).normalize()
 }
 
+export const getSupportHeight = (collider: Mesh, targetQuaternion: Quaternion): number => {
+	const positions = collider.getVerticesData('position')
+	if(!positions?.length) throw new Error(`Collider '${collider.name}' has no positions.`)
+	const rotation = Matrix.Identity()
+	Matrix.FromQuaternionToRef(targetQuaternion, rotation)
+	let minimumY = Number.POSITIVE_INFINITY
+	for(let index = 0; index < positions.length; index += 3) {
+		const point = Vector3.TransformCoordinates(new Vector3(
+			positions[index] ?? 0,
+			positions[index + 1] ?? 0,
+			positions[index + 2] ?? 0
+		), rotation)
+		minimumY = Math.min(minimumY, point.y)
+	}
+	if(!Number.isFinite(minimumY)) throw new Error(`Collider '${collider.name}' has invalid positions.`)
+	return Math.max(0, -minimumY)
+}
+
 export class PolyhedralFactory {
 	readonly #scene: Scene
 	readonly #models = new Map<string, Promise<LoadedModel>>()
 	readonly #materials = new Map<string, StandardMaterial>()
+	readonly #orientations = new Map<string, CachedOrientation>()
 	readonly #pool = new Map<string, Mesh[]>()
 
 	constructor(scene: Scene) {
@@ -96,7 +148,8 @@ export class PolyhedralFactory {
 		sides: number,
 		faceValue: number,
 		id: string,
-		scale: number
+		scale: number,
+		colliderScale: number
 	): Promise<PolyhedralInstance> {
 		const model = await this.load(config)
 		const type = `d${sides}`
@@ -113,10 +166,27 @@ export class PolyhedralFactory {
 		mesh.isPickable = false
 		mesh.doNotSyncBoundingInfo = false
 		mesh.unfreezeWorldMatrix()
-		mesh.scaling.scaleInPlace(scale)
+		// Pooled meshes may have been displayed before. Scale is an absolute
+		// viewer option and must never compound across presentations.
+		mesh.scaling.setAll(scale)
 		mesh.rotationQuaternion = Quaternion.Identity()
 		mesh.material = this.#getMaterial(config, die.themeColor, die.discarded)
-		return { mesh, targetQuaternion: getTargetQuaternion(collider, faceMap, faceValue, sides === 4) }
+		const orientationKey = `${config.meshName}|${type}|${faceValue}`
+		let orientation = this.#orientations.get(orientationKey)
+		if(!orientation) {
+			const targetQuaternion = getTargetQuaternion(collider, faceMap, faceValue, sides === 4)
+			orientation = {
+				supportHeight: getSupportHeight(collider, targetQuaternion),
+				targetQuaternion
+			}
+			this.#orientations.set(orientationKey, orientation)
+		}
+		return {
+			mesh,
+			physicsCollider: collider,
+			supportHeight: orientation.supportHeight * scale * colliderScale,
+			targetQuaternion: orientation.targetQuaternion.clone()
+		}
 	}
 
 	release(mesh: Mesh): void {
@@ -128,6 +198,7 @@ export class PolyhedralFactory {
 		mesh.setEnabled(false)
 		mesh.position.set(0, -100, 0)
 		mesh.rotationQuaternion = Quaternion.Identity()
+		mesh.scaling.setAll(1)
 		const pool = this.#pool.get(key) ?? []
 		pool.push(mesh)
 		this.#pool.set(key, pool)
@@ -164,7 +235,9 @@ export class PolyhedralFactory {
 		if(cached) return cached
 		const material = new StandardMaterial(`display-material-${key}`, this.#scene)
 		const baseColor = discarded ? new Color3(0.45, 0.45, 0.45) : Color3.FromHexString(themeColor)
-		material.diffuseColor = baseColor
+		material.diffuseColor = config.material.type === 'color'
+			? baseColor
+			: discarded ? baseColor : Color3.White()
 		material.emissiveColor = baseColor.scale(0.18)
 		material.specularColor = discarded ? new Color3(0.1, 0.1, 0.1) : new Color3(0.35, 0.35, 0.35)
 		const diffuseDefinition = config.material.diffuseTexture
@@ -172,17 +245,16 @@ export class PolyhedralFactory {
 			? diffuseDefinition
 			: diffuseDefinition?.[isLightColor(themeColor) ? 'dark' : 'light']
 		if(diffuse) {
-			material.diffuseTexture = new Texture(resolveAsset(config.basePath, diffuse), this.#scene, false, false)
-			material.diffuseTexture.hasAlpha = true
+			material.diffuseTexture = new Texture(resolveAsset(config.basePath, diffuse), this.#scene, false, true)
 			material.diffuseTexture.level = config.material.diffuseLevel ?? 1
-			material.emissiveTexture = material.diffuseTexture
+			if(config.material.type === 'color') new ColorTextureMaskPlugin(material)
 		}
 		if(config.material.bumpTexture) {
-			material.bumpTexture = new Texture(resolveAsset(config.basePath, config.material.bumpTexture), this.#scene, false, false)
+			material.bumpTexture = new Texture(resolveAsset(config.basePath, config.material.bumpTexture), this.#scene, false, true)
 			material.bumpTexture.level = config.material.bumpLevel ?? 1
 		}
 		if(config.material.specularTexture) {
-			material.specularTexture = new Texture(resolveAsset(config.basePath, config.material.specularTexture), this.#scene, false, false)
+			material.specularTexture = new Texture(resolveAsset(config.basePath, config.material.specularTexture), this.#scene, false, true)
 		}
 		material.freeze()
 		this.#materials.set(key, material)
@@ -196,6 +268,7 @@ export class PolyhedralFactory {
 		this.#pool.clear()
 		for(const material of this.#materials.values()) material.dispose(true, true)
 		this.#materials.clear()
+		this.#orientations.clear()
 		this.#models.clear()
 	}
 }

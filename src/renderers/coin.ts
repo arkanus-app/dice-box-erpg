@@ -14,6 +14,7 @@ import type { CoinTheme, ResolvedThemeConfig } from '../types'
 export interface CoinInstance {
 	readonly root: TransformNode
 	readonly meshes: readonly AbstractMesh[]
+	readonly supportHeight: number
 	readonly targetQuaternion: Quaternion
 }
 
@@ -79,6 +80,9 @@ const createFaceMaterial = (
 export const getCoinTargetQuaternion = (value: number): Quaternion =>
 	value === 1 ? Quaternion.RotationAxis(Vector3.Forward(), Math.PI) : Quaternion.Identity()
 
+const thicknessSupport = (thickness: number, scale: number): number =>
+	thickness * scale * 0.14 / 2
+
 export class CoinFactory {
 	readonly #templates = new Map<string, CoinTemplate>()
 	readonly #pool = new Map<string, TransformNode[]>()
@@ -99,7 +103,12 @@ export class CoinFactory {
 		root.rotationQuaternion = Quaternion.Identity()
 		const meshes = root.getChildMeshes(false)
 		for(const mesh of meshes) mesh.visibility = discarded ? 0.42 : 1
-		return { root, meshes, targetQuaternion: getCoinTargetQuaternion(value) }
+		return {
+			root,
+			meshes,
+			supportHeight: thicknessSupport(template.thickness, scale),
+			targetQuaternion: getCoinTargetQuaternion(value)
+		}
 	}
 
 	#getTemplate(config: ResolvedThemeConfig): CoinTemplate {
