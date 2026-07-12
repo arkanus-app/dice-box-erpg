@@ -1,10 +1,7 @@
 # @erpg/dice3dview
 
-ERPG Dice 3D View is the visual dice display package used by ERPG projects.
-It is responsible for rendering already-resolved dice results in 3D with BabylonJS and Havok.
-
-It is not the authority for dice math.
-Use `@erpg/dicecore` to resolve notation and pass the final die values into this package.
+TypeScript-first 3D presentation layer for dice results already resolved by `@erpg/dicecore`.
+This package never parses notation, generates random results, or changes a supplied value.
 
 ## Install
 
@@ -12,70 +9,67 @@ Use `@erpg/dicecore` to resolve notation and pass the final die values into this
 npm install @erpg/dice3dview
 ```
 
-For ERPG internal projects the package can also be consumed from Git:
+## Usage
+
+```ts
+import { DiceResultViewer } from '@erpg/dice3dview'
+
+const viewer = new DiceResultViewer({
+  container: '#dice-stage',
+  assetPath: '/assets/dice-box/',
+  mode: 'kinematic'
+})
+
+await viewer.init()
+
+await viewer.display({
+  id: 'resolved-result-1',
+  seed: 'visual-animation-1',
+  dice: [
+    { id: 'coin', sides: 2, value: 1 },
+    { id: 'attack', sides: 20, value: 17 },
+    { id: 'discarded', sides: 6, value: 2, discarded: true }
+  ]
+})
+```
+
+`display()` accepts only resolved values and returns those same values with the presentation duration.
+Starting a new presentation or calling `clear()` rejects the previous presentation with a typed
+`DisplayCancelledError` whose code is `DISPLAY_CANCELLED`.
+
+## Display modes
+
+- `kinematic` is the default. It uses a seeded, directed animation and does not load Havok.
+- `physics` dynamically loads the optional physics chunk, applies collisions, and assists every body toward the supplied face.
+
+Neither mode determines the dice result. If graphical initialization or an asset fails, `display()`
+keeps the caller's resolved values authoritative and completes as a best-effort presentation.
+
+## d2 coins
+
+d2 is rendered as a procedural coin. Value `1` maps to the front and value `2` to the back.
+Themes can replace the artwork without changing the numeric contract:
 
 ```json
 {
-  "@erpg/dice3dview": "git+https://github.com/arkanus-app/dice-box-erpg.git"
+  "diceAvailable": ["d2", "d4", "d6", "d8", "d10", "d12", "d20", "d100"],
+  "coin": {
+    "front": { "value": 1, "texture": "coin-heads.webp" },
+    "back": { "value": 2, "texture": "coin-tails.webp" },
+    "edgeColor": "#c89b3c",
+    "diameter": 1,
+    "thickness": 0.12
+  }
 }
 ```
 
-## Quickstart
+Themes without a `coin` block use the numeric coin artwork from the default theme.
 
-```js
-import DiceBox from '@erpg/dice3dview';
+## Supported dice
 
-const diceBox = new DiceBox({
-  container: '#dice-box',
-  assetPath: '/assets/dice-box/',
-  forcedResultMode: 'physics',
-});
+d2, d4, d6, d8, d10, d12, d20, and d100. A d100 is one semantic result presented by two visual bodies.
 
-await diceBox.init();
+## Attribution and license
 
-await diceBox.displayRoll({
-  id: 'roll-1',
-  dice: [
-    { id: 'die-1', sides: 20, value: 17 },
-    { id: 'die-2', sides: 6, value: 4, discarded: true },
-  ],
-});
-```
-
-## Role in ERPG
-
-`@erpg/dice3dview` is intentionally display-only for advanced ERPG rolling flows:
-
-- accepts resolved die values from `@erpg/dicecore`
-- animates dice through Babylon Physics V2 and Havok
-- supports assisted physical landing through `forcedResultMode: "physics"`
-- supports visual correction through `forcedResultMode: "visual"`
-- exposes `displayRoll(request)` for deterministic result display
-- keeps 3D concerns separate from parsing, normalization, Discord formatting, and chat output
-
-The default `assetPath` remains `/assets/dice-box/` for compatibility with existing ERPG static assets.
-
-## Forced Result Modes
-
-`forcedResultMode` is optional and defaults to `"physics"`.
-
-- `"physics"`: guides the physical body toward the requested face while it is still rolling.
-- `"visual"`: lets the die roll freely, then applies the requested face before the roll result is emitted.
-
-Both modes keep `displayRoll()` display-only. The caller still provides the resolved die values; this package only renders those values.
-
-## Physics Contact Tuning
-
-The default theme uses collision hulls that are slightly larger than the visible dice mesh (`colliderScale: 1.02`). This avoids visible edge overlap before Havok registers contact. Dense rolls also stagger spawn positions with `spawnSpacing` and `spawnHeightStep`, so multiple dice do not start at the exact same point.
-
-## Attribution
-
-This package is an ERPG-owned derivative of the open-source `@3d-dice/dice-box` project by 3Ddice.
-The original project provided the BabylonJS dice-rendering foundation; ERPG has since adapted the package for Havok-only runtime usage, install-time simplicity, result-display workflows, forced resolved values, and ERPG integration.
-
-The original project remains credited in `LICENSE`.
-This package keeps the MIT license and preserves the upstream copyright notice.
-
-## License
-
-MIT.
+This ERPG-owned package derives from the MIT-licensed `@3d-dice/dice-box` project by 3Ddice.
+The original copyright notice is preserved in [LICENSE](LICENSE). MIT.

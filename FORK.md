@@ -1,15 +1,15 @@
-# ERPG Dice 3D View
+# ERPG Dice 3D View v2
 
-`@erpg/dice3dview` keeps the public `@3d-dice/dice-box` source as the base and adds ERPG-specific visual roll controls.
+Version 2 replaces the inherited roll-authority architecture with a TypeScript display pipeline.
 
-## Changes
+## ERPG changes
 
-- Accept resolved dice values through roll notation (`value`, `values`, `faceValues`, `discarded`).
-- Synchronize the top face with externally resolved roll values.
-- Guide the physics body toward the resolved value by default (`forcedResultMode: 'physics'`) using a late angular motor, per-die tuning, initial target bias, and landing assist. The older visual correction remains available through `forcedResultMode: 'visual'`.
-- Fade discarded dice toward grayscale for keep/drop notation such as `kh` and `kl`.
-- Remove the install-time asset copy prompt so CI and Cloudflare builds can run unattended.
+- accepts only resolved values from `@erpg/dicecore`;
+- exposes `DiceResultViewer.display()` instead of notation or roll APIs;
+- supports a lightweight kinematic renderer and a lazy Havok physics renderer;
+- renders d2 as a procedural, theme-configurable coin;
+- precomputes target orientations from model face maps without reading a result back from the scene;
+- publishes strict TypeScript declarations and a single ESM distribution;
+- removes OffscreenCanvas and no-WebGL world duplicates from the inherited implementation.
 
-## Packaging
-
-The app should consume this fork as a git dependency or published package. The generated `dist/` output is committed so installers do not need to run the build pipeline.
+The generated `dist/` remains committed because ERPG can consume the package directly from Git and jsDelivr.

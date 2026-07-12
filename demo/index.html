@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DiceResultViewer v2 demo</title>
+    <style>
+      html, body, #stage { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #090b16; }
+      #controls { position: fixed; z-index: 2; top: 16px; left: 16px; display: flex; gap: 8px; }
+      button { padding: 8px 12px; color: white; background: #24304f; border: 1px solid #60709a; border-radius: 6px; }
+    </style>
+  </head>
+  <body>
+    <div id="controls">
+      <button id="kinematic">Kinematic</button>
+      <button id="physics">Physics</button>
+    </div>
+    <div id="stage"></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
