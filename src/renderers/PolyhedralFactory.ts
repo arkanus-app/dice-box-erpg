@@ -6,6 +6,7 @@ import { Matrix, Quaternion, Vector3 } from '@babylonjs/core/Maths/math.vector'
 import { Mesh } from '@babylonjs/core/Meshes/mesh'
 import type { Scene } from '@babylonjs/core/scene'
 import type { NormalizedResolvedDie, ResolvedThemeConfig } from '../types'
+import { registerDiceMaterialShaders } from './shaderRegistration'
 
 interface BabylonModelSource {
 	readonly meshes: readonly Record<string, unknown>[]
@@ -131,6 +132,7 @@ export class PolyhedralFactory {
 	readonly #pool = new Map<string, Mesh[]>()
 
 	constructor(scene: Scene) {
+		registerDiceMaterialShaders()
 		this.#scene = scene
 	}
 

@@ -4,6 +4,19 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 ## [Não publicado]
 
+## [2.0.5] - 2026-07-12
+
+### Corrigido
+
+- registro antecipado dos shaders `StandardMaterial` e `ShadowMap` e de seus includes antes da primeira compilação WebGL;
+- metadado `sideEffects` dos chunks de distribuição para impedir que bundlers consumidores removam os registradores modulares do Babylon;
+- fallback indevido para arquivos de desenvolvimento `/src/Shaders/**/*.fx`, que em hosts SPA podia receber `index.html` e inserir HTML dentro do GLSL.
+
+### Validado
+
+- teste de regressão confirma o registro dos shaders principais, shaders de sombra e declarações UBO no `ShaderStore`;
+- build consumidor de produção confirmado sem requisições runtime para arquivos `.fx`.
+
 ## [2.0.4] - 2026-07-12
 
 ### Adicionado
@@ -227,7 +240,8 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 - tema `default-v2` consolidado no baseline `81c2ca9` em 30/05/2026.
 
-[Não publicado]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.4...HEAD
+[Não publicado]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.5...HEAD
+[2.0.5]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.4...v2.0.5
 [2.0.4]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.3...v2.0.4
 [2.0.3]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.2...v2.0.3
 [2.0.2]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.1...v2.0.2

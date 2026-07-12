@@ -2,7 +2,7 @@
 
 Data da consolidação: **12 de julho de 2026**
 
-Versão documentada: **2.0.4**
+Versão documentada: **2.0.5**
 
 ## Resumo
 

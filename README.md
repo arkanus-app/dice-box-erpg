@@ -4,7 +4,7 @@ Camada TypeScript de apresentação 3D para resultados de dados já resolvidos.
 
 O `@erpg/dicecore` interpreta a fórmula e decide os resultados; o `@erpg/dice3dview` recebe esses valores prontos e apenas os apresenta. A biblioteca não interpreta notação, não sorteia valores e não usa a face física como fonte do resultado.
 
-Versão atual: **2.0.4**.
+Versão atual: **2.0.5**.
 
 ## Documentação
 
@@ -40,7 +40,7 @@ npm install github:arkanus-app/dice-box-erpg#main
 `#main` é o canal móvel. Para builds reproduzíveis, prefira a tag da release:
 
 ```bash
-npm install github:arkanus-app/dice-box-erpg#v2.0.4
+npm install github:arkanus-app/dice-box-erpg#v2.0.5
 ```
 
 Em `package.json`:
