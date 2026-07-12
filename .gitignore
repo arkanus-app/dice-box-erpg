@@ -2,6 +2,7 @@ node_modules
 .DS_Store
 dist/*
 !dist/dice3dview.es.js
+!dist/dice3dview.css
 !dist/index.d.ts
 !dist/assets/
 !dist/assets/**

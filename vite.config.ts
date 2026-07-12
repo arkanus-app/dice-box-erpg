@@ -22,7 +22,9 @@ export default defineConfig({
 			output: {
 				entryFileNames: 'dice3dview.es.js',
 				chunkFileNames: 'chunks/[name]-[hash].js',
-				assetFileNames: 'assets/[name]-[hash][extname]'
+				assetFileNames: assetInfo => assetInfo.name === 'style.css'
+					? 'dice3dview.css'
+					: 'assets/[name]-[hash][extname]'
 			}
 		}
 	},

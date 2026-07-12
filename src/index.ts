@@ -11,5 +11,6 @@ export type {
 	ResolvedDie,
 	ResolvedThemeConfig,
 	ThemeConfig,
+	ThemeMaterialConfig,
 	ViewerOptions
 } from './types'

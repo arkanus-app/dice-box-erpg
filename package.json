@@ -1,6 +1,6 @@
 {
   "name": "@erpg/dice3dview",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "author": {
     "name": "Quir and Codex"
   },
@@ -15,7 +15,8 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/dice3dview.es.js"
-    }
+    },
+    "./style.css": "./dist/dice3dview.css"
   },
   "sideEffects": [
     "**/*.css"
@@ -44,7 +45,12 @@
   },
   "description": "TypeScript 3D presentation layer for externally resolved dice results, including themeable d2 coins.",
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "DEVLOG_V2.md",
+    "FORK.md",
+    "docs"
   ],
   "files-dev": [
     "src"
@@ -65,8 +71,9 @@
   "main-dev": "./src/index",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build && npm run bundle:check",
+    "build": "tsc --noEmit && vite build && npm run docs:check && npm run bundle:check",
     "bundle:check": "node scripts/check-bundle.mjs",
+    "docs:check": "node scripts/check-docs.mjs",
     "serve": "vite preview",
     "test": "tsx --test src/*.test.ts",
     "typecheck": "tsc --noEmit"

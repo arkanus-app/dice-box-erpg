@@ -86,7 +86,7 @@ export declare interface ThemeConfig {
     readonly [key: string]: unknown;
 }
 
-declare interface ThemeMaterialConfig {
+export declare interface ThemeMaterialConfig {
     readonly type: 'color' | 'standard';
     readonly diffuseTexture?: string | Readonly<{
         light: string;
