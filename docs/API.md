@@ -2,7 +2,7 @@
 
 [← Voltar ao README](../README.md)
 
-Esta referência descreve a API pública de `@erpg/dice3dview` 2.0.2. A biblioteca é destinada ao navegador: a criação exige DOM; a inicialização do renderer exige WebGL.
+Esta referência descreve a API pública de `@erpg/dice3dview` 2.0.3. A biblioteca é destinada ao navegador: a criação exige DOM; a inicialização do renderer exige WebGL.
 
 ## Exports públicos
 
@@ -62,7 +62,7 @@ Erros imediatos incluem ambiente sem `document`, container inexistente, `maxDice
 
 ### `init()`
 
-Inicializa o renderer do modo padrão, carrega o tema principal e os temas de `preloadThemes`, instala o listener de resize e devolve a própria instância. Chamadas repetidas são idempotentes.
+Inicializa o renderer do modo padrão, carrega o tema principal e os temas de `preloadThemes`, instala a observação de tamanho e devolve a própria instância. Chamadas repetidas são idempotentes.
 
 `display()` chama `init()` automaticamente quando necessário.
 
@@ -106,7 +106,9 @@ Para alterar `container`, `id`, `antialias`, `shadowResolution`, `gravity`, `phy
 
 ### `resize()`
 
-Recalcula o tamanho usando o canvas ou o elemento pai. A instância também responde automaticamente ao evento `window.resize` depois de `init()`.
+Recalcula o tamanho usando o canvas ou o elemento pai. Depois de `init()`, a instância observa automaticamente o container com `ResizeObserver` e também responde a `window.resize` como fallback.
+
+Nos dois modos, o novo tamanho recalcula a área útil do palco. Em `physics`, piso e paredes são reconstruídos e corpos ativos que ficaram fora dos novos limites são confinados novamente.
 
 ### `dispose()`
 
@@ -187,8 +189,11 @@ interface DisplayResult {
 | `scale` | `number` | `5` | escala dos objetos |
 | `duration` | `number` | `1100` ms | duração cinemática base |
 | `delay` | `number` | `8` ms | acréscimo por corpo cinemático |
+| `wallPadding` | `number` | `1.35` | recuo interno entre a borda visível e a área útil, em unidades do palco |
 
 A duração cinemática efetiva é `max(250, duration + (bodyCount - 1) × delay)`.
+
+`wallPadding` é aplicado aos lançamentos e pousos dos dois modos. No renderer físico, as faces internas das quatro paredes acompanham esse recuo; o piso cobre a mesma área responsiva.
 
 ### Física
 
@@ -209,11 +214,10 @@ A duração cinemática efetiva é `max(250, duration + (bodyCount - 1) × delay
 
 ### Opções reservadas
 
-As opções abaixo permanecem no contrato por compatibilidade, mas não alteram o renderer 2.0.2:
+As opções abaixo permanecem no contrato por compatibilidade, mas não alteram o renderer 2.0.3:
 
 | Opção | Default |
 |---|---:|
-| `wallPadding` | `1.35` |
 | `spawnSpacing` | `0.72` |
 | `spawnHeightStep` | `0.18` |
 

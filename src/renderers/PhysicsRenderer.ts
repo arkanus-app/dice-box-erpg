@@ -13,7 +13,7 @@ import { Quaternion, Vector3 } from '@babylonjs/core/Maths/math.vector'
 import type { AbstractMesh } from '@babylonjs/core/Meshes/abstractMesh'
 import type { Mesh } from '@babylonjs/core/Meshes/mesh'
 import type { Observer } from '@babylonjs/core/Misc/observable'
-import type { RendererContext } from '../types'
+import type { RendererContext, RequiredViewerOptions } from '../types'
 import { DisplayCancelledError } from '../errors'
 import {
 	canStartFinalLock,
@@ -35,7 +35,13 @@ import {
 	shouldRecoverPhysicsBody
 } from '../physicsSafety'
 import KinematicRenderer, { type VisualEntry } from './KinematicRenderer'
-import { createStaticPhysicsBox } from './physicsBounds'
+import { createPhysicsBoundsLayout, createStaticPhysicsBox } from './physicsBounds'
+import { DISPLAY_CAMERA_FOV, DISPLAY_CAMERA_HEIGHT } from './sceneEnvironment'
+import {
+	clampHorizontalPosition,
+	computeDisplayViewportBounds,
+	type DisplayViewportBounds
+} from './viewportBounds'
 
 interface ActiveBody {
 	readonly body: PhysicsBody
@@ -69,6 +75,9 @@ export class PhysicsRenderer extends KinematicRenderer {
 	readonly #dynamicBodyNames = new Set<string>()
 	#staticBodies: Array<{ body: PhysicsBody; mesh: AbstractMesh }> = []
 	#physicsPlugin: HavokPlugin | undefined
+	#bounds: DisplayViewportBounds | undefined
+	#boundsSignature = ''
+	#largestRadius = 0
 
 	override async init(context: RendererContext): Promise<void> {
 		await super.init(context)
@@ -224,6 +233,7 @@ export class PhysicsRenderer extends KinematicRenderer {
 		const targetPosition = preserveHorizontalPosition && finiteHorizontalPosition(entry.node.position)
 			? new Vector3(entry.node.position.x, entry.supportHeight, entry.node.position.z)
 			: entry.end.clone()
+		if(this.#bounds) clampHorizontalPosition(targetPosition, this.#bounds, entry.horizontalRadius)
 		body.setMotionType(PhysicsMotionType.ANIMATED)
 		body.setLinearVelocity(Vector3.Zero())
 		body.setAngularVelocity(Vector3.Zero())
@@ -283,8 +293,18 @@ export class PhysicsRenderer extends KinematicRenderer {
 
 	createBodies(entries: readonly VisualEntry[]): void {
 		this.disposeDynamicBodies()
+		this.#largestRadius = entries.reduce(
+			(radius, entry) => Math.max(radius, entry.horizontalRadius),
+			0
+		)
+		this.buildBounds(undefined, undefined, this.#largestRadius)
 		for(const entry of entries) this.#dynamicBodyNames.add(entry.node.name)
 		for(const entry of entries) {
+			if(this.#bounds) {
+				clampHorizontalPosition(entry.start, this.#bounds, entry.horizontalRadius)
+				clampHorizontalPosition(entry.end, this.#bounds, entry.horizontalRadius)
+				entry.node.position.copyFrom(entry.start)
+			}
 			const profile = getPhysicsGuidanceProfile(entry.sides)
 			entry.node.rotationQuaternion = createBiasedInitialQuaternion(
 				entry.target,
@@ -302,9 +322,9 @@ export class PhysicsRenderer extends KinematicRenderer {
 			body.setLinearDamping(this.options!.linearDamping)
 			body.setAngularDamping(this.options!.angularDamping)
 			body.setLinearVelocity(new Vector3(
-				(entry.end.x - entry.start.x) * this.options!.throwForce * 0.32,
+				(entry.end.x - entry.node.position.x) * this.options!.throwForce * 0.32,
 				2.2 + this.options!.throwForce * 0.22,
-				(entry.end.z - entry.start.z) * this.options!.throwForce * 0.32
+				(entry.end.z - entry.node.position.z) * this.options!.throwForce * 0.32
 			))
 			const spinScale = Math.max(0.07, this.options!.spinForce * 0.018)
 			const launchSpin = new Vector3(
@@ -375,7 +395,30 @@ export class PhysicsRenderer extends KinematicRenderer {
 		}
 	}
 
-	buildBounds(): void {
+	buildBounds(width?: number, height?: number, largestRadius = this.#largestRadius): void {
+		if(!this.context || !this.scene || !this.options || !this.#physicsPlugin || !this.scene.getPhysicsEngine()) return
+		const canvas = this.context.canvas
+		const viewportWidth = Math.max(1, (width ?? canvas.clientWidth) || canvas.width || 300)
+		const viewportHeight = Math.max(1, (height ?? canvas.clientHeight) || canvas.height || 150)
+		const bounds = computeDisplayViewportBounds({
+			width: viewportWidth,
+			height: viewportHeight,
+			cameraHeight: DISPLAY_CAMERA_HEIGHT,
+			cameraFov: DISPLAY_CAMERA_FOV,
+			wallPadding: this.options.wallPadding,
+			minimumRadius: largestRadius
+		})
+		const signature = [
+			viewportWidth,
+			viewportHeight,
+			this.options.wallPadding,
+			this.options.startingHeight,
+			this.options.friction,
+			this.options.restitution,
+			largestRadius
+		].join('|')
+		if(signature === this.#boundsSignature) return
+		this.#disposeStaticBounds()
 		const scene = this.scene!
 		const make = (name: string, size: { width: number; height: number; depth: number }, position: Vector3): void => {
 			this.#staticBodies.push(createStaticPhysicsBox(
@@ -386,11 +429,63 @@ export class PhysicsRenderer extends KinematicRenderer {
 				{ friction: this.options!.friction, restitution: this.options!.restitution }
 			))
 		}
-		make('display-floor', { width: 24, height: 2, depth: 24 }, new Vector3(0, -1, 0))
-		make('display-wall-north', { width: 24, height: 14, depth: 1 }, new Vector3(0, 5, -10))
-		make('display-wall-south', { width: 24, height: 14, depth: 1 }, new Vector3(0, 5, 10))
-		make('display-wall-east', { width: 1, height: 14, depth: 24 }, new Vector3(-10, 5, 0))
-		make('display-wall-west', { width: 1, height: 14, depth: 24 }, new Vector3(10, 5, 0))
+		const layout = createPhysicsBoundsLayout({
+			bounds,
+			startingHeight: this.options.startingHeight,
+			largestRadius
+		})
+		try {
+			make(layout.floor.name, layout.floor.size, layout.floor.position)
+			for(const wall of layout.walls) make(wall.name, wall.size, wall.position)
+		} catch(error) {
+			this.#disposeStaticBounds()
+			this.#bounds = undefined
+			this.#boundsSignature = ''
+			throw error
+		}
+		this.environment?.ensureGroundCoverage(layout.floor.size.width, layout.floor.size.depth)
+		this.#bounds = bounds
+		this.#boundsSignature = signature
+	}
+
+	#disposeStaticBounds(): void {
+		for(const { body, mesh } of this.#staticBodies.splice(0)) {
+			try { body.shape?.dispose() } catch {}
+			body.dispose()
+			mesh.dispose()
+		}
+	}
+
+	#constrainActiveBodies(): void {
+		if(!this.#bounds) return
+		for(const activeBody of this.#bodies) {
+			const { body, entry } = activeBody
+			clampHorizontalPosition(entry.start, this.#bounds, entry.horizontalRadius)
+			clampHorizontalPosition(entry.end, this.#bounds, entry.horizontalRadius)
+			if(!clampHorizontalPosition(entry.node.position, this.#bounds, entry.horizontalRadius)) continue
+			entry.node.computeWorldMatrix(true)
+			const prestepType = body.getPrestepType()
+			try {
+				body.disablePreStep = false
+				this.#physicsPlugin?.setPhysicsBodyTransformation(body, entry.node)
+			} catch {} finally {
+				body.setPrestepType(prestepType)
+			}
+		}
+	}
+
+	override resize(width: number, height: number): void {
+		super.resize(width, height)
+		this.buildBounds(width, height, this.#largestRadius)
+		this.#constrainActiveBodies()
+	}
+
+	override async updateOptions(options: Readonly<RequiredViewerOptions>): Promise<void> {
+		await super.updateOptions(options)
+		this.scene?.getPhysicsEngine()?.setGravity(new Vector3(0, -9.81 * options.gravity, 0))
+		this.#boundsSignature = ''
+		this.buildBounds(undefined, undefined, this.#largestRadius)
+		this.#constrainActiveBodies()
 	}
 
 	disposeDynamicBodies(): void {
@@ -405,16 +500,16 @@ export class PhysicsRenderer extends KinematicRenderer {
 
 	override clear(): void {
 		this.disposeDynamicBodies()
+		this.#largestRadius = 0
 		super.clear()
 	}
 
 	override dispose(): void {
 		this.disposeDynamicBodies()
-		for(const { body, mesh } of this.#staticBodies.splice(0)) {
-			try { body.shape?.dispose() } catch {}
-			body.dispose()
-			mesh.dispose()
-		}
+		this.#disposeStaticBounds()
+		this.#bounds = undefined
+		this.#boundsSignature = ''
+		this.#largestRadius = 0
 		this.#physicsPlugin = undefined
 		super.dispose()
 	}

@@ -70,6 +70,7 @@ export class DiceResultViewer {
 	#rendererMode: DisplayMode | undefined
 	#active: AbortController | undefined
 	#resizeHandler: (() => void) | undefined
+	#resizeObserver: ResizeObserver | undefined
 	#initialized = false
 	#disposed = false
 
@@ -87,6 +88,10 @@ export class DiceResultViewer {
 		await Promise.all([this.#options.theme, ...this.#options.preloadThemes].map(theme => this.#themes.load(theme)))
 		this.#resizeHandler = (): void => this.resize()
 		window.addEventListener('resize', this.#resizeHandler, { passive: true })
+		if(typeof ResizeObserver !== 'undefined') {
+			this.#resizeObserver = new ResizeObserver(() => this.resize())
+			this.#resizeObserver.observe(this.canvas.parentElement ?? this.canvas)
+		}
 		this.resize()
 		this.#initialized = true
 		return this
@@ -148,6 +153,8 @@ export class DiceResultViewer {
 		if(this.#disposed) return
 		this.clear()
 		if(this.#resizeHandler) window.removeEventListener('resize', this.#resizeHandler)
+		this.#resizeObserver?.disconnect()
+		this.#resizeObserver = undefined
 		this.#renderer?.dispose()
 		this.canvas.remove()
 		this.#disposed = true

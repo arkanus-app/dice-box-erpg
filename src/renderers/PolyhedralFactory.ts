@@ -47,6 +47,7 @@ export interface PolyhedralInstance {
 	readonly mesh: Mesh
 	readonly physicsCollider: Mesh
 	readonly supportHeight: number
+	readonly horizontalRadius: number
 	readonly targetQuaternion: Quaternion
 }
 
@@ -185,6 +186,7 @@ export class PolyhedralFactory {
 			mesh,
 			physicsCollider: collider,
 			supportHeight: orientation.supportHeight * scale * colliderScale,
+			horizontalRadius: collider.getBoundingInfo().boundingSphere.radius * scale * colliderScale,
 			targetQuaternion: orientation.targetQuaternion.clone()
 		}
 	}

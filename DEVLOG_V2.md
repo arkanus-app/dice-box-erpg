@@ -2,7 +2,7 @@
 
 Data da consolidação: **12 de julho de 2026**
 
-Versão documentada: **2.0.2**
+Versão documentada: **2.0.3**
 
 ## Resumo
 
@@ -112,12 +112,20 @@ O `PhysicsRenderer` é importado dinamicamente. Havok e o WASM entram quando o r
 A simulação usa:
 
 - gravidade, velocidade inicial e lançamento lateral;
-- chão 24×24 e quatro paredes;
+- piso e quatro paredes calculados a partir do frustum visível e do aspect ratio do canvas;
 - subpassos de 90 Hz;
 - colliders dedicados dos modelos;
 - contato com chão, paredes e outros dados;
 - recuperação de corpos fora do volume ou com transform inválido;
 - guidance por quaternion e perfis por geometria.
+
+### Barreiras responsivas na v2.0.3
+
+As primeiras releases da v2 mantinham um piso e quatro paredes de tamanho fixo. Isso funcionava no palco usado durante o desenvolvimento, mas deixava os colliders muito além da borda visível em viewers compactos, overlays e telas estreitas. O dado continuava fisicamente contido, porém podia desaparecer da página antes de atingir a parede.
+
+Na v2.0.3, a área útil é derivada da altura, do FOV e do aspect ratio da câmera. `wallPadding` passou a representar o recuo interno dessa área em unidades do palco. Lançamentos e pousos usam os mesmos limites, e o renderer físico reconstrói piso e paredes quando o canvas muda de tamanho.
+
+Um `ResizeObserver` acompanha o container mesmo quando o redimensionamento não dispara `window.resize`. Se uma apresentação estiver ativa, corpos que ficaram fora do novo retângulo são reconduzidos para dentro das barreiras.
 
 ## Fase 3 — d2 como moeda
 
@@ -322,24 +330,23 @@ Registrar essas regressões faz parte do devlog porque elas explicam por que a 2
 - não há d3 nativo;
 - d100 consome dois corpos visuais;
 - o WASM acompanha a distribuição, embora só seja carregado em `physics`;
-- `wallPadding`, `spawnSpacing` e `spawnHeightStep` estão tipados sem efeito atual;
+- `spawnSpacing` e `spawnHeightStep` estão tipados sem efeito atual;
 - `ThemeConfig.extends` e `specularPower` ainda não são processados;
 - `diceAvailable` é validado no JSON, mas a disponibilidade real depende do modelo;
 - corpos físicos não participam de pool;
 - alterar certas opções de engine exige recriar o viewer;
 - ainda não existe publicação no registry público npm;
-- v2.0.0, v2.0.1 e v2.0.2 passam a ter tags formais de release.
+- v2.0.0, v2.0.1, v2.0.2 e v2.0.3 passam a ter tags formais de release.
 
 ## Próximos passos
 
 1. adicionar teste E2E visual automatizado com leitura matemática da face final;
-2. tornar bounds físicos responsivos ao enquadramento e aspect ratio;
-3. reduzir o chunk físico e medir transferência comprimida em produção;
-4. adicionar degradação automática de sombras para 20/120 corpos;
-5. medir memória e descarte em sequências longas de apresentações;
-6. avaliar d3 nativo;
-7. implementar ou remover opções reservadas sem efeito;
-8. manter releases tagueados e, quando apropriado, publicar o pacote no npm.
+2. reduzir o chunk físico e medir transferência comprimida em produção;
+3. adicionar degradação automática de sombras para 20/120 corpos;
+4. medir memória e descarte em sequências longas de apresentações;
+5. avaliar d3 nativo;
+6. implementar ou remover opções reservadas sem efeito;
+7. manter releases tagueados e, quando apropriado, publicar o pacote no npm.
 
 ## Encerramento
 

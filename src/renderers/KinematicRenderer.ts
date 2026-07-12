@@ -9,7 +9,14 @@ import { DisplayCancelledError } from '../errors'
 import { createSeededRandom } from '../random'
 import { CoinFactory } from './coin'
 import { PolyhedralFactory } from './PolyhedralFactory'
-import { SceneEnvironment } from './sceneEnvironment'
+import { DISPLAY_CAMERA_FOV, DISPLAY_CAMERA_HEIGHT, SceneEnvironment } from './sceneEnvironment'
+import {
+	clampHorizontalPosition,
+	clampValue,
+	computeDisplayViewportBounds,
+	getHorizontalCenterBounds,
+	type DisplayViewportBounds
+} from './viewportBounds'
 
 export interface VisualEntry {
 	readonly node: AbstractMesh | TransformNode
@@ -18,6 +25,7 @@ export interface VisualEntry {
 	readonly start: Vector3
 	readonly end: Vector3
 	readonly supportHeight: number
+	readonly horizontalRadius: number
 	readonly target: Quaternion
 	readonly spinX: number
 	readonly spinY: number
@@ -28,12 +36,14 @@ const easeOutCubic = (value: number): number => 1 - Math.pow(1 - value, 3)
 const clamp01 = (value: number): number => Math.max(0, Math.min(1, value))
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5))
 
-interface TrajectoryLayoutInput {
+export interface TrajectoryLayoutInput {
 	readonly index: number
 	readonly count: number
 	readonly scale: number
 	readonly startingHeight: number
 	readonly coin: boolean
+	readonly objectRadius: number
+	readonly bounds: DisplayViewportBounds
 }
 
 export const createScatteredLanding = (
@@ -47,11 +57,21 @@ export const createScatteredLanding = (
 		: fittedSpacing * Math.sqrt(input.index + 0.65)
 	const angle = input.index * GOLDEN_ANGLE + random.range(-0.38, 0.38)
 	const jitter = fittedSpacing * 0.16
-	return new Vector3(
-		Math.cos(angle) * radius + random.range(-jitter, jitter),
+	const rawX = Math.cos(angle) * radius + random.range(-jitter, jitter)
+	const rawZ = Math.sin(angle) * radius + random.range(-jitter, jitter)
+	const maximumRawRadius = input.count === 1
+		? 0.55 + jitter
+		: fittedSpacing * Math.sqrt(input.count - 0.35) + jitter
+	const centerBounds = getHorizontalCenterBounds(input.bounds, input.objectRadius)
+	const availableX = Math.max(0, (centerBounds.maxX - centerBounds.minX) / 2)
+	const availableZ = Math.max(0, (centerBounds.maxZ - centerBounds.minZ) / 2)
+	const landing = new Vector3(
+		rawX * Math.min(1, availableX / Math.max(0.01, maximumRawRadius)),
 		input.coin ? input.scale * 0.01 : input.scale * 0.12,
-		Math.sin(angle) * radius + random.range(-jitter, jitter)
+		rawZ * Math.min(1, availableZ / Math.max(0.01, maximumRawRadius))
 	)
+	clampHorizontalPosition(landing, input.bounds, input.objectRadius)
+	return landing
 }
 
 export const createSideLaunch = (
@@ -60,16 +80,35 @@ export const createSideLaunch = (
 	random: ReturnType<typeof createSeededRandom>
 ): Vector3 => {
 	const fromLeft = input.index % 2 === 0
-	const sideInset = Math.min(1.35, input.scale * (input.coin ? 0.12 : 0.16))
-	const sideX = 8.65 - sideInset + random.range(-0.22, 0.22)
 	const launchHeight = Math.min(
 		input.startingHeight,
 		Math.max(2.8, input.scale * 0.68 + random.range(0.45, 1.25))
 	)
+	const groundCenters = getHorizontalCenterBounds(input.bounds, input.objectRadius)
+	const airborneBounds = computeDisplayViewportBounds({
+		width: input.bounds.width,
+		height: input.bounds.height,
+		cameraHeight: DISPLAY_CAMERA_HEIGHT,
+		cameraFov: DISPLAY_CAMERA_FOV,
+		planeY: launchHeight,
+		minimumRadius: input.objectRadius
+	})
+	const airborneCenters = getHorizontalCenterBounds(airborneBounds, input.objectRadius)
+	const minX = Math.max(groundCenters.minX, airborneCenters.minX)
+	const maxX = Math.min(groundCenters.maxX, airborneCenters.maxX)
+	const minZ = Math.max(groundCenters.minZ, airborneCenters.minZ)
+	const maxZ = Math.min(groundCenters.maxZ, airborneCenters.maxZ)
+	const safeMinX = minX <= maxX ? minX : 0
+	const safeMaxX = minX <= maxX ? maxX : 0
+	const safeMinZ = minZ <= maxZ ? minZ : 0
+	const safeMaxZ = minZ <= maxZ ? maxZ : 0
+	const edgeJitter = Math.min(0.22, Math.max(0, (safeMaxX - safeMinX) * 0.08))
 	return new Vector3(
-		(fromLeft ? -1 : 1) * sideX,
+		fromLeft
+			? safeMinX + random.range(0, edgeJitter)
+			: safeMaxX - random.range(0, edgeJitter),
 		launchHeight,
-		Math.max(-3.6, Math.min(3.6, landing.z * 0.35 + random.range(-2.4, 2.4)))
+		clampValue(landing.z * 0.35 + random.range(-2.4, 2.4), safeMinZ, safeMaxZ)
 	)
 }
 
@@ -162,7 +201,8 @@ export class KinematicRenderer implements DisplayRenderer {
 			random,
 			true,
 			2,
-			coin.supportHeight
+			coin.supportHeight,
+			coin.horizontalRadius
 		)
 	}
 
@@ -196,6 +236,7 @@ export class KinematicRenderer implements DisplayRenderer {
 			false,
 			sides,
 			instance.supportHeight,
+			instance.horizontalRadius,
 			instance.physicsCollider
 		)
 	}
@@ -209,14 +250,28 @@ export class KinematicRenderer implements DisplayRenderer {
 		coin: boolean,
 		sides: number,
 		supportHeight: number,
+		horizontalRadius: number,
 		physicsCollider?: Mesh
 	): VisualEntry {
+		const canvas = this.context!.canvas
+		const width = Math.max(1, canvas.clientWidth || canvas.width || 300)
+		const height = Math.max(1, canvas.clientHeight || canvas.height || 150)
+		const bounds = computeDisplayViewportBounds({
+			width,
+			height,
+			cameraHeight: DISPLAY_CAMERA_HEIGHT,
+			cameraFov: DISPLAY_CAMERA_FOV,
+			wallPadding: this.options!.wallPadding,
+			minimumRadius: horizontalRadius
+		})
 		const layout = {
 			index,
 			count,
 			scale: this.options!.scale,
 			startingHeight: this.options!.startingHeight,
-			coin
+			coin,
+			objectRadius: horizontalRadius,
+			bounds
 		}
 		const end = createScatteredLanding(layout, random)
 		end.y = supportHeight
@@ -233,6 +288,7 @@ export class KinematicRenderer implements DisplayRenderer {
 			start,
 			end,
 			supportHeight,
+			horizontalRadius,
 			target,
 			spinX: random.range(coin ? 8 : 3, coin ? 14 : 7) * Math.PI,
 			spinY: random.range(2, 7) * Math.PI,

@@ -15,6 +15,7 @@ export interface CoinInstance {
 	readonly root: TransformNode
 	readonly meshes: readonly AbstractMesh[]
 	readonly supportHeight: number
+	readonly horizontalRadius: number
 	readonly targetQuaternion: Quaternion
 }
 
@@ -107,6 +108,7 @@ export class CoinFactory {
 			root,
 			meshes,
 			supportHeight: thicknessSupport(template.thickness, scale),
+			horizontalRadius: template.diameter * scale * 0.14 / 2,
 			targetQuaternion: getCoinTargetQuaternion(value)
 		}
 	}

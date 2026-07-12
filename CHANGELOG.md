@@ -4,6 +4,26 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 ## [Não publicado]
 
+## [2.0.3] - 2026-07-12
+
+### Adicionado
+
+- barreiras físicas e piso responsivos ao tamanho e à proporção reais do canvas;
+- observação automática do container com `ResizeObserver`, mantendo o fallback de `window.resize`;
+- uso efetivo de `wallPadding` como recuo interno da área útil, medido em unidades do palco.
+
+### Alterado
+
+- lançamentos laterais e pousos dispersos agora são confinados aos limites visíveis do palco;
+- as paredes são reconstruídas quando o canvas, o aspect ratio ou as opções físicas mudam;
+- corpos ativos são reposicionados para dentro da nova área útil quando o container é redimensionado.
+
+### Corrigido
+
+- dados que escapavam pelas bordas visíveis da página porque os colliders ainda usavam dimensões fixas;
+- piso e paredes que não acompanhavam viewers compactos, overlays e layouts responsivos;
+- pontos iniciais ou finais que podiam ficar fora das barreiras em telas estreitas.
+
 ## [2.0.2] - 2026-07-12
 
 ### Adicionado
@@ -113,7 +133,8 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 - tema `default-v2` consolidado no baseline `81c2ca9` em 30/05/2026.
 
-[Não publicado]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.2...HEAD
+[Não publicado]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.3...HEAD
+[2.0.3]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.2...v2.0.3
 [2.0.2]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.1...v2.0.2
 [2.0.1]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/arkanus-app/dice-box-erpg/compare/81c2ca948d6de742ea43b836848524a43019d50f...v2.0.0

@@ -219,11 +219,11 @@ interface DisplayResult {
 
 O array e seus objetos são cópias normalizadas e congeladas. A garantia é de igualdade dos valores resolvidos, não de identidade dos objetos.
 
-## Opções herdadas sem efeito
+## Opções de layout e compatibilidade
 
-`wallPadding`, `spawnSpacing` e `spawnHeightStep` continuam tipadas para facilitar a migração, mas não alteram o renderer atual. Temas podem conter `extends` e `specularPower`, que também não têm efeito na 2.0.2.
+Desde a v2.0.3, `wallPadding` controla o recuo interno entre a borda visível do canvas e a área útil, em unidades do palco. O valor é aplicado a lançamentos, pousos, piso e quatro barreiras físicas; não é necessário recalcular esse recuo em pixels no frontend.
 
-Não baseie um novo código nessas opções.
+`spawnSpacing` e `spawnHeightStep` continuam tipadas para facilitar a migração, mas não alteram o renderer atual. Temas podem conter `extends` e `specularPower`, que também não têm efeito na 2.0.3. Não baseie um novo código nessas opções reservadas.
 
 ## Checklist final
 

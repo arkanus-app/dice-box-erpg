@@ -19,6 +19,7 @@ export interface SceneLights {
 
 export const DISPLAY_CAMERA_HEIGHT = 30
 export const DISPLAY_CAMERA_FOV = 0.28
+const DISPLAY_GROUND_SIZE = 24
 
 export class SceneEnvironment {
 	readonly engine: Engine
@@ -54,7 +55,7 @@ export class SceneEnvironment {
 		const hemispheric = new HemisphericLight('display-hemispheric', Vector3.Up(), this.scene)
 		hemispheric.intensity = 0.42 * options.lightIntensity
 		this.lights = { directional, hemispheric }
-		this.#floor = CreateGround('display-ground', { width: 24, height: 24 }, this.scene)
+		this.#floor = CreateGround('display-ground', { width: DISPLAY_GROUND_SIZE, height: DISPLAY_GROUND_SIZE }, this.scene)
 		this.#floor.receiveShadows = options.enableShadows
 		this.#floorMaterial = new StandardMaterial('display-ground-material', this.scene)
 		this.#floorMaterial.diffuseColor = new Color3(0.05, 0.05, 0.05)
@@ -78,6 +79,11 @@ export class SceneEnvironment {
 
 	resize(): void {
 		this.engine.resize()
+	}
+
+	ensureGroundCoverage(width: number, depth: number): void {
+		this.#floor.scaling.x = Math.max(1, width / DISPLAY_GROUND_SIZE)
+		this.#floor.scaling.z = Math.max(1, depth / DISPLAY_GROUND_SIZE)
 	}
 
 	dispose(): void {

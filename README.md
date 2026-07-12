@@ -4,7 +4,7 @@ Camada TypeScript de apresentação 3D para resultados de dados já resolvidos.
 
 O `@erpg/dicecore` interpreta a fórmula e decide os resultados; o `@erpg/dice3dview` recebe esses valores prontos e apenas os apresenta. A biblioteca não interpreta notação, não sorteia valores e não usa a face física como fonte do resultado.
 
-Versão atual: **2.0.2**.
+Versão atual: **2.0.3**.
 
 ## Documentação
 
@@ -23,6 +23,7 @@ Versão atual: **2.0.2**.
 - `d4`, `d6`, `d8`, `d10`, `d12`, `d20` e `d100`;
 - modo cinemático leve como padrão, sem Havok no grafo inicial;
 - modo físico lazy com colisões, perfis pré-calculados por geometria e aterrissagem na face solicitada;
+- palco responsivo, com piso e quatro barreiras ajustados ao tamanho real do canvas;
 - no modo cinemático, lançamentos laterais, posições finais dispersas e trajetória determinística por `seed`;
 - cancelamento tipado, cache de temas/modelos/materiais e pools de meshes;
 - um entrypoint ESM com chunks lazy, CSS público e tipos TypeScript;
@@ -39,7 +40,7 @@ npm install github:arkanus-app/dice-box-erpg#main
 `#main` é o canal móvel. Para builds reproduzíveis, prefira a tag da release:
 
 ```bash
-npm install github:arkanus-app/dice-box-erpg#v2.0.2
+npm install github:arkanus-app/dice-box-erpg#v2.0.3
 ```
 
 Em `package.json`:
@@ -234,6 +235,8 @@ viewer.dispose()
 
 - uma nova chamada a `display()` cancela a apresentação anterior;
 - `clear()` também cancela e limpa os objetos visuais;
+- mudanças no tamanho do container são detectadas automaticamente com `ResizeObserver`;
+- `wallPadding` define o recuo entre a borda visível e a área útil, em unidades do palco;
 - o cancelamento rejeita com `DisplayCancelledError` e código `DISPLAY_CANCELLED`;
 - `dispose()` é idempotente e remove canvas, listener, loops e recursos do renderer;
 - depois de `dispose()`, a instância não pode ser reutilizada.
@@ -250,7 +253,7 @@ Comparando os artefatos Git da v1.0.6 com a v2.0.1:
 | pacote compactado | 4.396.834 B | 2.307.233 B | −47,5% |
 | pacote descompactado | 16.098.720 B | 7.823.123 B | −51,4% |
 
-O build impede que a distribuição ultrapasse 8 MiB e verifica que Havok não apareça no grafo cinemático inicial. A 2.0.2 adiciona o export estável do CSS, o tipo público de material, validação automática dos documentos e esta nova documentação.
+O build impede que a distribuição ultrapasse 8 MiB e verifica que Havok não apareça no grafo cinemático inicial. A 2.0.2 adicionou o export estável do CSS e a documentação completa; a 2.0.3 tornou piso, barreiras, lançamentos e pousos responsivos ao canvas.
 
 ## Desenvolvimento local
 
