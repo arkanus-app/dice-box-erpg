@@ -6,11 +6,11 @@ import { getCoinTargetQuaternion } from './renderers/coin'
 describe('coin face orientation', () => {
 	it('turns the modeled front face up for value 1', () => {
 		const up = Vector3.Up().applyRotationQuaternion(getCoinTargetQuaternion(1))
-		assert.ok(Vector3.Dot(up, Vector3.Down()) > 0.999)
+		assert.ok(Vector3.Dot(up, Vector3.Up()) > 0.999)
 	})
 
-	it('keeps the modeled back face up for value 2', () => {
+	it('turns the modeled back face up for value 2', () => {
 		const up = Vector3.Up().applyRotationQuaternion(getCoinTargetQuaternion(2))
-		assert.ok(Vector3.Dot(up, Vector3.Up()) > 0.999)
+		assert.ok(Vector3.Dot(up, Vector3.Down()) > 0.999)
 	})
 })

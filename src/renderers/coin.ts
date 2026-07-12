@@ -79,7 +79,7 @@ const createFaceMaterial = (
 }
 
 export const getCoinTargetQuaternion = (value: number): Quaternion =>
-	value === 1 ? Quaternion.RotationAxis(Vector3.Forward(), Math.PI) : Quaternion.Identity()
+	value === 1 ? Quaternion.Identity() : Quaternion.RotationAxis(Vector3.Forward(), Math.PI)
 
 const thicknessSupport = (thickness: number, scale: number): number =>
 	thickness * scale * 0.14 / 2

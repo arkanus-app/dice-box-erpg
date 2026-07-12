@@ -24,8 +24,11 @@ export interface VisualEntry {
 	readonly sides: number
 	readonly start: Vector3
 	readonly end: Vector3
+	readonly launchVelocity: Vector3
 	readonly supportHeight: number
 	readonly horizontalRadius: number
+	readonly launchEdge: LaunchEdge
+	readonly launchDelayMs: number
 	readonly target: Quaternion
 	readonly spinX: number
 	readonly spinY: number
@@ -35,6 +38,25 @@ export interface VisualEntry {
 const easeOutCubic = (value: number): number => 1 - Math.pow(1 - value, 3)
 const clamp01 = (value: number): number => Math.max(0, Math.min(1, value))
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5))
+const MINIMUM_LAUNCH_HEIGHT = 2.8
+const MAXIMUM_LAUNCH_HEIGHT = DISPLAY_CAMERA_HEIGHT * 0.27
+const MAXIMUM_AXIAL_LAUNCH_ROWS = 2
+const MINIMUM_PORTAL_SPEED = 2.4
+
+export type LaunchEdge = 'left' | 'right' | 'north' | 'south'
+
+export const selectPresentationLaunchEdge = (
+	seed: string,
+	_width: number,
+	_height: number
+): LaunchEdge => {
+	// Use an isolated stream so choosing the group edge never changes the
+	// established seeded landing, yaw or spin sequence.
+	const edgeRandom = createSeededRandom(`${seed}:launch-edge`)
+	return (['left', 'right', 'north', 'south'] as const)[
+		Math.min(3, Math.floor(edgeRandom.next() * 4))
+	]!
+}
 
 export interface TrajectoryLayoutInput {
 	readonly index: number
@@ -44,6 +66,158 @@ export interface TrajectoryLayoutInput {
 	readonly coin: boolean
 	readonly objectRadius: number
 	readonly bounds: DisplayViewportBounds
+	readonly launchEdge: LaunchEdge
+	readonly spawnSpacing: number
+	readonly spawnHeightStep: number
+	readonly spawnOverscan: number
+}
+
+export interface LaunchPacking {
+	readonly tangent: number
+	readonly row: number
+	readonly wave: number
+	readonly waveCapacity: number
+	readonly spacing: number
+}
+
+/** Packs a throw into radius-aware tangent lanes and a small number of rows
+ * behind the clipped edge. When those slots are full, a later wave reuses them
+ * only after the previous body has had enough time to clear the portal. */
+export const createLaunchPacking = (
+	input: TrajectoryLayoutInput,
+	minimumTangent: number,
+	maximumTangent: number
+): LaunchPacking => {
+	const spacing = Math.max(
+		0.01,
+		input.spawnSpacing,
+		input.objectRadius * 2.1,
+		input.scale * 0.286
+	)
+	const span = Math.max(0, maximumTangent - minimumTangent)
+	const tangentSlots = Math.max(1, Math.floor(span / spacing) + 1)
+	const rowCount = MAXIMUM_AXIAL_LAUNCH_ROWS
+	const waveCapacity = tangentSlots * rowCount
+	const localIndex = input.index % waveCapacity
+	const row = Math.floor(localIndex / tangentSlots)
+	const tangentSlot = localIndex % tangentSlots
+	const usedSpan = (tangentSlots - 1) * spacing
+	const tangentStart = (minimumTangent + maximumTangent - usedSpan) / 2
+	return {
+		tangent: clampValue(tangentStart + tangentSlot * spacing, minimumTangent, maximumTangent),
+		row,
+		wave: Math.floor(input.index / waveCapacity),
+		waveCapacity,
+		spacing
+	}
+}
+
+export interface PresentationLaunchDynamics {
+	readonly aggressive: boolean
+	readonly intensity: number
+	readonly energyScale: number
+	readonly headingRadians: number
+}
+
+/** Selects one shared throw character for the complete presentation. The
+ * aggressive tail changes energy and heading, but never selects a wall or
+ * guarantees a collision. */
+export const createPresentationLaunchDynamics = (
+	seed: string,
+	aggressiveChance: number
+): PresentationLaunchDynamics => {
+	const random = createSeededRandom(`${seed}:launch-dynamics`)
+	const chance = Number.isFinite(aggressiveChance)
+		? clampValue(aggressiveChance, 0, 1)
+		: 0
+	const aggressive = random.next() < chance
+	const intensity = aggressive ? random.range(0.55, 1) : 0
+	const normalEnergy = 0.9 + 0.18 * ((random.next() + random.next()) / 2)
+	const headingEnvelope = (10 + (aggressive ? 46 * intensity : 0)) * Math.PI / 180
+	return {
+		aggressive,
+		intensity,
+		energyScale: normalEnergy + (aggressive ? 0.62 * intensity : 0),
+		headingRadians: (random.next() + random.next() - 1) * headingEnvelope
+	}
+}
+
+const normalizeAngle = (angle: number): number => {
+	let normalized = angle
+	while(normalized > Math.PI) normalized -= Math.PI * 2
+	while(normalized < -Math.PI) normalized += Math.PI * 2
+	return normalized
+}
+
+/** Varies the real launch vector continuously. Most throws remain direct;
+ * higher force plus the seeded energy/direction tail may reach any wall or a
+ * corner, and Havok alone decides whether contact actually occurs. */
+export const createNaturalLaunchVelocity = (
+	start: Vector3,
+	landing: Vector3,
+	random: ReturnType<typeof createSeededRandom>,
+	throwForce: number,
+	dynamics: PresentationLaunchDynamics
+): Vector3 => {
+	const base = createThrownLinearVelocity(start, landing, throwForce)
+	const horizontalSpeed = Math.hypot(base.x, base.z)
+	if(horizontalSpeed <= 1e-6) return base
+	const deltaX = landing.x - start.x
+	const deltaZ = landing.z - start.z
+	const inwardAngle = Math.abs(deltaX) >= Math.abs(deltaZ)
+		? deltaX >= 0 ? 0 : Math.PI
+		: deltaZ >= 0 ? Math.PI / 2 : -Math.PI / 2
+	const baseAngle = Math.atan2(base.z, base.x)
+	const bodyHeadingJitter = (random.next() + random.next() - 1) * 4 * Math.PI / 180
+	const desiredRelativeAngle = normalizeAngle(
+		baseAngle + dynamics.headingRadians + bodyHeadingJitter - inwardAngle
+	)
+	const maximumInwardAngle = 45 * Math.PI / 180
+	const finalAngle = inwardAngle + clampValue(
+		desiredRelativeAngle,
+		-maximumInwardAngle,
+		maximumInwardAngle
+	)
+	const bodyEnergy = 0.96 + 0.08 * ((random.next() + random.next()) / 2)
+	let finalSpeed = Math.min(19.5, horizontalSpeed * dynamics.energyScale * bodyEnergy)
+	const baseInwardSpeed = Math.cos(normalizeAngle(baseAngle - inwardAngle)) * horizontalSpeed
+	const plannedInwardSpeed = Math.cos(finalAngle - inwardAngle) * finalSpeed
+	if(plannedInwardSpeed > 1e-6 && plannedInwardSpeed < baseInwardSpeed) {
+		finalSpeed = Math.min(19.5, finalSpeed * baseInwardSpeed / plannedInwardSpeed)
+	}
+	return new Vector3(
+		Math.cos(finalAngle) * finalSpeed,
+		base.y,
+		Math.sin(finalAngle) * finalSpeed
+	)
+}
+
+/** Recreates the immediate v1-style release without an artificial ease-in:
+ * the body enters fast, already descending, and gravity adds speed until the
+ * first impact. The horizontal component still targets the resolved visual
+ * landing so the result-aware preflight remains deterministic. */
+export const createThrownLinearVelocity = (
+	start: Vector3,
+	end: Vector3,
+	throwForce: number
+): Vector3 => {
+	const force = Number.isFinite(throwForce) ? Math.max(0, throwForce) : 0
+	const horizontal = new Vector3(end.x - start.x, 0, end.z - start.z)
+	const distance = horizontal.length()
+	if(distance <= 0.0001 || force <= 0) {
+		return Vector3.Zero()
+	}
+	const forceRatio = Math.min(2, force / 4.55)
+	const minimumImpulse = (
+		3.4 + Math.min(distance, 3.3) * 0.5
+	) * Math.min(1.15, force / 6.4)
+	const horizontalSpeed = Math.min(
+		17.5,
+		Math.max(distance * force * 0.22, minimumImpulse)
+	)
+	horizontal.normalize().scaleInPlace(horizontalSpeed)
+	horizontal.y = -Math.min(6, (1.4 + force * 0.38) * Math.sqrt(forceRatio))
+	return horizontal
 }
 
 export const createScatteredLanding = (
@@ -77,12 +251,21 @@ export const createScatteredLanding = (
 export const createSideLaunch = (
 	input: TrajectoryLayoutInput,
 	landing: Vector3,
-	random: ReturnType<typeof createSeededRandom>
+	_random: ReturnType<typeof createSeededRandom>
 ): Vector3 => {
-	const fromLeft = input.index % 2 === 0
-	const launchHeight = Math.min(
-		input.startingHeight,
-		Math.max(2.8, input.scale * 0.68 + random.range(0.45, 1.25))
+	const fromLeft = input.launchEdge === 'left'
+	const fromRight = input.launchEdge === 'right'
+	const fromNorth = input.launchEdge === 'north'
+	// startingHeight is the actual release plane, not merely a ceiling over a
+	// lower random height. The default step is zero so a whole throw shares one
+	// stable, higher plane; callers may still opt into a small group offset.
+	const baseHeight = Number.isFinite(input.startingHeight)
+		? input.startingHeight
+		: 7.6
+	const launchHeight = clampValue(
+		baseHeight + Math.min(input.index, 3) * Math.max(0, input.spawnHeightStep),
+		MINIMUM_LAUNCH_HEIGHT,
+		MAXIMUM_LAUNCH_HEIGHT
 	)
 	const groundCenters = getHorizontalCenterBounds(input.bounds, input.objectRadius)
 	const airborneBounds = computeDisplayViewportBounds({
@@ -102,14 +285,95 @@ export const createSideLaunch = (
 	const safeMaxX = minX <= maxX ? maxX : 0
 	const safeMinZ = minZ <= maxZ ? minZ : 0
 	const safeMaxZ = minZ <= maxZ ? maxZ : 0
-	const edgeJitter = Math.min(0.22, Math.max(0, (safeMaxX - safeMinX) * 0.08))
-	return new Vector3(
-		fromLeft
-			? safeMinX + random.range(0, edgeJitter)
-			: safeMaxX - random.range(0, edgeJitter),
-		launchHeight,
-		clampValue(landing.z * 0.35 + random.range(-2.4, 2.4), safeMinZ, safeMaxZ)
+	// Start with the complete body beyond the launch-plane projection. The
+	// canvas clips this short staging segment, so the die visibly crosses the
+	// page edge instead of being enabled fully formed inside the viewport.
+	const overscan = input.objectRadius * (1 + Math.max(0, input.spawnOverscan))
+	if(fromLeft || fromRight) {
+		const packing = createLaunchPacking(input, safeMinZ, safeMaxZ)
+		const startX = fromLeft
+			? -airborneBounds.visibleHalfX - overscan - packing.row * packing.spacing
+			: airborneBounds.visibleHalfX + overscan + packing.row * packing.spacing
+		const axialSpan = Math.max(0, groundCenters.maxX - groundCenters.minX)
+		const minimumTravel = Math.min(3.1, axialSpan * 0.46)
+		const groundSpan = Math.max(0.0001, groundCenters.maxX - groundCenters.minX)
+		const landingRatio = clampValue(
+			(landing.x - groundCenters.minX) / groundSpan,
+			0,
+			1
+		)
+		if(fromLeft) {
+			const minimumLanding = Math.min(groundCenters.maxX, startX + minimumTravel)
+			landing.x = minimumLanding
+				+ (groundCenters.maxX - minimumLanding) * landingRatio
+		} else {
+			const maximumLanding = Math.max(groundCenters.minX, startX - minimumTravel)
+			landing.x = groundCenters.minX
+				+ (maximumLanding - groundCenters.minX) * landingRatio
+		}
+		const startTangent = packing.tangent
+		const axialDistance = Math.abs(landing.x - startX)
+		landing.z = clampValue(
+			landing.z,
+			Math.max(groundCenters.minZ, startTangent - axialDistance),
+			Math.min(groundCenters.maxZ, startTangent + axialDistance)
+		)
+		clampHorizontalPosition(landing, input.bounds, input.objectRadius)
+		return new Vector3(
+			startX,
+			launchHeight,
+			startTangent
+		)
+	}
+	const packing = createLaunchPacking(input, safeMinX, safeMaxX)
+	const startZ = fromNorth
+		? -airborneBounds.visibleHalfZ - overscan - packing.row * packing.spacing
+		: airborneBounds.visibleHalfZ + overscan + packing.row * packing.spacing
+	const axialSpan = Math.max(0, groundCenters.maxZ - groundCenters.minZ)
+	const minimumTravel = Math.min(3.1, axialSpan * 0.46)
+	const groundSpan = Math.max(0.0001, groundCenters.maxZ - groundCenters.minZ)
+	const landingRatio = clampValue(
+		(landing.z - groundCenters.minZ) / groundSpan,
+		0,
+		1
 	)
+	if(fromNorth) {
+		const minimumLanding = Math.min(groundCenters.maxZ, startZ + minimumTravel)
+		landing.z = minimumLanding
+			+ (groundCenters.maxZ - minimumLanding) * landingRatio
+	} else {
+		const maximumLanding = Math.max(groundCenters.minZ, startZ - minimumTravel)
+		landing.z = groundCenters.minZ
+			+ (maximumLanding - groundCenters.minZ) * landingRatio
+	}
+	const startTangent = packing.tangent
+	const axialDistance = Math.abs(landing.z - startZ)
+	landing.x = clampValue(
+		landing.x,
+		Math.max(groundCenters.minX, startTangent - axialDistance),
+		Math.min(groundCenters.maxX, startTangent + axialDistance)
+	)
+	clampHorizontalPosition(landing, input.bounds, input.objectRadius)
+	return new Vector3(
+		startTangent,
+		launchHeight,
+		startZ
+	)
+}
+
+/** Returns true once an off-screen body has completely crossed the launch
+ * wall. Physics keeps the entry portal collision-free until this point. */
+export const hasEnteredLaunchPortal = (
+	position: Pick<Vector3, 'x' | 'z'>,
+	bounds: DisplayViewportBounds,
+	radius: number,
+	edge: LaunchEdge
+): boolean => {
+	const centers = getHorizontalCenterBounds(bounds, radius)
+	if(edge === 'left') return position.x >= centers.minX
+	if(edge === 'right') return position.x <= centers.maxX
+	if(edge === 'north') return position.z >= centers.minZ
+	return position.z <= centers.maxZ
 }
 
 export class KinematicRenderer implements DisplayRenderer {
@@ -156,23 +420,35 @@ export class KinematicRenderer implements DisplayRenderer {
 		}
 		if(signal.aborted) throw new DisplayCancelledError()
 		const random = createSeededRandom(request.seed)
+		// One presentation is one throw: every body enters through the same
+		// seeded edge, with small per-body offsets to keep the group organic.
+		const canvas = this.context!.canvas
+		const launchEdge = selectPresentationLaunchEdge(
+			request.seed,
+			Math.max(1, canvas.clientWidth || canvas.width || 300),
+			Math.max(1, canvas.clientHeight || canvas.height || 150)
+		)
+		const launchDynamics = createPresentationLaunchDynamics(
+			request.seed,
+			this.options!.aggressiveThrowChance
+		)
 		const entries: VisualEntry[] = []
 		const bodyCount = request.dice.reduce((count, die) => count + (die.sides === 100 ? 2 : 1), 0)
 		let bodyIndex = 0
 		for(const die of request.dice) {
 			const theme = configs.get(die.theme)!
 			if(die.sides === 2) {
-				entries.push(this.createCoinEntry(theme, die.id, die.value, die.discarded, bodyIndex++, bodyCount, random))
+				entries.push(this.createCoinEntry(theme, die.id, die.value, die.discarded, bodyIndex++, bodyCount, random, launchEdge, launchDynamics))
 				continue
 			}
 			if(die.sides === 100) {
 				const tens = Math.floor((die.value - 1) / 10) * 10
 				const ones = die.value - tens
-				entries.push(await this.createDieEntry(theme, die, 100, tens, `${die.id}-tens`, bodyIndex++, bodyCount, random))
-				entries.push(await this.createDieEntry(theme, die, 10, ones, `${die.id}-ones`, bodyIndex++, bodyCount, random))
+				entries.push(await this.createDieEntry(theme, die, 100, tens, `${die.id}-tens`, bodyIndex++, bodyCount, random, launchEdge, launchDynamics))
+				entries.push(await this.createDieEntry(theme, die, 10, ones, `${die.id}-ones`, bodyIndex++, bodyCount, random, launchEdge, launchDynamics))
 				continue
 			}
-			entries.push(await this.createDieEntry(theme, die, die.sides, die.value, die.id, bodyIndex++, bodyCount, random))
+			entries.push(await this.createDieEntry(theme, die, die.sides, die.value, die.id, bodyIndex++, bodyCount, random, launchEdge, launchDynamics))
 		}
 		await this.animate(entries, signal)
 	}
@@ -188,7 +464,9 @@ export class KinematicRenderer implements DisplayRenderer {
 		discarded: boolean,
 		index: number,
 		count: number,
-		random: ReturnType<typeof createSeededRandom>
+		random: ReturnType<typeof createSeededRandom>,
+		launchEdge: LaunchEdge,
+		launchDynamics: PresentationLaunchDynamics
 	): VisualEntry {
 		const coin = this.coinFactory!.create(theme, id, value, this.options!.scale, discarded)
 		this.activeNodes.push(coin.root)
@@ -199,6 +477,8 @@ export class KinematicRenderer implements DisplayRenderer {
 			index,
 			count,
 			random,
+			launchEdge,
+			launchDynamics,
 			true,
 			2,
 			coin.supportHeight,
@@ -214,7 +494,9 @@ export class KinematicRenderer implements DisplayRenderer {
 		id: string,
 		index: number,
 		count: number,
-		random: ReturnType<typeof createSeededRandom>
+		random: ReturnType<typeof createSeededRandom>,
+		launchEdge: LaunchEdge,
+		launchDynamics: PresentationLaunchDynamics
 	): Promise<VisualEntry> {
 		const instance = await this.polyhedra!.create(
 			theme,
@@ -233,6 +515,8 @@ export class KinematicRenderer implements DisplayRenderer {
 			index,
 			count,
 			random,
+			launchEdge,
+			launchDynamics,
 			false,
 			sides,
 			instance.supportHeight,
@@ -247,6 +531,8 @@ export class KinematicRenderer implements DisplayRenderer {
 		index: number,
 		count: number,
 		random: ReturnType<typeof createSeededRandom>,
+		launchEdge: LaunchEdge,
+		launchDynamics: PresentationLaunchDynamics,
 		coin: boolean,
 		sides: number,
 		supportHeight: number,
@@ -271,7 +557,11 @@ export class KinematicRenderer implements DisplayRenderer {
 			startingHeight: this.options!.startingHeight,
 			coin,
 			objectRadius: horizontalRadius,
-			bounds
+			bounds,
+			launchEdge,
+			spawnSpacing: this.options!.spawnSpacing,
+			spawnHeightStep: this.options!.spawnHeightStep,
+			spawnOverscan: this.options!.spawnOverscan
 		}
 		const end = createScatteredLanding(layout, random)
 		end.y = supportHeight
@@ -279,6 +569,47 @@ export class KinematicRenderer implements DisplayRenderer {
 		const target = Quaternion.RotationAxis(Vector3.Up(), random.range(-Math.PI, Math.PI))
 			.multiply(canonicalTarget)
 			.normalize()
+		const signedSpin = (minimum: number, maximum: number): number =>
+			random.range(minimum, maximum) * Math.PI * (random.next() < 0.5 ? -1 : 1)
+		const spinX = signedSpin(coin ? 8 : 3, coin ? 14 : 7)
+		const spinY = signedSpin(2, 7)
+		const spinZ = signedSpin(2, 7)
+		const launchVelocity = createNaturalLaunchVelocity(
+			start,
+			end,
+			random,
+			this.options!.throwForce,
+			launchDynamics
+		)
+		const groundCenters = getHorizontalCenterBounds(bounds, horizontalRadius)
+		const airborneCenters = getHorizontalCenterBounds(computeDisplayViewportBounds({
+			width,
+			height,
+			cameraHeight: DISPLAY_CAMERA_HEIGHT,
+			cameraFov: DISPLAY_CAMERA_FOV,
+			planeY: start.y,
+			minimumRadius: horizontalRadius
+		}), horizontalRadius)
+		const tangentBounds = launchEdge === 'left' || launchEdge === 'right'
+			? {
+				minimum: Math.max(groundCenters.minZ, airborneCenters.minZ),
+				maximum: Math.min(groundCenters.maxZ, airborneCenters.maxZ)
+			}
+			: {
+				minimum: Math.max(groundCenters.minX, airborneCenters.minX),
+				maximum: Math.min(groundCenters.maxX, airborneCenters.maxX)
+			}
+		if(tangentBounds.minimum > tangentBounds.maximum) {
+			tangentBounds.minimum = 0
+			tangentBounds.maximum = 0
+		}
+		const packing = createLaunchPacking(layout, tangentBounds.minimum, tangentBounds.maximum)
+		const minimumWaveGapMs = packing.spacing / MINIMUM_PORTAL_SPEED * 1000 * 1.12
+		const configuredDelayMs = Math.max(0, this.options!.delay)
+		const automaticWaveDelayMs = Math.max(
+			0,
+			minimumWaveGapMs - packing.waveCapacity * configuredDelayMs
+		)
 		node.position.copyFrom(start)
 		node.rotationQuaternion = Quaternion.Identity()
 		return {
@@ -287,20 +618,28 @@ export class KinematicRenderer implements DisplayRenderer {
 			sides,
 			start,
 			end,
+			launchVelocity,
 			supportHeight,
 			horizontalRadius,
+			launchEdge,
+			launchDelayMs: index * configuredDelayMs + packing.wave * automaticWaveDelayMs,
 			target,
-			spinX: random.range(coin ? 8 : 3, coin ? 14 : 7) * Math.PI,
-			spinY: random.range(2, 7) * Math.PI,
-			spinZ: random.range(2, 7) * Math.PI
+			spinX,
+			spinY,
+			spinZ
 		}
 	}
 
 	protected animate(entries: readonly VisualEntry[], signal: AbortSignal): Promise<void> {
 		const engine = this.engine!
 		const scene = this.scene!
-		const duration = Math.max(250, this.options!.duration + Math.max(0, entries.length - 1) * this.options!.delay)
+		const dieDuration = Math.max(250, this.options!.duration)
+		const duration = dieDuration + entries.reduce(
+			(maximum, entry) => Math.max(maximum, entry.launchDelayMs),
+			0
+		)
 		const startedAt = performance.now()
+		for(const entry of entries) entry.node.setEnabled(entry.launchDelayMs <= 0)
 		return new Promise<void>((resolve, reject) => {
 			let settled = false
 			const finish = (error?: unknown): void => {
@@ -314,9 +653,12 @@ export class KinematicRenderer implements DisplayRenderer {
 			const abort = (): void => finish(new DisplayCancelledError())
 			const render = (): void => {
 				if(signal.aborted) return abort()
-				const progress = clamp01((performance.now() - startedAt) / duration)
-				const positionProgress = easeOutCubic(progress)
+				const elapsedMs = performance.now() - startedAt
 				for(const entry of entries) {
+					const progress = clamp01((elapsedMs - entry.launchDelayMs) / dieDuration)
+					if(elapsedMs < entry.launchDelayMs) continue
+					entry.node.setEnabled(true)
+					const positionProgress = easeOutCubic(progress)
 					entry.node.position.set(
 						entry.start.x + (entry.end.x - entry.start.x) * positionProgress,
 						entry.start.y + (entry.end.y - entry.start.y) * positionProgress + Math.sin(progress * Math.PI) * 2.4,
@@ -327,11 +669,11 @@ export class KinematicRenderer implements DisplayRenderer {
 						entry.spinX * progress,
 						entry.spinZ * progress
 					)
-					const settle = easeOutCubic(clamp01((progress - 0.68) / 0.32))
+					const settle = easeOutCubic(clamp01((progress - 0.84) / 0.16))
 					entry.node.rotationQuaternion = Quaternion.Slerp(spinning, entry.target, settle)
 				}
 				scene.render()
-				if(progress >= 1) finish()
+				if(elapsedMs >= duration) finish()
 			}
 			signal.addEventListener('abort', abort, { once: true })
 			engine.runRenderLoop(render)

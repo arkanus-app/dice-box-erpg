@@ -32,20 +32,23 @@ const createOptions = (options: ViewerOptions): RequiredViewerOptions => ({
 	antialias: options.antialias ?? true,
 	scale: options.scale ?? 5,
 	duration: options.duration ?? 1100,
-	delay: options.delay ?? 8,
-	gravity: options.gravity ?? 1.85,
+	delay: options.delay ?? 10,
+	gravity: options.gravity ?? 1.3,
 	mass: options.mass ?? 1.08,
-	startingHeight: options.startingHeight ?? 6.4,
+	startingHeight: options.startingHeight ?? 7.6,
 	spinForce: options.spinForce ?? 5.8,
-	throwForce: options.throwForce ?? 4.55,
-	wallPadding: options.wallPadding ?? 1.35,
+	throwForce: options.throwForce ?? 6.4,
+	aggressiveThrowChance: options.aggressiveThrowChance ?? options.wallBounceChance ?? 0.12,
+	wallBounceChance: options.wallBounceChance ?? options.aggressiveThrowChance ?? 0.12,
+	wallPadding: options.wallPadding ?? 0.25,
 	colliderScale: options.colliderScale ?? 1.02,
-	spawnSpacing: options.spawnSpacing ?? 0.72,
-	spawnHeightStep: options.spawnHeightStep ?? 0.18,
-	friction: options.friction ?? 0.86,
-	restitution: options.restitution ?? 0.16,
-	linearDamping: options.linearDamping ?? 0.28,
-	angularDamping: options.angularDamping ?? 0.24,
+	spawnSpacing: options.spawnSpacing ?? 1.72,
+	spawnHeightStep: options.spawnHeightStep ?? 0,
+	spawnOverscan: options.spawnOverscan ?? 0.15,
+	friction: options.friction ?? 0.54,
+	restitution: options.restitution ?? 0.29,
+	linearDamping: options.linearDamping ?? 0.1,
+	angularDamping: options.angularDamping ?? 0.08,
 	settleTimeout: options.settleTimeout ?? 4200,
 	physicsWasmUrl: options.physicsWasmUrl ?? '',
 	onCollision: options.onCollision ?? noop,
@@ -59,6 +62,11 @@ const validateOptions = (options: RequiredViewerOptions): void => {
 	}
 	if(options.mode !== 'kinematic' && options.mode !== 'physics') {
 		throw new Error(`Unsupported display mode '${String(options.mode)}'.`)
+	}
+	if(!Number.isFinite(options.aggressiveThrowChance)
+		|| options.aggressiveThrowChance < 0
+		|| options.aggressiveThrowChance > 1) {
+		throw new Error('Viewer option aggressiveThrowChance must be between 0 and 1.')
 	}
 }
 
@@ -136,7 +144,13 @@ export class DiceResultViewer {
 
 	async updateOptions(options: ViewerOptions): Promise<void> {
 		this.#assertUsable()
-		this.#options = createOptions({ ...this.#options, ...options })
+		let mergedOptions: ViewerOptions = { ...this.#options, ...options }
+		if(options.aggressiveThrowChance !== undefined) {
+			mergedOptions = { ...mergedOptions, wallBounceChance: options.aggressiveThrowChance }
+		} else if(options.wallBounceChance !== undefined) {
+			mergedOptions = { ...mergedOptions, aggressiveThrowChance: options.wallBounceChance }
+		}
+		this.#options = createOptions(mergedOptions)
 		validateOptions(this.#options)
 		this.#themes.updateOptions(this.#options)
 		await this.#renderer?.updateOptions(this.#options)

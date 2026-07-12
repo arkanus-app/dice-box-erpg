@@ -6,6 +6,7 @@ import { CreateBox } from '@babylonjs/core/Meshes/Builders/boxBuilder'
 import type { Mesh } from '@babylonjs/core/Meshes/mesh'
 import type { Scene } from '@babylonjs/core/scene'
 import type { DisplayViewportBounds } from './viewportBounds'
+import type { LaunchEdge } from './KinematicRenderer'
 
 export interface PhysicsBoundsSize {
 	readonly width: number
@@ -35,7 +36,28 @@ export interface PhysicsBoundsLayoutInput {
 	readonly largestRadius: number
 }
 
-export const PHYSICS_WALL_THICKNESS = 0.6
+export const PHYSICS_WALL_THICKNESS = 0.25
+export const PHYSICS_WALL_FRICTION = 0.1
+export const PHYSICS_WALL_RESTITUTION = 0.54
+export const PHYSICS_DICE_LAYER = 1 << 0
+export const PHYSICS_FLOOR_LAYER = 1 << 1
+export const PHYSICS_WALL_LAYERS: Readonly<Record<LaunchEdge, number>> = {
+	left: 1 << 2,
+	right: 1 << 3,
+	north: 1 << 4,
+	south: 1 << 5
+}
+export const PHYSICS_ACTIVE_COLLISION_MASK = PHYSICS_DICE_LAYER
+	| PHYSICS_FLOOR_LAYER
+	| PHYSICS_WALL_LAYERS.left
+	| PHYSICS_WALL_LAYERS.right
+	| PHYSICS_WALL_LAYERS.north
+	| PHYSICS_WALL_LAYERS.south
+
+/** Dice collide with one another, the floor and the three closed walls while
+ * entering. Only the wall used as the launch portal is temporarily excluded. */
+export const getLaunchCollisionMask = (edge: LaunchEdge): number =>
+	PHYSICS_ACTIVE_COLLISION_MASK & ~PHYSICS_WALL_LAYERS[edge]
 const PHYSICS_FLOOR_THICKNESS = 2
 const PHYSICS_BOUNDS_BOTTOM = -2
 

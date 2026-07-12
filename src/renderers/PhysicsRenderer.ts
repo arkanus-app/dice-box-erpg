@@ -17,13 +17,27 @@ import type { RendererContext, RequiredViewerOptions } from '../types'
 import { DisplayCancelledError } from '../errors'
 import {
 	canStartFinalLock,
+	canBodyContactActAsSupport,
 	chooseShortestQuaternion,
-	createBiasedInitialQuaternion,
-	getBiasedLaunchAngularVelocity,
-	getGuidedAngularVelocity,
+	createLandingApproachQuaternion,
+	createPrecomputedFlightQuaternion,
+	estimateBallisticFlightSeconds,
+	getFaceAlignment,
+	getFaceGuidedAngularVelocity,
+	getFinalLockDurationMs,
 	getGuidedLinearVelocity,
+	getLandingRollAxis,
+	getPlannedFlightAngularVelocity,
+	getPlannedFlightQuaternion,
+	getPlannedFlightSpin,
 	getPhysicsGuidanceProfile,
 	getPhysicsMassMultiplier,
+	getResultFaceFrame,
+	getSoftLandingLinearVelocity,
+	getSustainedRollAngularVelocity,
+	getTolerantFaceAlignment,
+	getThrownAngularVelocity,
+	getVisibleFlightAngularVelocity,
 	shouldStartGuidance,
 	smoothStep,
 	type PhysicsGuidanceProfile,
@@ -32,10 +46,25 @@ import {
 import {
 	DICE_PHYSICS_SUB_TIME_STEP_MS,
 	DICE_PHYSICS_TIME_STEP,
+	getDicePhysicsStep,
+	hasPhysicsLaunchPairClearance,
 	shouldRecoverPhysicsBody
 } from '../physicsSafety'
-import KinematicRenderer, { type VisualEntry } from './KinematicRenderer'
-import { createPhysicsBoundsLayout, createStaticPhysicsBox } from './physicsBounds'
+import KinematicRenderer, {
+	hasEnteredLaunchPortal,
+	type VisualEntry
+} from './KinematicRenderer'
+import {
+	createPhysicsBoundsLayout,
+	createStaticPhysicsBox,
+	getLaunchCollisionMask,
+	PHYSICS_ACTIVE_COLLISION_MASK,
+	PHYSICS_DICE_LAYER,
+	PHYSICS_FLOOR_LAYER,
+	PHYSICS_WALL_FRICTION,
+	PHYSICS_WALL_LAYERS,
+	PHYSICS_WALL_RESTITUTION
+} from './physicsBounds'
 import { DISPLAY_CAMERA_FOV, DISPLAY_CAMERA_HEIGHT } from './sceneEnvironment'
 import {
 	clampHorizontalPosition,
@@ -45,20 +74,48 @@ import {
 
 interface ActiveBody {
 	readonly body: PhysicsBody
+	readonly shape: PhysicsShapeConvexHull
 	readonly entry: VisualEntry
 	readonly profile: PhysicsGuidanceProfile
+	readonly localFaceNormal: Vector3
+	readonly restDirection: Vector3
+	readonly flightStartQuaternion: Quaternion
+	readonly launchAngularVelocity: Vector3
+	readonly launchLinearVelocity: Vector3
+	readonly launchDelayMs: number
+	readonly settleRollAxis: Vector3
+	readonly flightDurationMs: number
+	flightCorrectionVelocity: Vector3
+	launchDelayElapsedMs: number
+	launched: boolean
+	collisionsArmed: boolean
 	collisionObserver: Observer<IPhysicsCollisionEvent> | undefined
 	state: PhysicsGuidanceState
 	locked: boolean
 	elapsedMs: number
 	guidanceElapsedMs: number
+	stableElapsedMs: number
 	lockElapsedMs: number
+	lockDurationMs: number
+	lockSourcePosition: Vector3 | undefined
+	lockTargetPosition: Vector3 | undefined
 	lockSourceQuaternion: Quaternion | undefined
+	lockTargetQuaternion: Quaternion | undefined
 	groundImpactCount: number
 	firstGroundImpactElapsedMs: number | undefined
 	groundContactStartedElapsedMs: number | undefined
 	lastGroundContactElapsedMs: number | undefined
+	bodySupportImpactCount: number
+	firstBodySupportImpactElapsedMs: number | undefined
+	bodyContactStartedElapsedMs: number | undefined
 	lastBodyContactElapsedMs: number | undefined
+	lastBodyCollisionElapsedMs: number | undefined
+	bodyCollisionStartedElapsedMs: number | undefined
+	bodySupportName: string | undefined
+	wallImpactCount: number
+	lastWallImpactElapsedMs: number | undefined
+	forcedLock: boolean
+	forcedLockBodyCollision: boolean
 }
 
 const CONTACT_GRACE_MS = DICE_PHYSICS_SUB_TIME_STEP_MS * 3.5
@@ -66,8 +123,16 @@ const CONTACT_GRACE_MS = DICE_PHYSICS_SUB_TIME_STEP_MS * 3.5
 const currentQuaternion = (entry: VisualEntry): Quaternion =>
 	(entry.node.rotationQuaternion ?? Quaternion.Identity()).clone().normalize()
 
-const finiteHorizontalPosition = (position: Vector3): boolean =>
-	Number.isFinite(position.x) && Number.isFinite(position.z)
+const hasFiniteQuaternion = (entry: VisualEntry): boolean => {
+	const rotation = entry.node.rotationQuaternion
+	return rotation !== null
+		&& rotation !== undefined
+		&& Number.isFinite(rotation.x)
+		&& Number.isFinite(rotation.y)
+		&& Number.isFinite(rotation.z)
+		&& Number.isFinite(rotation.w)
+		&& rotation.lengthSquared() > 1e-12
+}
 
 export class PhysicsRenderer extends KinematicRenderer {
 	readonly mode = 'physics' as const
@@ -78,6 +143,7 @@ export class PhysicsRenderer extends KinematicRenderer {
 	#bounds: DisplayViewportBounds | undefined
 	#boundsSignature = ''
 	#largestRadius = 0
+	#physicsStepMs = DICE_PHYSICS_SUB_TIME_STEP_MS
 
 	override async init(context: RendererContext): Promise<void> {
 		await super.init(context)
@@ -98,17 +164,16 @@ export class PhysicsRenderer extends KinematicRenderer {
 		const engine = this.engine!
 		const scene = this.scene!
 		const duration = Math.max(1000, this.options!.settleTimeout)
-		const startedAt = performance.now()
 		return new Promise<void>((resolve, reject) => {
 			let settled = false
-			const beforePhysicsObserver = scene.onBeforePhysicsObservable.add(() => {
+		const beforePhysicsObserver = scene.onBeforePhysicsObservable.add(() => {
 				for(const activeBody of this.#bodies) {
-					this.#updateGuidance(activeBody, DICE_PHYSICS_SUB_TIME_STEP_MS, duration)
+					this.#updateGuidance(activeBody, this.#physicsStepMs, duration)
 				}
 			})
 			const afterPhysicsObserver = scene.onAfterPhysicsObservable.add(() => {
 				for(const activeBody of this.#bodies) {
-					if(activeBody.state === 'commit') this.#completeExactCommit(activeBody)
+					if(activeBody.state === 'commit') this.#completeSmoothCommit(activeBody)
 				}
 			})
 			const finish = (error?: unknown): void => {
@@ -124,14 +189,27 @@ export class PhysicsRenderer extends KinematicRenderer {
 			const abort = (): void => finish(new DisplayCancelledError())
 			const render = (): void => {
 				if(signal.aborted) return abort()
-				const timedOut = performance.now() - startedAt >= duration
+				const forcedLockActive = this.#bodies.some(activeBody =>
+					activeBody.state === 'finalLock' && activeBody.forcedLock
+				)
+				const overdueBodies: ActiveBody[] = []
 				for(const activeBody of this.#bodies) {
 					if(activeBody.locked || activeBody.state === 'commit') continue
-					if(shouldRecoverPhysicsBody(activeBody.entry.node.position)) {
-						this.#beginExactCommit(activeBody, false)
-					} else if(timedOut) {
-						this.#beginExactCommit(activeBody, true)
+					if(!activeBody.launched) continue
+					if(
+						this.#shouldRecover(activeBody)
+						|| !hasFiniteQuaternion(activeBody.entry)
+					) {
+						this.#beginEmergencyRecovery(activeBody)
+					} else if(activeBody.elapsedMs >= duration + activeBody.profile.timeoutExtensionMs) {
+						overdueBodies.push(activeBody)
 					}
+				}
+				if(!forcedLockActive) {
+					const candidate = overdueBodies
+						.filter(activeBody => !this.#hasRecentBodyCollision(activeBody))
+						.sort((left, right) => left.entry.node.position.y - right.entry.node.position.y)[0]
+					if(candidate) this.#startFinalLock(candidate, true)
 				}
 				scene.render()
 				if(this.#bodies.every(activeBody => activeBody.locked)) finish()
@@ -141,121 +219,405 @@ export class PhysicsRenderer extends KinematicRenderer {
 		})
 	}
 
+	#releaseLaunch(activeBody: ActiveBody): void {
+		if(activeBody.launched) return
+		const { body, entry, profile, shape } = activeBody
+		entry.node.setEnabled(true)
+		entry.node.computeWorldMatrix(true)
+		// Released dice collide with one another immediately. Only the wall used
+		// as the entry portal is excluded until the whole collider has crossed it.
+		shape.filterMembershipMask = PHYSICS_DICE_LAYER
+		shape.filterCollideMask = getLaunchCollisionMask(entry.launchEdge)
+		body.setMotionType(PhysicsMotionType.DYNAMIC)
+		body.disablePreStep = true
+		body.setLinearDamping(this.options!.linearDamping)
+		body.setAngularDamping(0)
+		// Havok clears native velocities when a body transitions from
+		// ALWAYS_INACTIVE to ALWAYS_ACTIVE. Activate first, then apply the throw.
+		try {
+			this.#physicsPlugin?.setActivationControl(body, PhysicsActivationControl.ALWAYS_ACTIVE)
+		} catch {}
+		body.setLinearVelocity(activeBody.launchLinearVelocity)
+		body.setAngularVelocity(getPlannedFlightSpin(
+			activeBody.launchAngularVelocity,
+			0,
+			activeBody.flightDurationMs / 1000,
+			profile.landingSpinRetention
+		))
+		activeBody.launched = true
+		this.#armEntryCollisions(activeBody)
+	}
+
+	#hasLaunchClearance(activeBody: ActiveBody): boolean {
+		for(const candidate of this.#bodies) {
+			if(candidate === activeBody || !candidate.launched) continue
+			if(!hasPhysicsLaunchPairClearance(
+				activeBody.entry.node.position,
+				activeBody.entry.horizontalRadius,
+				candidate.entry.node.position,
+				candidate.entry.horizontalRadius
+			)) return false
+		}
+		return true
+	}
+
+	#hasRecentBodyCollision = (activeBody: ActiveBody): boolean =>
+		activeBody.lastBodyCollisionElapsedMs !== undefined
+		&& activeBody.elapsedMs - activeBody.lastBodyCollisionElapsedMs
+			<= Math.max(CONTACT_GRACE_MS, activeBody.profile.bodyContactSettleDelayMs)
+
+	#armEntryCollisions(activeBody: ActiveBody): void {
+		if(activeBody.collisionsArmed || !activeBody.launched) return
+		if(this.#bounds && !hasEnteredLaunchPortal(
+			activeBody.entry.node.position,
+			this.#bounds,
+			activeBody.entry.horizontalRadius,
+			activeBody.entry.launchEdge
+		)) return
+		activeBody.shape.filterCollideMask = PHYSICS_ACTIVE_COLLISION_MASK
+		activeBody.collisionsArmed = true
+	}
+
+	#shouldRecover(activeBody: ActiveBody): boolean {
+		const position = activeBody.entry.node.position
+		if(!activeBody.collisionsArmed) {
+			return !Number.isFinite(position.x)
+				|| !Number.isFinite(position.y)
+				|| !Number.isFinite(position.z)
+				|| position.y < -2
+		}
+		const responsiveLimit = this.#bounds
+			? Math.max(
+				11.5,
+				Math.abs(this.#bounds.left),
+				Math.abs(this.#bounds.right),
+				Math.abs(this.#bounds.north),
+				Math.abs(this.#bounds.south)
+			) + activeBody.entry.horizontalRadius + 1
+			: undefined
+		return shouldRecoverPhysicsBody(position, responsiveLimit)
+	}
+
 	#updateGuidance(activeBody: ActiveBody, deltaMs: number, timeoutMs: number): void {
 		if(activeBody.locked || activeBody.state === 'commit' || activeBody.state === 'complete') return
+		if(!activeBody.launched) {
+			activeBody.launchDelayElapsedMs += deltaMs
+			if(activeBody.launchDelayElapsedMs + 1e-6 < activeBody.launchDelayMs) return
+			if(!this.#hasLaunchClearance(activeBody)) return
+			this.#releaseLaunch(activeBody)
+		}
+		this.#armEntryCollisions(activeBody)
 		const { body, entry, profile } = activeBody
+		if(this.#shouldRecover(activeBody) || !hasFiniteQuaternion(entry)) return
 		activeBody.elapsedMs += deltaMs
 		const timeoutRemainingMs = Math.max(0, timeoutMs - activeBody.elapsedMs)
 		const hasGroundContact = activeBody.lastGroundContactElapsedMs !== undefined
 			&& activeBody.elapsedMs - activeBody.lastGroundContactElapsedMs <= CONTACT_GRACE_MS
 		if(!hasGroundContact) activeBody.groundContactStartedElapsedMs = undefined
+		const hasBodyContact = activeBody.lastBodyContactElapsedMs !== undefined
+			&& activeBody.elapsedMs - activeBody.lastBodyContactElapsedMs <= CONTACT_GRACE_MS
+		if(!hasBodyContact) {
+			activeBody.bodyContactStartedElapsedMs = undefined
+			activeBody.bodySupportName = undefined
+		}
+		const hasBodyCollision = activeBody.lastBodyCollisionElapsedMs !== undefined
+			&& activeBody.elapsedMs - activeBody.lastBodyCollisionElapsedMs <= CONTACT_GRACE_MS
+		if(!hasBodyCollision) activeBody.bodyCollisionStartedElapsedMs = undefined
 
 		if(activeBody.state === 'freeFall') {
+			const plannedElapsedSeconds = Math.max(0, activeBody.elapsedMs - deltaMs) / 1000
+			const flightDurationSeconds = activeBody.flightDurationMs / 1000
+			const plannedOrientation = getPlannedFlightQuaternion(
+				activeBody.flightStartQuaternion,
+				activeBody.launchAngularVelocity,
+				plannedElapsedSeconds,
+				flightDurationSeconds,
+				profile.landingSpinRetention
+			)
+			const plannedVelocity = getPlannedFlightSpin(
+				activeBody.launchAngularVelocity,
+				plannedElapsedSeconds,
+				flightDurationSeconds,
+				profile.landingSpinRetention
+			)
+			const flightAssist = getPlannedFlightAngularVelocity(
+				body.getAngularVelocity() ?? Vector3.Zero(),
+				currentQuaternion(entry),
+				activeBody.localFaceNormal,
+				plannedOrientation,
+				plannedVelocity,
+				activeBody.flightCorrectionVelocity,
+				Math.max(0, flightDurationSeconds - plannedElapsedSeconds),
+				profile,
+				Math.min(1, activeBody.elapsedMs / Math.max(1, activeBody.flightDurationMs)),
+				deltaMs
+			)
+			activeBody.flightCorrectionVelocity = flightAssist.correctionVelocity
+			body.setAngularVelocity(flightAssist.velocity)
+			const flightLinearVelocity = body.getLinearVelocity()
+			if(flightLinearVelocity) {
+				const softenedVelocity = getSoftLandingLinearVelocity(
+					flightLinearVelocity,
+					entry.node.position,
+					entry.end,
+					profile,
+					Math.min(1, activeBody.elapsedMs / Math.max(1, activeBody.flightDurationMs)),
+					Math.max(
+						2.2,
+						Math.hypot(
+							activeBody.launchLinearVelocity.x,
+							activeBody.launchLinearVelocity.z
+						) * 0.4
+					)
+				)
+				// Preserve real Havok ricochets and body-separation impulses. Before
+				// the first contact only, the synthetic target may soften the approach.
+				if(activeBody.wallImpactCount > 0
+					|| activeBody.groundImpactCount > 0
+					|| activeBody.lastBodyCollisionElapsedMs !== undefined) {
+					softenedVelocity.x = flightLinearVelocity.x
+					softenedVelocity.z = flightLinearVelocity.z
+				}
+				body.setLinearVelocity(softenedVelocity)
+			}
+			// A slowed contact can occur after the original ballistic ETA. Keep the
+			// landing plan active until a real impact; only the timeout safety window
+			// may start settle guidance without one.
+			if(
+				activeBody.groundImpactCount + activeBody.bodySupportImpactCount === 0
+				&& timeoutRemainingMs >= profile.timeoutWindowMs
+			) return
+			const firstSupportImpactElapsedMs = [
+				activeBody.firstGroundImpactElapsedMs,
+				activeBody.firstBodySupportImpactElapsedMs
+			].filter((value): value is number => value !== undefined)
+				.reduce<number | undefined>(
+					(earliest, value) => earliest === undefined ? value : Math.min(earliest, value),
+					undefined
+				)
 			if(!shouldStartGuidance({
 				elapsedMs: activeBody.elapsedMs,
-				...(activeBody.firstGroundImpactElapsedMs === undefined
+				...(firstSupportImpactElapsedMs === undefined
 					? {}
-					: { firstGroundImpactElapsedMs: activeBody.firstGroundImpactElapsedMs }),
-				groundImpactCount: activeBody.groundImpactCount,
+					: { firstGroundImpactElapsedMs: firstSupportImpactElapsedMs }),
+				groundImpactCount: activeBody.groundImpactCount + activeBody.bodySupportImpactCount,
 				positionY: entry.node.position.y,
 				timeoutRemainingMs
 			}, profile)) return
 			activeBody.state = 'guidedSettle'
 			activeBody.guidanceElapsedMs = 0
+			body.setAngularDamping(this.options!.angularDamping)
 		}
 
 		if(activeBody.state === 'guidedSettle') {
 			activeBody.guidanceElapsedMs += deltaMs
-			const progress = Math.min(1, activeBody.guidanceElapsedMs / profile.durationMs)
+			const timeoutUrgency = 1 - Math.min(1, timeoutRemainingMs / Math.max(1, profile.timeoutWindowMs))
+			const progress = Math.max(
+				Math.min(1, activeBody.guidanceElapsedMs / profile.durationMs),
+				timeoutUrgency
+			)
 			const orientation = currentQuaternion(entry)
-			const guidedAngular = getGuidedAngularVelocity(
+			const sustainedAngularVelocity = getSustainedRollAngularVelocity(
 				body.getAngularVelocity() ?? Vector3.Zero(),
-				orientation,
-				entry.target,
+				activeBody.settleRollAxis,
 				profile,
-				progress,
+				activeBody.guidanceElapsedMs,
 				deltaMs
 			)
+			const guidedAngular = getFaceGuidedAngularVelocity(
+				sustainedAngularVelocity,
+				orientation,
+				activeBody.localFaceNormal,
+				activeBody.restDirection,
+				profile,
+				progress,
+				deltaMs,
+				'settle'
+			)
 			body.setAngularVelocity(guidedAngular.velocity)
-			if(hasGroundContact || activeBody.groundImpactCount > 0 || entry.node.position.y <= profile.maxGuideStartHeight) {
-				body.setLinearVelocity(getGuidedLinearVelocity(
-					body.getLinearVelocity() ?? Vector3.Zero(),
+			let linearVelocity = body.getLinearVelocity() ?? Vector3.Zero()
+			if(
+				hasGroundContact
+				|| hasBodyContact
+				|| activeBody.groundImpactCount + activeBody.bodySupportImpactCount > 0
+				|| entry.node.position.y <= profile.maxGuideStartHeight
+			) {
+				linearVelocity = getGuidedLinearVelocity(
+					linearVelocity,
 					profile,
 					progress,
 					deltaMs
-				))
+				)
+				body.setLinearVelocity(linearVelocity)
 			}
 			const groundContactElapsedMs = hasGroundContact && activeBody.groundContactStartedElapsedMs !== undefined
 				? activeBody.elapsedMs - activeBody.groundContactStartedElapsedMs
 				: 0
-			if(canStartFinalLock({
+			const supportingBody = activeBody.bodySupportName === undefined
+				? undefined
+				: this.#bodies.find(candidate => candidate.entry.node.name === activeBody.bodySupportName)
+			const hasStableBodySupport = hasBodyContact && supportingBody?.locked === true
+			const bodyContactElapsedMs = hasBodyCollision && activeBody.bodyCollisionStartedElapsedMs !== undefined
+				? activeBody.elapsedMs - activeBody.bodyCollisionStartedElapsedMs
+				: 0
+			const readiness = {
 				angle: guidedAngular.angle,
+				angularSpeed: guidedAngular.velocity.length(),
 				elapsedMs: activeBody.elapsedMs,
 				groundContactElapsedMs,
-				hasGroundContact,
-				...(activeBody.lastBodyContactElapsedMs === undefined
+				hasGroundContact: hasGroundContact || hasStableBodySupport,
+				bodyContactElapsedMs,
+				...(activeBody.lastBodyCollisionElapsedMs === undefined
 					? {}
-					: { lastBodyContactElapsedMs: activeBody.lastBodyContactElapsedMs }),
-				positionY: entry.node.position.y,
-				timeoutRemainingMs
-			}, profile)) this.#startFinalLock(activeBody)
+					: { lastBodyContactElapsedMs: activeBody.lastBodyCollisionElapsedMs }),
+				linearSpeed: linearVelocity.length(),
+				positionY: entry.node.position.y
+			}
+			const stableThisStep = canStartFinalLock({
+				...readiness,
+				stableElapsedMs: profile.stableDurationMs
+			}, profile)
+			activeBody.stableElapsedMs = stableThisStep
+				? activeBody.stableElapsedMs + deltaMs
+				: 0
+			if(canStartFinalLock({
+				...readiness,
+				stableElapsedMs: activeBody.stableElapsedMs
+			}, profile)) this.#startFinalLock(activeBody, false)
 			return
 		}
 
 		if(activeBody.state === 'finalLock') {
+			if(activeBody.forcedLock && activeBody.forcedLockBodyCollision) {
+				this.#abortForcedFinalLock(activeBody)
+				return
+			}
 			activeBody.lockElapsedMs += deltaMs
-			const progress = smoothStep(activeBody.lockElapsedMs / profile.finalLockDurationMs)
+			const rawProgress = Math.min(1, activeBody.lockElapsedMs / Math.max(1, activeBody.lockDurationMs))
+			const progress = smoothStep(rawProgress)
 			const source = activeBody.lockSourceQuaternion ?? currentQuaternion(entry)
-			const target = chooseShortestQuaternion(source, entry.target)
+			const target = activeBody.lockTargetQuaternion ?? source
 			const rotation = Quaternion.Slerp(source, target, progress).normalize()
-			body.setLinearVelocity(Vector3.Zero())
-			body.setAngularVelocity(Vector3.Zero())
-			body.setTargetTransform(entry.node.position, rotation)
-			if(progress >= 1) this.#beginExactCommit(activeBody, true)
+			const sourcePosition = activeBody.lockSourcePosition ?? entry.node.position
+			const targetPosition = activeBody.lockTargetPosition ?? sourcePosition
+			body.setTargetTransform(Vector3.Lerp(sourcePosition, targetPosition, progress), rotation)
+			if(rawProgress >= 1) activeBody.state = 'commit'
 		}
 	}
 
-	#startFinalLock(activeBody: ActiveBody): void {
-		if(activeBody.state !== 'guidedSettle') return
+	#startFinalLock(activeBody: ActiveBody, forced: boolean): void {
+		if(
+			activeBody.locked
+			|| activeBody.state === 'finalLock'
+			|| activeBody.state === 'commit'
+			|| activeBody.state === 'complete'
+			|| (!forced && activeBody.state !== 'guidedSettle')
+		) return
 		const orientation = currentQuaternion(activeBody.entry)
+		// A normal settle is already inside the accepted face cone. Commit the
+		// real Havok pose in place instead of animating neighbours through one
+		// another; the small remaining yaw/tilt is intentionally natural.
+		if(!forced) {
+			activeBody.body.setLinearVelocity(Vector3.Zero())
+			activeBody.body.setAngularVelocity(Vector3.Zero())
+			activeBody.state = 'commit'
+			return
+		}
+		const alignment = getTolerantFaceAlignment(
+			orientation,
+			activeBody.localFaceNormal,
+			activeBody.restDirection,
+			forced
+				? activeBody.profile.settleDeadZoneAngle
+				: activeBody.profile.angleThreshold
+		)
+		const sourcePosition = activeBody.entry.node.position.clone()
+		const hasRecentGroundSupport = activeBody.lastGroundContactElapsedMs !== undefined
+			&& activeBody.elapsedMs - activeBody.lastGroundContactElapsedMs <= CONTACT_GRACE_MS
+		// A normal lock freezes the real resting transform. Only the timeout
+		// fallback is allowed to bring an unsupported body back to support height.
+		const targetPosition = forced
+			? new Vector3(
+				sourcePosition.x,
+				hasRecentGroundSupport
+					? activeBody.entry.supportHeight
+					: Math.max(activeBody.entry.supportHeight, sourcePosition.y),
+				sourcePosition.z
+			)
+			: sourcePosition.clone()
+		if(forced && this.#bounds) clampHorizontalPosition(
+			targetPosition,
+			this.#bounds,
+			activeBody.entry.horizontalRadius
+		)
 		activeBody.state = 'finalLock'
+		activeBody.forcedLock = forced
+		activeBody.forcedLockBodyCollision = false
 		activeBody.lockElapsedMs = 0
+		activeBody.lockDurationMs = getFinalLockDurationMs(alignment.angle, activeBody.profile, forced)
+		activeBody.lockSourcePosition = sourcePosition
+		activeBody.lockTargetPosition = targetPosition
 		activeBody.lockSourceQuaternion = orientation
+		activeBody.lockTargetQuaternion = chooseShortestQuaternion(orientation, alignment.targetQuaternion)
 		activeBody.body.setLinearVelocity(Vector3.Zero())
 		activeBody.body.setAngularVelocity(Vector3.Zero())
 		activeBody.body.setMotionType(PhysicsMotionType.ANIMATED)
-		activeBody.body.setTargetTransform(activeBody.entry.node.position, orientation)
+		activeBody.body.setTargetTransform(sourcePosition, orientation)
 	}
 
-	#beginExactCommit(activeBody: ActiveBody, preserveHorizontalPosition: boolean): void {
+	#abortForcedFinalLock(activeBody: ActiveBody): void {
+		const { body } = activeBody
+		const linearVelocity = body.getLinearVelocity()?.clone() ?? Vector3.Zero()
+		const angularVelocity = body.getAngularVelocity()?.clone() ?? Vector3.Zero()
+		body.setMotionType(PhysicsMotionType.DYNAMIC)
+		body.disablePreStep = true
+		try {
+			this.#physicsPlugin?.setActivationControl(body, PhysicsActivationControl.ALWAYS_ACTIVE)
+		} catch {}
+		body.setLinearVelocity(linearVelocity)
+		body.setAngularVelocity(angularVelocity)
+		activeBody.state = 'guidedSettle'
+		activeBody.forcedLock = false
+		activeBody.forcedLockBodyCollision = false
+		activeBody.stableElapsedMs = 0
+		activeBody.lockElapsedMs = 0
+		activeBody.lockSourcePosition = undefined
+		activeBody.lockTargetPosition = undefined
+		activeBody.lockSourceQuaternion = undefined
+		activeBody.lockTargetQuaternion = undefined
+	}
+
+	#beginEmergencyRecovery(activeBody: ActiveBody): void {
 		if(activeBody.locked || activeBody.state === 'commit' || activeBody.state === 'complete') return
 		const { body, entry } = activeBody
-		const targetPosition = preserveHorizontalPosition && finiteHorizontalPosition(entry.node.position)
-			? new Vector3(entry.node.position.x, entry.supportHeight, entry.node.position.z)
-			: entry.end.clone()
+		const targetPosition = entry.end.clone()
 		if(this.#bounds) clampHorizontalPosition(targetPosition, this.#bounds, entry.horizontalRadius)
+		const recoveryTarget = hasFiniteQuaternion(entry)
+			? getFaceAlignment(
+				currentQuaternion(entry),
+				activeBody.localFaceNormal,
+				activeBody.restDirection
+			).targetQuaternion
+			: entry.target.clone()
 		body.setMotionType(PhysicsMotionType.ANIMATED)
 		body.setLinearVelocity(Vector3.Zero())
 		body.setAngularVelocity(Vector3.Zero())
 		entry.node.position.copyFrom(targetPosition)
-		entry.node.rotationQuaternion = entry.target.clone()
+		entry.node.rotationQuaternion = recoveryTarget
 		entry.node.computeWorldMatrix(true)
-		// TELEPORT the exact resolved face into Havok. The commit is only
-		// considered complete after a real physics substep confirms the sync.
+		// This is the only TELEPORT path and only runs after the body has already
+		// escaped the visible stage or produced a non-finite transform.
 		body.disablePreStep = false
 		activeBody.state = 'commit'
 	}
 
-	#completeExactCommit(activeBody: ActiveBody): void {
+	#completeSmoothCommit(activeBody: ActiveBody): void {
 		if(activeBody.state !== 'commit') return
-		const { body, entry } = activeBody
+		const { body } = activeBody
 		body.disablePreStep = true
 		body.setLinearVelocity(Vector3.Zero())
 		body.setAngularVelocity(Vector3.Zero())
 		body.setMotionType(PhysicsMotionType.STATIC)
-		entry.node.position.y = entry.supportHeight
-		entry.node.rotationQuaternion = entry.target.clone()
-		entry.node.computeWorldMatrix(true)
 		try {
 			this.#physicsPlugin?.setActivationControl(body, PhysicsActivationControl.ALWAYS_INACTIVE)
 		} catch {}
@@ -293,6 +655,11 @@ export class PhysicsRenderer extends KinematicRenderer {
 
 	createBodies(entries: readonly VisualEntry[]): void {
 		this.disposeDynamicBodies()
+		const physicsStep = getDicePhysicsStep(entries.length)
+		this.#physicsStepMs = physicsStep.milliseconds
+		const physicsEngine = this.scene?.getPhysicsEngine()
+		physicsEngine?.setTimeStep(physicsStep.seconds)
+		physicsEngine?.setSubTimeStep(physicsStep.milliseconds)
 		this.#largestRadius = entries.reduce(
 			(radius, entry) => Math.max(radius, entry.horizontalRadius),
 			0
@@ -301,62 +668,118 @@ export class PhysicsRenderer extends KinematicRenderer {
 		for(const entry of entries) this.#dynamicBodyNames.add(entry.node.name)
 		for(const entry of entries) {
 			if(this.#bounds) {
-				clampHorizontalPosition(entry.start, this.#bounds, entry.horizontalRadius)
 				clampHorizontalPosition(entry.end, this.#bounds, entry.horizontalRadius)
 				entry.node.position.copyFrom(entry.start)
 			}
 			const profile = getPhysicsGuidanceProfile(entry.sides)
-			entry.node.rotationQuaternion = createBiasedInitialQuaternion(
-				entry.target,
-				entry.spinX,
-				entry.spinY,
-				entry.spinZ,
-				profile
+			const linearVelocity = entry.launchVelocity.clone()
+			const flightSeconds = estimateBallisticFlightSeconds(
+				entry.node.position.y,
+				entry.supportHeight,
+				linearVelocity.y,
+				9.81 * this.options!.gravity
 			)
-			entry.node.computeWorldMatrix(true)
-			const body = new PhysicsBody(entry.node, PhysicsMotionType.DYNAMIC, false, this.scene!)
-			const shape = this.#createShape(entry)
-			shape.material = { friction: this.options!.friction, restitution: this.options!.restitution }
-			body.shape = shape
-			body.setMassProperties({ mass: this.options!.mass * getPhysicsMassMultiplier(entry.sides) })
-			body.setLinearDamping(this.options!.linearDamping)
-			body.setAngularDamping(this.options!.angularDamping)
-			body.setLinearVelocity(new Vector3(
-				(entry.end.x - entry.node.position.x) * this.options!.throwForce * 0.32,
-				2.2 + this.options!.throwForce * 0.22,
-				(entry.end.z - entry.node.position.z) * this.options!.throwForce * 0.32
-			))
-			const spinScale = Math.max(0.07, this.options!.spinForce * 0.018)
-			const launchSpin = new Vector3(
+			const travel = new Vector3(
+				linearVelocity.x * flightSeconds,
+				entry.end.y - entry.node.position.y,
+				linearVelocity.z * flightSeconds
+			)
+			const spinScale = Math.max(0, this.options!.spinForce * 0.05)
+			const seededSpin = new Vector3(
 				entry.spinX * spinScale,
 				entry.spinY * spinScale,
 				entry.spinZ * spinScale
 			)
-			body.setAngularVelocity(getBiasedLaunchAngularVelocity(
-				launchSpin,
-				currentQuaternion(entry),
+			const thrownSpin = getThrownAngularVelocity(
+				seededSpin,
+				travel,
+				Math.hypot(linearVelocity.x, linearVelocity.z),
+				entry.horizontalRadius,
+				entry.sides
+			)
+			const launchSpin = getVisibleFlightAngularVelocity(
+				thrownSpin,
+				travel,
+				flightSeconds,
+				entry.sides,
+				this.options!.spinForce
+			)
+			const landingApproachQuaternion = createLandingApproachQuaternion(
 				entry.target,
-				profile
-			))
+				travel,
+				profile.landingApproachAngle
+			)
+			const flightStartQuaternion = createPrecomputedFlightQuaternion(
+				landingApproachQuaternion,
+				launchSpin,
+				flightSeconds
+			)
+			entry.node.rotationQuaternion = flightStartQuaternion
+			entry.node.computeWorldMatrix(true)
+			const resultFaceFrame = getResultFaceFrame(entry.target, entry.sides)
+			const body = new PhysicsBody(entry.node, PhysicsMotionType.DYNAMIC, false, this.scene!)
+			const shape = this.#createShape(entry)
+			shape.material = { friction: this.options!.friction, restitution: this.options!.restitution }
+			shape.filterMembershipMask = 0
+			shape.filterCollideMask = 0
+			body.shape = shape
+			body.setMassProperties({ mass: this.options!.mass * getPhysicsMassMultiplier(entry.sides) })
+			body.setMotionType(PhysicsMotionType.ANIMATED)
+			body.setLinearDamping(this.options!.linearDamping)
+			body.setAngularDamping(0)
+			body.setLinearVelocity(Vector3.Zero())
+			body.setAngularVelocity(Vector3.Zero())
+			entry.node.setEnabled(false)
 			try {
-				this.#physicsPlugin?.setActivationControl(body, PhysicsActivationControl.ALWAYS_ACTIVE)
+				this.#physicsPlugin?.setActivationControl(body, PhysicsActivationControl.ALWAYS_INACTIVE)
 			} catch {}
 			const activeBody: ActiveBody = {
 				body,
+				shape,
 				entry,
 				profile,
+				localFaceNormal: resultFaceFrame.localNormal,
+				restDirection: resultFaceFrame.restDirection,
+				flightStartQuaternion: flightStartQuaternion.clone(),
+				launchAngularVelocity: launchSpin.clone(),
+				launchLinearVelocity: linearVelocity.clone(),
+				launchDelayMs: entry.launchDelayMs,
+				settleRollAxis: getLandingRollAxis(travel)
+					.scale(0.35)
+					.add(resultFaceFrame.restDirection.scale(0.65))
+					.normalize(),
+				flightDurationMs: flightSeconds * 1000,
+				flightCorrectionVelocity: Vector3.Zero(),
+				launchDelayElapsedMs: 0,
+				launched: false,
+				collisionsArmed: false,
 				collisionObserver: undefined,
 				state: 'freeFall',
 				locked: false,
 				elapsedMs: 0,
 				guidanceElapsedMs: 0,
+				stableElapsedMs: 0,
 				lockElapsedMs: 0,
+				lockDurationMs: profile.finalLockDurationMs,
+				lockSourcePosition: undefined,
+				lockTargetPosition: undefined,
 				lockSourceQuaternion: undefined,
+				lockTargetQuaternion: undefined,
 				groundImpactCount: 0,
 				firstGroundImpactElapsedMs: undefined,
 				groundContactStartedElapsedMs: undefined,
 				lastGroundContactElapsedMs: undefined,
-				lastBodyContactElapsedMs: undefined
+				bodySupportImpactCount: 0,
+				firstBodySupportImpactElapsedMs: undefined,
+				bodyContactStartedElapsedMs: undefined,
+				lastBodyContactElapsedMs: undefined,
+				lastBodyCollisionElapsedMs: undefined,
+				bodyCollisionStartedElapsedMs: undefined,
+				bodySupportName: undefined,
+				wallImpactCount: 0,
+				lastWallImpactElapsedMs: undefined,
+				forcedLock: false,
+				forcedLockBodyCollision: false
 			}
 			body.setCollisionCallbackEnabled(true)
 			activeBody.collisionObserver = body.getCollisionObservable().add(event => {
@@ -390,7 +813,45 @@ export class PhysicsRenderer extends KinematicRenderer {
 			activeBody.lastGroundContactElapsedMs = activeBody.elapsedMs
 			return
 		}
+		if(otherName.startsWith('display-wall-')) {
+			const contactWasInterrupted = activeBody.lastWallImpactElapsedMs === undefined
+				|| activeBody.elapsedMs - activeBody.lastWallImpactElapsedMs > CONTACT_GRACE_MS
+			if(contactWasInterrupted) activeBody.wallImpactCount++
+			activeBody.lastWallImpactElapsedMs = activeBody.elapsedMs
+			return
+		}
 		if(otherName !== ownName && this.#dynamicBodyNames.has(otherName)) {
+			if(activeBody.state === 'finalLock' && activeBody.forcedLock) {
+				activeBody.forcedLockBodyCollision = true
+			}
+			const bodyCollisionWasInterrupted = activeBody.lastBodyCollisionElapsedMs === undefined
+				|| activeBody.elapsedMs - activeBody.lastBodyCollisionElapsedMs > CONTACT_GRACE_MS
+			if(bodyCollisionWasInterrupted) activeBody.bodyCollisionStartedElapsedMs = activeBody.elapsedMs
+			activeBody.lastBodyCollisionElapsedMs = activeBody.elapsedMs
+			const otherBody = this.#bodies.find(candidate => candidate.entry.node.name === otherName)
+			const normalY = Math.abs(event.normal?.y ?? 0)
+			const contactPoint = event.point
+			const contactIsBelowCenter = contactPoint !== undefined
+				&& contactPoint !== null
+				&& contactPoint.y <= activeBody.entry.node.position.y
+					- Math.min(0.06, activeBody.entry.supportHeight * 0.08)
+			const otherBodyIsBelow = otherBody !== undefined
+				&& otherBody.entry.node.position.y + 0.02 < activeBody.entry.node.position.y
+			if(normalY < 0.45 || !contactIsBelowCenter || !otherBodyIsBelow) return
+			const contactWasInterrupted = activeBody.lastBodyContactElapsedMs === undefined
+				|| activeBody.elapsedMs - activeBody.lastBodyContactElapsedMs > CONTACT_GRACE_MS
+			const canActAsSupport = canBodyContactActAsSupport(
+				activeBody.elapsedMs,
+				activeBody.flightDurationMs,
+				activeBody.entry.node.position.y,
+				activeBody.profile
+			)
+			if(contactWasInterrupted) activeBody.bodyContactStartedElapsedMs = activeBody.elapsedMs
+			if(canActAsSupport && (contactWasInterrupted || activeBody.bodySupportImpactCount === 0)) {
+				activeBody.bodySupportImpactCount++
+				activeBody.firstBodySupportImpactElapsedMs ??= activeBody.elapsedMs
+			}
+			activeBody.bodySupportName = otherName
 			activeBody.lastBodyContactElapsedMs = activeBody.elapsedMs
 		}
 	}
@@ -420,14 +881,25 @@ export class PhysicsRenderer extends KinematicRenderer {
 		if(signature === this.#boundsSignature) return
 		this.#disposeStaticBounds()
 		const scene = this.scene!
-		const make = (name: string, size: { width: number; height: number; depth: number }, position: Vector3): void => {
-			this.#staticBodies.push(createStaticPhysicsBox(
+		const make = (
+			name: string,
+			size: { width: number; height: number; depth: number },
+			position: Vector3,
+			material: { readonly friction: number; readonly restitution: number },
+			membershipMask: number
+		): void => {
+			const staticBox = createStaticPhysicsBox(
 				scene,
 				name,
 				size,
 				position,
-				{ friction: this.options!.friction, restitution: this.options!.restitution }
-			))
+				material
+			)
+			if(staticBox.body.shape) {
+				staticBox.body.shape.filterMembershipMask = membershipMask
+				staticBox.body.shape.filterCollideMask = PHYSICS_DICE_LAYER
+			}
+			this.#staticBodies.push(staticBox)
 		}
 		const layout = createPhysicsBoundsLayout({
 			bounds,
@@ -435,8 +907,20 @@ export class PhysicsRenderer extends KinematicRenderer {
 			largestRadius
 		})
 		try {
-			make(layout.floor.name, layout.floor.size, layout.floor.position)
-			for(const wall of layout.walls) make(wall.name, wall.size, wall.position)
+			make(layout.floor.name, layout.floor.size, layout.floor.position, {
+				friction: this.options.friction,
+				restitution: this.options.restitution
+			}, PHYSICS_FLOOR_LAYER)
+			const [north, south, west, east] = layout.walls
+			for(const [wall, membershipMask] of [
+				[north, PHYSICS_WALL_LAYERS.north],
+				[south, PHYSICS_WALL_LAYERS.south],
+				[west, PHYSICS_WALL_LAYERS.left],
+				[east, PHYSICS_WALL_LAYERS.right]
+			] as const) make(wall.name, wall.size, wall.position, {
+				friction: PHYSICS_WALL_FRICTION,
+				restitution: PHYSICS_WALL_RESTITUTION
+			}, membershipMask)
 		} catch(error) {
 			this.#disposeStaticBounds()
 			this.#bounds = undefined
@@ -460,9 +944,39 @@ export class PhysicsRenderer extends KinematicRenderer {
 		if(!this.#bounds) return
 		for(const activeBody of this.#bodies) {
 			const { body, entry } = activeBody
-			clampHorizontalPosition(entry.start, this.#bounds, entry.horizontalRadius)
 			clampHorizontalPosition(entry.end, this.#bounds, entry.horizontalRadius)
-			if(!clampHorizontalPosition(entry.node.position, this.#bounds, entry.horizontalRadius)) continue
+			const positionChanged = activeBody.collisionsArmed
+				&& (activeBody.locked
+					|| activeBody.state === 'finalLock'
+					|| activeBody.state === 'commit'
+					|| activeBody.state === 'complete')
+				? clampHorizontalPosition(
+					entry.node.position,
+					this.#bounds,
+					entry.horizontalRadius
+				)
+				: false
+			if(activeBody.state === 'finalLock') {
+				const remainingDurationMs = Math.max(
+					1,
+					activeBody.lockDurationMs - activeBody.lockElapsedMs
+				)
+				const targetPosition = activeBody.lockTargetPosition?.clone()
+					?? new Vector3(entry.node.position.x, entry.supportHeight, entry.node.position.z)
+				const targetChanged = clampHorizontalPosition(
+					targetPosition,
+					this.#bounds,
+					entry.horizontalRadius
+				)
+				if(positionChanged || targetChanged) {
+					activeBody.lockSourcePosition = entry.node.position.clone()
+					activeBody.lockTargetPosition = targetPosition
+					activeBody.lockSourceQuaternion = currentQuaternion(entry)
+					activeBody.lockDurationMs = remainingDurationMs
+					activeBody.lockElapsedMs = 0
+				}
+			}
+			if(!positionChanged) continue
 			entry.node.computeWorldMatrix(true)
 			const prestepType = body.getPrestepType()
 			try {

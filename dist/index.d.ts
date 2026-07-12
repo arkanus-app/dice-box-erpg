@@ -123,10 +123,16 @@ export declare interface ViewerOptions {
     readonly startingHeight?: number;
     readonly spinForce?: number;
     readonly throwForce?: number;
+    /** Seeded per-presentation chance (0..1) of using the high-energy launch tail. */
+    readonly aggressiveThrowChance?: number;
+    /** @deprecated Use aggressiveThrowChance. This never guarantees a wall collision. */
+    readonly wallBounceChance?: number;
     readonly wallPadding?: number;
     readonly colliderScale?: number;
     readonly spawnSpacing?: number;
     readonly spawnHeightStep?: number;
+    /** Extra off-screen margin, expressed as a fraction of the body radius. */
+    readonly spawnOverscan?: number;
     readonly friction?: number;
     readonly restitution?: number;
     readonly linearDamping?: number;

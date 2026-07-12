@@ -148,6 +148,10 @@ Se meshes/collider `d100` não existirem, o loader pode reutilizar os templates 
 
 O mapa associa o índice de cada triângulo do collider ao valor da face. O renderer agrega as normais dos triângulos do valor solicitado e pré-calcula o quaternion que leva essa face à direção correta.
 
+Desde a v2.0.4, esse mesmo quaternion alimenta o preflight orientado ao resultado do modo físico. A pose inicial, a trajetória `q(t)`, o feed-forward e a altura de apoio dependem da coerência entre mesh, collider e `colliderFaceMap`. Isso não altera o formato do tema, mas torna importante validar o collider real, não apenas a textura da malha visual.
+
+O guidance preserva twist/yaw em torno da normal mapeada e remove tilt perturbador; portanto, o mapa deve agrupar todos os triângulos coplanares que formam cada face sob o mesmo valor. Um mapa incompleto pode produzir uma normal agregada inclinada e comprometer tanto a orientação final quanto o soft landing.
+
 O d4 é especial: o valor é determinado pela face apoiada para baixo. Nos demais dados, a face selecionada aponta para cima.
 
 `diceAvailable` é validado somente como um array obrigatório e não bloqueia a criação. A disponibilidade efetiva dos poliedros depende das malhas, colliders e mapas presentes no modelo; d2 é sempre procedural.
@@ -191,7 +195,7 @@ Alterar `assetPath`, `origin` ou `externalThemes` por `updateOptions()` limpa o 
 2. `material` e `diceAvailable` existem.
 3. Todos os caminhos relativos partem da pasta do tema.
 4. O modelo contém mesh visual, collider e mapa para cada poliedro usado.
-5. Valores do `colliderFaceMap` cobrem todas as faces esperadas.
+5. Valores do `colliderFaceMap` cobrem todos os triângulos de todas as faces esperadas.
 6. Frente e verso da moeda mantêm os valores `1` e `2`.
 7. Assets externos permitem CORS.
-8. O tema foi testado nos modos `kinematic` e `physics`.
+8. O tema foi testado nos modos `kinematic` e `physics`, incluindo chegada e repouso na face solicitada.

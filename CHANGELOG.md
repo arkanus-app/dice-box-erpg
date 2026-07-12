@@ -4,6 +4,100 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 ## [Não publicado]
 
+## [2.0.4] - 2026-07-12
+
+### Adicionado
+
+- preflight orientado ao resultado que calcula pose inicial, duração balística e plano angular antes de criar o corpo físico;
+- trajetória quaternion `q(t)` com plateau angular até 72% do voo, desaceleração somente no trecho final e integral exata compartilhada pelo preflight;
+- decomposição da perturbação angular que preserva twist/yaw em torno da face planejada e remove somente o tilt indesejado;
+- soft landing por perfil, com limite de descida e convergência horizontal no pouso disperso para d2, d4, d6, d8, d10, d12, d20 e d100;
+- testes de integração com Havok e o collider d20 serializado do tema padrão;
+- aproximação de pouso com inclinação segura de aresta/canto e giro residual por perfil no primeiro contato;
+- sustentação angular limitada e decrescente nos primeiros 60% da acomodação, sem apagar velocidades maiores produzidas pelas colisões;
+- impulso linear imediato inspirado na v1.0.6 (`81c2ca9`) e conversão do antigo torque excêntrico em um plano determinístico de tumble antes do preflight;
+- variação contínua e seedada de energia/direção, com cauda agressiva selecionada por apresentação;
+- packing radius-aware em lanes, até duas rows e waves temporizadas para liberar o portal;
+- camadas de colisão distintas para `DICE`, `FLOOR` e cada uma das quatro paredes.
+
+### Alterado
+
+- `angularDamping` fica desativado durante o voo pré-calculado e é aplicado somente depois do primeiro impacto real;
+- o guidance pós-impacto ganhou força angular maior para poliedros, mantendo limites explícitos de velocidade e aceleração por subpasso;
+- o `finalLock` `ANIMATED` passou a ser exclusivo do fallback e dura no mínimo 220 ms, adaptando-se ao ângulo restante e à velocidade visual máxima;
+- o commit normal preserva a posição e o quaternion reais do repouso, zera as velocidades e congela diretamente o corpo como `STATIC`, sem transição `ANIMATED`; `TELEPORT` ficou reservado à recuperação de corpos fora do palco ou com transformação inválida;
+- cada apresentação escolhe uma única borda pela `seed` entre esquerda, direita, topo e baixo, independentemente do aspect ratio;
+- todos os corpos do grupo compartilham a mesma dinâmica de energia/direção, com impulso mínimo para dentro, vetor contínuo e variações tangenciais limitadas a um cone de 45 graus;
+- o timeout deixou de liberar os critérios normais de alinhamento, apoio, velocidade e estabilidade;
+- as durações de guidance passaram a 1.450 ms (d2), 1.900 ms (d4), 1.850 ms (d6), 1.800 ms (d8/d12), 1.750 ms (d10/d100) e 1.700 ms (d20);
+- o lock normal só pode começar após 1.900 ms no d2, 2.400 ms no d4/d20 e 2.300 ms nos demais formatos;
+- os defaults físicos foram recalibrados para gravidade `1.3`, fricção de piso `0.54`, restituição `0.29`, damping linear `0.10` e damping angular `0.08`;
+- `wallPadding` passou a `0.25`; as barreiras invisíveis usam collider de `0.25` unidade e material próprio agora calibrado com fricção `0.10` e restituição `0.54`;
+- `delay` passou a `10` ms e agora escalona corpos tanto em `kinematic` quanto em `physics`; corpos pendentes ficam invisíveis e sem colisão até sua liberação;
+- `spawnSpacing` passou de `0.72` para `1.72` e agora define a separação mínima de um packing que também respeita o raio dos colliders;
+- `startingHeight` passou de `6.4` para `7.6` como plano real e fixo de liberação; a altura efetiva continua limitada internamente a `2.8–8.1`;
+- `spawnHeightStep` passou a usar default `0`; offsets verticais continuam disponíveis por configuração explícita;
+- `spawnOverscan: 0.15` passou a posicionar o corpo inteiro fora da projeção, com margem adicional equivalente a 15% do seu raio;
+- `throwForce` passou de `5.15` para `6.4`; a velocidade horizontal usa coeficiente base `0.22`, cap base `17.5` e cap final `19.5`, e forças maiores aumentam o alcance;
+- `aggressiveThrowChance: 0.12` passou a selecionar, uma vez por apresentação, somente a cauda de maior energia e variação direcional;
+- `wallBounceChance` foi mantido como alias deprecated de `aggressiveThrowChance`, sem selecionar parede nem garantir contato;
+- landing e aim permanecem internos; trajetórias capazes de alcançar parede adjacente, oposta ou canto emergem apenas da força e da direção contínuas, e o Havok decide qualquer contato;
+- o preflight angular passou a derivar a viagem horizontal de `velocity × ETA`, mantendo o tumble coerente com o vetor real;
+- o preset físico do frontend local foi sincronizado com `startingHeight: 7.6`, `throwForce: 6.4`, `spawnSpacing: 1.72`, `aggressiveThrowChance: 0.12` e `spawnOverscan: 0.15`;
+- o freio de pouso começa em 80% do voo no d2, 83% no d4, 85% no d10/d100, 86% no perfil base e 92% no d20; o d20 aceita descida de até `3.6` antes do contato;
+- durante o freio, a velocidade horizontal mínima passou a `max(2.2, 40% da velocidade inicial)`;
+- a auditoria da v1 mediu picos angulares de aproximadamente `40–100 rad/s`; a v2 passou a usar `2,35` voltas nos demais poliedros, `2,45` no d20 e `2,5` no d2, com velocidade média limitada a `20 rad/s` nos poliedros e `22 rad/s` na moeda;
+- o eixo de tumble passou a ser predominantemente horizontal, com variações seedadas menores na direção da viagem e no twist;
+- o spin planejado no primeiro contato passou a ter cap de `2,6 rad/s`, sem alterar o ângulo total resolvido pelo preflight;
+- o renderer `kinematic` passou a iniciar o settle para a face solicitada somente em 84% da trajetória;
+- depois do primeiro contato, o soft landing deixa de sobrescrever a resposta linear `x/z` calculada pelo Havok;
+- durante a entrada, a máscara exclui apenas a parede-portal e mantém piso, outras paredes e colisões dado-dado ativos desde a liberação.
+
+### Corrigido
+
+- ordem de ativação do Havok no lançamento: corpos agora mudam de `ALWAYS_INACTIVE` para `ALWAYS_ACTIVE` antes de receber velocidade linear e angular, preservando o impulso real;
+- admissão física no portal: um corpo atrasado aguarda novos subpassos quando sua posição inicial ainda está ocupada pelo envelope de outro dado;
+- resolução física adaptativa de `180 Hz` para grupos de 2–24 corpos e `120 Hz` para grupos maiores, mantendo `90 Hz` para apresentações unitárias;
+- fallbacks de timeout agora são serializados, esperam o fim de colisões recentes e retornam a `DYNAMIC` se uma correção `ANIMATED` tocar outro dado;
+- sobreposição congelada ao final de grupos densos, causada por vários `finalLock` animados simultâneos e pela perda do impulso de entrada;
+- erro acumulado entre o preflight e o primeiro contato causado pelo amortecimento angular do Havok;
+- dados que chegavam em uma face vizinha e permaneciam nela até uma correção tardia no timeout;
+- guidance de voo que perseguia a pose final antes da hora e anulava parte da sensação natural de giro;
+- impactos verticais fortes que podiam tombar uma face já alinhada para uma vizinha;
+- dados apoiados sobre outro corpo agora reconhecem esse contato como suporte e não aguardam o fallback de timeout;
+- remoção abrupta do giro quando a face já estava alinhada, preservando o twist visual compatível com o plano;
+- alinhamento matematicamente perfeito no último trecho: o guidance agora possui zona morta natural e encerra assim que a face correta está segura no topo;
+- parada precoce logo após o impacto, que eliminava a sensação de o dado continuar rolando sobre o piso;
+- limites percebidos como paredes grossas e pouco responsivas por causa do recuo excessivo e do material compartilhado com o chão;
+- entrada sem sensação de arremesso, causada pela ausência do kick descendente e do tumble imediato que produziam a resposta visual da v1;
+- entrada mais baixa do que o `startingHeight` configurado, causada pelo uso do valor apenas como limite superior de uma altura aleatória;
+- dados que surgiam já formados dentro do canvas; o spawn agora começa totalmente fora do recorte e atravessa a extremidade de modo progressivo;
+- colisão prematura com a parede de lançamento; somente essa parede fica fora da máscara até o collider inteiro entrar no palco;
+- dados liberados juntos que atravessavam uns aos outros enquanto a máscara completa permanecia zerada no portal;
+- respostas laterais e impulsos de separação apagados pela convergência horizontal sintética depois do contato;
+- commit normal `ANIMATED` que podia interpolar corpos através de vizinhos e achatar pilhas;
+- sobreposição de colliders em lanes fixas quando grupos grandes excediam a largura disponível;
+- dados que atravessavam a queda com pouco giro visível por causa da convergência antecipada para o resultado;
+- face resolvida já apontada para cima no início do voo quando o preflight usava um número inteiro de voltas;
+- mapeamento invertido da moeda: frente/local `+Y` agora corresponde ao valor `1` (`Identity`) e verso/local `−Y` ao valor `2` (rotação `π`).
+
+### Validado
+
+- 72 testes em 18 suítes;
+- direção comum, determinismo, impulso e limites do arremesso validados em desktop e retrato com até 120 corpos;
+- convergência pura a 90 Hz em 48 combinações de perfil e pose de face;
+- matriz de compatibilidade d20 validada em 6 de 6 resultados variados (`1`, `4`, `7`, `10`, `13` e `20`) com a calibração anterior fixa (`startingHeight: 6.4`, `throwForce: 5.15`), todos chegando ao contato entre `0.7–0.95` segundo e repousando na face solicitada;
+- guidance Havok em contato com piso de alta fricção sem salto final visível;
+- limite de soft landing e limites de aceleração angular confirmados matematicamente;
+- trajetória angular validada por rotação acumulada do corpo, viagem acumulada da normal da face, afastamento da face resolvida no instante inicial e resultado final após o contato;
+- distribuição estatística e determinismo de `aggressiveThrowChance`, com 75–93% de trajetórias projetadas diretas e alcance não garantido para paredes adjacente/oposta e cantos;
+- landing interno, vetor contínuo e aumento de alcance com `throwForce` maior;
+- packing sem sobreposição por raio em desktop e retrato, incluindo até duas rows e múltiplas waves;
+- máscaras de portal validadas bit a bit e colisões reais entre múltiplos dados desde a liberação;
+- stacking Havok validado sem interpenetração nem achatamento no commit normal;
+- quatro barreiras validadas com impactos de até `18` unidades por segundo;
+- rolagem `1d2[2]` confirmada visualmente com a textura correta do valor `2`.
+
 ## [2.0.3] - 2026-07-12
 
 ### Adicionado
@@ -133,7 +227,8 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 - tema `default-v2` consolidado no baseline `81c2ca9` em 30/05/2026.
 
-[Não publicado]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.3...HEAD
+[Não publicado]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.4...HEAD
+[2.0.4]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.3...v2.0.4
 [2.0.3]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.2...v2.0.3
 [2.0.2]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.1...v2.0.2
 [2.0.1]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.0...v2.0.1

@@ -16,6 +16,13 @@ import { CreateBox } from '@babylonjs/core/Meshes/Builders/boxBuilder'
 import {
 	createPhysicsBoundsLayout,
 	createStaticPhysicsBox,
+	getLaunchCollisionMask,
+	PHYSICS_ACTIVE_COLLISION_MASK,
+	PHYSICS_DICE_LAYER,
+	PHYSICS_FLOOR_LAYER,
+	PHYSICS_WALL_FRICTION,
+	PHYSICS_WALL_LAYERS,
+	PHYSICS_WALL_RESTITUTION,
 	PHYSICS_WALL_THICKNESS,
 	type PhysicsBoundsLayout
 } from './renderers/physicsBounds'
@@ -39,7 +46,35 @@ const createLayout = (width = 1200, height = 800): PhysicsBoundsLayout => {
 }
 
 describe('responsive physics bounds layout', () => {
+	it('keeps dice-to-dice collisions active while excluding only the entry wall', () => {
+		const edges = ['left', 'right', 'north', 'south'] as const
+		const layers = [
+			PHYSICS_DICE_LAYER,
+			PHYSICS_FLOOR_LAYER,
+			...edges.map(edge => PHYSICS_WALL_LAYERS[edge])
+		]
+		assert.equal(new Set(layers).size, layers.length, 'collision layers must use unique bits')
+		for(const layer of layers) {
+			assert.equal(layer > 0 && (layer & (layer - 1)) === 0, true, `layer ${String(layer)} is not one bit`)
+			assert.notEqual(PHYSICS_ACTIVE_COLLISION_MASK & layer, 0)
+		}
+
+		for(const launchEdge of edges) {
+			const launchMask = getLaunchCollisionMask(launchEdge)
+			assert.notEqual(launchMask & PHYSICS_DICE_LAYER, 0, `${launchEdge} disabled dice collisions`)
+			assert.notEqual(launchMask & PHYSICS_FLOOR_LAYER, 0, `${launchEdge} disabled the floor`)
+			for(const wallEdge of edges) {
+				assert.equal(
+					(launchMask & PHYSICS_WALL_LAYERS[wallEdge]) !== 0,
+					wallEdge !== launchEdge,
+					`${launchEdge} portal has an invalid ${wallEdge} wall bit`
+				)
+			}
+		}
+	})
+
 	it('places the inner faces of all four walls exactly on the projected page limits', () => {
+		assert.ok(PHYSICS_WALL_THICKNESS <= 0.3)
 		for(const viewport of [
 			{ width: 1440, height: 720 },
 			{ width: 390, height: 844 }
@@ -112,15 +147,18 @@ describe('physics floor bounds', () => {
 		scene.enablePhysics(Vector3.Zero(), new HavokPlugin(true, havok))
 		const layout = createLayout(900, 600)
 		for(const box of layout.walls) {
-			createStaticPhysicsBox(scene, box.name, box.size, box.position, { friction: 0.86, restitution: 0.1 })
+			createStaticPhysicsBox(scene, box.name, box.size, box.position, {
+				friction: PHYSICS_WALL_FRICTION,
+				restitution: PHYSICS_WALL_RESTITUTION
+			})
 		}
 
 		const halfBody = 0.25
 		const cases = [
-			{ name: 'north', velocity: new Vector3(0, 0, -10) },
-			{ name: 'south', velocity: new Vector3(0, 0, 10) },
-			{ name: 'west', velocity: new Vector3(-10, 0, 0) },
-			{ name: 'east', velocity: new Vector3(10, 0, 0) }
+			{ name: 'north', velocity: new Vector3(3.5, 0, -18) },
+			{ name: 'south', velocity: new Vector3(-3.5, 0, 18) },
+			{ name: 'west', velocity: new Vector3(-18, 0, -3.5) },
+			{ name: 'east', velocity: new Vector3(18, 0, 3.5) }
 		] as const
 		const bodies = cases.map(testCase => {
 			const mesh = CreateBox(`test-die-${testCase.name}`, { size: halfBody * 2 }, scene)
@@ -140,7 +178,7 @@ describe('physics floor bounds', () => {
 		const tolerance = 0.035
 		const physics = scene.getPhysicsEngine() as unknown as { _step(delta: number): void }
 		for(let index = 0; index < 180; index += 1) {
-			physics._step(1 / 120)
+			physics._step(1 / 90)
 			for(const { name, mesh } of bodies) {
 				assert.ok(mesh.position.z - halfBody >= northFace - tolerance, `${name} crossed north at z=${mesh.position.z}`)
 				assert.ok(mesh.position.z + halfBody <= southFace + tolerance, `${name} crossed south at z=${mesh.position.z}`)
@@ -149,6 +187,66 @@ describe('physics floor bounds', () => {
 			}
 		}
 
+		scene.dispose()
+		engine.dispose()
+	})
+
+	it('reflects an oblique impact without behaving like a sticky wall', async () => {
+		const havok = await HavokPhysics({ wasmBinary: readFileSync(havokWasm) })
+		const engine = new NullEngine()
+		const scene = new Scene(engine)
+		scene.enablePhysics(Vector3.Zero(), new HavokPlugin(true, havok))
+		const layout = createLayout(900, 600)
+		const east = layout.walls[3]
+		createStaticPhysicsBox(scene, east.name, east.size, east.position, {
+			friction: PHYSICS_WALL_FRICTION,
+			restitution: PHYSICS_WALL_RESTITUTION
+		})
+
+		const die = CreateBox('lively-wall-die', { size: 0.5 }, scene)
+		die.position.set(0, 2, 0)
+		const body = new PhysicsBody(die, PhysicsMotionType.DYNAMIC, false, scene)
+		const dieShape = PhysicsShapeBox.FromMesh(die)
+		dieShape.material = { friction: 0.54, restitution: 0.29 }
+		body.shape = dieShape
+		body.setMassProperties({ mass: 1 })
+		body.setLinearVelocity(new Vector3(14.5, 0, 5.2))
+
+		const physics = scene.getPhysicsEngine() as unknown as { _step(delta: number): void }
+		let reflectedVelocity: Vector3 | undefined
+		let reflectedAtX: number | undefined
+		let reflectionStep: number | undefined
+		for(let index = 0; index < 180; index += 1) {
+			physics._step(1 / 90)
+			const velocity = body.getLinearVelocity()
+			if(velocity && velocity.x < 0) {
+				reflectedAtX ??= die.position.x
+				reflectionStep ??= index
+				if(!reflectedVelocity || velocity.x < reflectedVelocity.x) {
+					reflectedVelocity = velocity.clone()
+				}
+				if(index - reflectionStep >= 24) break
+			}
+		}
+
+		assert.ok(reflectedVelocity, 'the thin wall did not reflect the body')
+		assert.ok(
+			reflectedVelocity.x < 0,
+			`wall retained only ${String(reflectedVelocity.x)} normal velocity`
+		)
+		assert.ok(
+			Math.abs(reflectedVelocity.z) >= 5.2 * 0.45,
+			`wall retained only ${String(reflectedVelocity.z)} tangential velocity`
+		)
+		assert.ok(
+			Math.abs(reflectedVelocity.x) >= 14.5 * 0.28,
+			`wall rebound retained only ${String(reflectedVelocity.x)} normal velocity`
+		)
+		assert.ok(reflectedAtX !== undefined)
+		assert.ok(
+			die.position.x <= reflectedAtX - 0.75,
+			`die remained stuck against the wall at x=${String(die.position.x)}`
+		)
 		scene.dispose()
 		engine.dispose()
 	})
