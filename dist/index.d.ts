@@ -1,3 +1,8 @@
+export declare interface ClassifyTimelineEvent extends DiceTimelineEventBase {
+    readonly type: 'classify';
+    readonly outcome: 'success' | 'failure' | 'neutral' | 'critical-success' | 'critical-failure';
+}
+
 export declare interface CoinFaceTheme {
     readonly value: 1 | 2;
     readonly texture: string;
@@ -18,12 +23,15 @@ export declare interface CollisionEvent {
     readonly force: number;
 }
 
+export declare const DEFAULT_TIMELINE_OPTIONS: NormalizedTimelineOptions;
+
 declare class DiceResultViewer {
     #private;
     readonly canvas: HTMLCanvasElement;
     constructor(options?: ViewerOptions);
     init(): Promise<this>;
     display(request: DisplayRequest): Promise<DisplayResult>;
+    displayTimeline(request: DisplayTimelineRequest): Promise<DisplayTimelineResult>;
     clear(): void;
     updateOptions(options: ViewerOptions): Promise<void>;
     resize(): void;
@@ -33,6 +41,17 @@ export { DiceResultViewer }
 export default DiceResultViewer;
 
 export declare type DiceSides = 2 | 4 | 6 | 8 | 10 | 12 | 20 | 100;
+
+export declare type DiceTimelineEvent = RollTimelineEvent | RerollTimelineEvent | ExplodeTimelineEvent | TransformTimelineEvent | IncludeTimelineEvent | ExcludeTimelineEvent | ClassifyTimelineEvent;
+
+declare interface DiceTimelineEventBase {
+    readonly sequence: number;
+    readonly subject?: 'die';
+    readonly dieId: string;
+    readonly parentDieId: string | null;
+    readonly rollIndex: number;
+    readonly sourceNodeId: string;
+}
 
 export declare const DISPLAY_CANCELLED_CODE: "DISPLAY_CANCELLED";
 
@@ -56,7 +75,93 @@ export declare interface DisplayResult {
     readonly durationMs: number;
 }
 
+export declare interface DisplayTimelineRequest {
+    readonly id: string;
+    readonly dice: readonly TimelineDieDefinition[];
+    readonly events: readonly DiceTimelineEvent[];
+    readonly seed?: string;
+    readonly mode?: DisplayMode;
+}
+
+export declare interface DisplayTimelineResult extends DisplayResult {
+    readonly eventCount: number;
+    readonly phaseCount: number;
+    readonly degraded: boolean;
+}
+
+export declare interface ExcludeTimelineEvent extends DiceTimelineEventBase {
+    readonly type: 'exclude';
+    readonly reason: 'drop' | 'keep' | 'compound-absorbed';
+}
+
+export declare interface ExplodeTimelineEvent extends DiceTimelineEventBase {
+    readonly type: 'explode';
+    readonly childDieId: string;
+    readonly value: number;
+    readonly reason: 'explode' | 'compound' | 'penetrate';
+}
+
+export declare interface IncludeTimelineEvent extends DiceTimelineEventBase {
+    readonly type: 'include';
+    readonly contribution: number;
+}
+
 export declare const isDisplayCancelledError: (error: unknown) => error is DisplayCancelledError;
+
+declare interface NormalizedTimelineBadgeEffectOptions extends NormalizedTimelineEffectOptions {
+    readonly showBadge: boolean;
+}
+
+declare interface NormalizedTimelineCriticalEffectOptions extends NormalizedTimelineEffectOptions {
+    readonly pulses: number;
+}
+
+declare interface NormalizedTimelineEffectOptions {
+    readonly enabled: boolean;
+    readonly delayMs: number;
+    readonly durationMs: number;
+    readonly intensity: number;
+    readonly color: string;
+}
+
+declare interface NormalizedTimelineExplodeEffectOptions extends NormalizedTimelineEffectOptions {
+    readonly origin: 'source' | 'edge';
+    readonly burstHeight: number;
+    readonly spread: number;
+}
+
+declare interface NormalizedTimelineOptions {
+    readonly enabled: boolean;
+    readonly maxEvents: number;
+    readonly maxDurationMs: number;
+    readonly phaseGapMs: number;
+    readonly effects: {
+        readonly explode: NormalizedTimelineExplodeEffectOptions;
+        readonly compound: NormalizedTimelineBadgeEffectOptions;
+        readonly penetrate: NormalizedTimelineBadgeEffectOptions;
+        readonly reroll: NormalizedTimelineRerollEffectOptions;
+        readonly unique: NormalizedTimelineRerollEffectOptions;
+        readonly keep: NormalizedTimelineEffectOptions;
+        readonly drop: NormalizedTimelineEffectOptions;
+        readonly success: NormalizedTimelineEffectOptions;
+        readonly failure: NormalizedTimelineEffectOptions;
+        readonly neutral: NormalizedTimelineEffectOptions;
+        readonly criticalSuccess: NormalizedTimelineCriticalEffectOptions;
+        readonly criticalFailure: NormalizedTimelineCriticalEffectOptions;
+    };
+}
+
+declare interface NormalizedTimelineRerollEffectOptions extends NormalizedTimelineEffectOptions {
+    readonly style: 'hop' | 'edge' | 'spin';
+    readonly hopHeight: number;
+}
+
+export declare interface RerollTimelineEvent extends DiceTimelineEventBase {
+    readonly type: 'reroll';
+    readonly from: number;
+    readonly to: number;
+    readonly reason: 'reroll' | 'reroll-once' | 'unique' | 'unique-once';
+}
 
 export declare interface ResolvedDie {
     readonly id: string;
@@ -73,6 +178,11 @@ export declare interface ResolvedThemeConfig extends ThemeConfig {
     readonly meshName: string;
     readonly meshFilePath: string;
     readonly coin: CoinTheme;
+}
+
+export declare interface RollTimelineEvent extends DiceTimelineEventBase {
+    readonly type: 'roll';
+    readonly value: number;
 }
 
 export declare interface ThemeConfig {
@@ -97,6 +207,70 @@ export declare interface ThemeMaterialConfig {
     readonly diffuseLevel?: number;
     readonly bumpLevel?: number;
     readonly specularPower?: number;
+}
+
+export declare interface TimelineBadgeEffectOptions extends TimelineEffectOptions {
+    readonly showBadge?: boolean;
+}
+
+export declare interface TimelineCriticalEffectOptions extends TimelineEffectOptions {
+    readonly pulses?: number;
+}
+
+export declare interface TimelineDieDefinition {
+    readonly id: string;
+    readonly sides: DiceSides;
+    readonly theme?: string;
+    readonly themeColor?: string;
+}
+
+export declare interface TimelineEffectOptions {
+    readonly enabled?: boolean;
+    readonly delayMs?: number;
+    readonly durationMs?: number;
+    readonly intensity?: number;
+    readonly color?: string;
+}
+
+export declare interface TimelineEffectsOptions {
+    readonly explode?: TimelineExplodeEffectOptions;
+    readonly compound?: TimelineBadgeEffectOptions;
+    readonly penetrate?: TimelineBadgeEffectOptions;
+    readonly reroll?: TimelineRerollEffectOptions;
+    readonly unique?: TimelineRerollEffectOptions;
+    readonly keep?: TimelineEffectOptions;
+    readonly drop?: TimelineEffectOptions;
+    readonly success?: TimelineEffectOptions;
+    readonly failure?: TimelineEffectOptions;
+    readonly neutral?: TimelineEffectOptions;
+    readonly criticalSuccess?: TimelineCriticalEffectOptions;
+    readonly criticalFailure?: TimelineCriticalEffectOptions;
+}
+
+export declare interface TimelineExplodeEffectOptions extends TimelineEffectOptions {
+    readonly origin?: 'source' | 'edge';
+    readonly burstHeight?: number;
+    readonly spread?: number;
+}
+
+export declare interface TimelineOptions {
+    readonly enabled?: boolean;
+    readonly maxEvents?: number;
+    readonly maxDurationMs?: number;
+    readonly phaseGapMs?: number;
+    readonly effects?: TimelineEffectsOptions;
+}
+
+export declare interface TimelineRerollEffectOptions extends TimelineEffectOptions {
+    readonly style?: 'hop' | 'edge' | 'spin';
+    readonly hopHeight?: number;
+}
+
+export declare interface TransformTimelineEvent extends DiceTimelineEventBase {
+    readonly type: 'transform';
+    readonly from: number;
+    readonly to: number;
+    readonly reason: 'minimum' | 'maximum' | 'penetrate' | 'compound';
 }
 
 export declare interface ViewerOptions {
@@ -142,6 +316,7 @@ export declare interface ViewerOptions {
     readonly onCollision?: (event: CollisionEvent) => void;
     readonly onThemeConfigLoaded?: (theme: ResolvedThemeConfig) => void;
     readonly onThemeLoaded?: (theme: ResolvedThemeConfig) => void;
+    readonly timeline?: TimelineOptions;
 }
 
 export { }

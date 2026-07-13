@@ -1,5 +1,5 @@
 import { DiceResultViewer, isDisplayCancelledError } from '../src'
-import type { DisplayMode } from '../src'
+import type { DisplayMode, DisplayTimelineRequest } from '../src'
 
 const viewer = new DiceResultViewer({
   container: '#stage',
@@ -29,6 +29,61 @@ const showFromControl = (mode: DisplayMode): void => {
     if(!isDisplayCancelledError(error)) console.error(error)
   })
 }
+
+const eventBase = { subject: 'die' as const, rollIndex: 1, sourceNodeId: 'demo-node' }
+const timelinePresets: Record<string, DisplayTimelineRequest> = {
+  explode: {
+    id: 'timeline-explode', dice: [{ id: 'root', sides: 6 }, { id: 'child', sides: 6 }], events: [
+      { ...eventBase, sequence: 1, type: 'roll', dieId: 'root', parentDieId: null, value: 6 },
+      { ...eventBase, sequence: 2, type: 'roll', dieId: 'child', parentDieId: 'root', value: 4 },
+      { ...eventBase, sequence: 3, type: 'explode', dieId: 'root', parentDieId: null, childDieId: 'child', value: 4, reason: 'explode' }
+    ]
+  },
+  reroll: {
+    id: 'timeline-reroll', dice: [{ id: 'die', sides: 20 }], events: [
+      { ...eventBase, sequence: 1, type: 'roll', dieId: 'die', parentDieId: null, value: 1 },
+      { ...eventBase, sequence: 2, type: 'reroll', dieId: 'die', parentDieId: null, from: 1, to: 17, reason: 'reroll' }
+    ]
+  },
+  compound: {
+    id: 'timeline-compound', dice: [{ id: 'root', sides: 6 }, { id: 'child', sides: 6 }], events: [
+      { ...eventBase, sequence: 1, type: 'roll', dieId: 'root', parentDieId: null, value: 6 },
+      { ...eventBase, sequence: 2, type: 'roll', dieId: 'child', parentDieId: 'root', value: 4 },
+      { ...eventBase, sequence: 3, type: 'explode', dieId: 'root', parentDieId: null, childDieId: 'child', value: 4, reason: 'compound' },
+      { ...eventBase, sequence: 4, type: 'transform', dieId: 'root', parentDieId: null, from: 6, to: 10, reason: 'compound' },
+      { ...eventBase, sequence: 5, type: 'exclude', dieId: 'child', parentDieId: 'root', reason: 'compound-absorbed' }
+    ]
+  },
+  penetrate: {
+    id: 'timeline-penetrate', dice: [{ id: 'root', sides: 6 }, { id: 'child', sides: 6 }], events: [
+      { ...eventBase, sequence: 1, type: 'roll', dieId: 'root', parentDieId: null, value: 6 },
+      { ...eventBase, sequence: 2, type: 'roll', dieId: 'child', parentDieId: 'root', value: 5 },
+      { ...eventBase, sequence: 3, type: 'transform', dieId: 'child', parentDieId: 'root', from: 5, to: 4, reason: 'penetrate' },
+      { ...eventBase, sequence: 4, type: 'explode', dieId: 'root', parentDieId: null, childDieId: 'child', value: 4, reason: 'penetrate' }
+    ]
+  },
+  selection: {
+    id: 'timeline-selection', dice: [{ id: 'kept', sides: 6 }, { id: 'dropped', sides: 6 }], events: [
+      { ...eventBase, sequence: 1, type: 'roll', dieId: 'kept', parentDieId: null, value: 6 },
+      { ...eventBase, sequence: 2, type: 'roll', dieId: 'dropped', parentDieId: null, value: 2 },
+      { ...eventBase, sequence: 3, type: 'exclude', dieId: 'dropped', parentDieId: null, reason: 'keep' }
+    ]
+  },
+  critical: {
+    id: 'timeline-critical', dice: [{ id: 'critical', sides: 20 }], events: [
+      { ...eventBase, sequence: 1, type: 'roll', dieId: 'critical', parentDieId: null, value: 20 },
+      { ...eventBase, sequence: 2, type: 'classify', dieId: 'critical', parentDieId: null, outcome: 'critical-success' }
+    ]
+  }
+}
+
+for(const name of Object.keys(timelinePresets)) document.querySelector(`#${name}`)?.addEventListener('click', () => {
+  const preset = timelinePresets[name]
+  if(!preset) return
+  void viewer.displayTimeline({ ...preset, id: `${preset.id}-${Date.now()}`, seed: 'timeline-demo' }).catch(error => {
+    if(!isDisplayCancelledError(error)) console.error(error)
+  })
+})
 
 document.querySelector('#kinematic')?.addEventListener('click', () => showFromControl('kinematic'))
 document.querySelector('#physics')?.addEventListener('click', () => showFromControl('physics'))

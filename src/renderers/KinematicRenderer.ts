@@ -1,14 +1,22 @@
 import { Quaternion, Vector3 } from '@babylonjs/core/Maths/math.vector'
+import { Color3 } from '@babylonjs/core/Maths/math.color'
+import { HighlightLayer } from '@babylonjs/core/Layers/highlightLayer'
+import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture'
+import { Texture } from '@babylonjs/core/Materials/Textures/texture'
+import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial'
+import { CreatePlane } from '@babylonjs/core/Meshes/Builders/planeBuilder'
 import type { AbstractMesh } from '@babylonjs/core/Meshes/abstractMesh'
 import { Mesh } from '@babylonjs/core/Meshes/mesh'
 import type { TransformNode } from '@babylonjs/core/Meshes/transformNode'
 import type { Engine } from '@babylonjs/core/Engines/engine'
 import type { Scene } from '@babylonjs/core/scene'
-import type { ResolvedThemeConfig, DisplayMode, DisplayRenderer, NormalizedDisplayRequest, RendererContext, RequiredViewerOptions } from '../types'
+import type { ResolvedThemeConfig, DisplayMode, DisplayRenderer, NormalizedDisplayRequest, NormalizedResolvedDie, RendererContext, RequiredViewerOptions } from '../types'
+import { getTimelineTransformBadge, type DiceTimelinePlan, type TimelineEffectName } from '../timeline'
 import { DisplayCancelledError } from '../errors'
 import { createSeededRandom } from '../random'
 import { CoinFactory } from './coin'
 import { PolyhedralFactory } from './PolyhedralFactory'
+import { getCoinTargetQuaternion } from './coin'
 import { DISPLAY_CAMERA_FOV, DISPLAY_CAMERA_HEIGHT, SceneEnvironment } from './sceneEnvironment'
 import {
 	clampHorizontalPosition,
@@ -29,10 +37,16 @@ export interface VisualEntry {
 	readonly horizontalRadius: number
 	readonly launchEdge: LaunchEdge
 	readonly launchDelayMs: number
-	readonly target: Quaternion
+	target: Quaternion
 	readonly spinX: number
 	readonly spinY: number
 	readonly spinZ: number
+}
+
+interface TimelineVisualHandle {
+	readonly die: NormalizedResolvedDie
+	readonly theme: ResolvedThemeConfig
+	readonly entries: VisualEntry[]
 }
 
 const easeOutCubic = (value: number): number => 1 - Math.pow(1 - value, 3)
@@ -386,6 +400,7 @@ export class KinematicRenderer implements DisplayRenderer {
 	protected polyhedra?: PolyhedralFactory
 	protected coinFactory?: CoinFactory
 	protected readonly activeNodes: Array<AbstractMesh | TransformNode> = []
+	protected readonly timelineTemporaryNodes: AbstractMesh[] = []
 	protected initialized = false
 
 	async init(context: RendererContext): Promise<void> {
@@ -451,6 +466,395 @@ export class KinematicRenderer implements DisplayRenderer {
 			entries.push(await this.createDieEntry(theme, die, die.sides, die.value, die.id, bodyIndex++, bodyCount, random, launchEdge, launchDynamics))
 		}
 		await this.animate(entries, signal)
+	}
+
+	async displayTimeline(plan: DiceTimelinePlan, signal: AbortSignal): Promise<void> {
+		this.assertReady()
+		this.clear()
+		if(signal.aborted) throw new DisplayCancelledError()
+		const configs = new Map<string, ResolvedThemeConfig>()
+		for(const definition of plan.definitions.values()) {
+			if(configs.has(definition.theme)) continue
+			const config = await this.context!.loadTheme(definition.theme)
+			configs.set(definition.theme, config)
+			if([...plan.definitions.values()].some(die => die.theme === definition.theme && die.sides !== 2)) {
+				await this.ensurePolyhedralTheme(config)
+			}
+			this.options!.onThemeLoaded(config)
+		}
+		if(signal.aborted) throw new DisplayCancelledError()
+		const handles = new Map<string, TimelineVisualHandle>()
+		const initialEntries: VisualEntry[] = []
+		const initialBodyCount = plan.initialDice.reduce((count, die) => count + (die.sides === 100 ? 2 : 1), 0)
+		let initialIndex = 0
+		for(const die of plan.initialDice) {
+			const normalized = die as NormalizedResolvedDie
+			const created = await this.createTimelineEntries(
+				normalized,
+				configs.get(normalized.theme)!,
+				initialIndex,
+				initialBodyCount,
+				`${plan.seed}:initial`
+			)
+			initialIndex += created.entries.length
+			handles.set(die.id, created)
+			initialEntries.push(...created.entries)
+		}
+		await this.animate(initialEntries, signal)
+
+		for(const phase of plan.phases) {
+			await this.waitForTimeline(this.options!.timeline.phaseGapMs + phase.delayMs, signal)
+			if(phase.actions[0]?.kind === 'explode') {
+				const parentEntries = phase.actions.flatMap(action =>
+					action.kind === 'explode' ? handles.get(action.parentDieId)?.entries ?? [] : []
+				)
+				const cueDuration = Math.min(220, phase.durationMs * 0.25)
+				if(parentEntries.length && cueDuration > 0) {
+					await this.pulseTimelineEntries(parentEntries, phase.effect, cueDuration, 1, signal)
+				}
+				const spawned: VisualEntry[] = []
+				const spawnBodyCount = phase.actions.reduce((count, action) => {
+					if(action.kind !== 'explode') return count
+					return count + (plan.definitions.get(action.dieId)?.sides === 100 ? 2 : 1)
+				}, 0)
+				let spawnIndex = 0
+				for(const action of phase.actions) {
+					if(action.kind !== 'explode') continue
+					const definition = plan.definitions.get(action.dieId)!
+					const die = {
+						...definition,
+						value: action.value,
+						discarded: action.discarded
+					} as NormalizedResolvedDie
+					const handle = await this.createTimelineEntries(
+						die,
+						configs.get(definition.theme)!,
+						spawnIndex,
+						spawnBodyCount,
+						`${plan.seed}:${phase.id}:${action.dieId}`
+					)
+					spawnIndex += handle.entries.length
+					const parent = handles.get(action.parentDieId)
+					if(this.options!.timeline.effects.explode.origin === 'source' && parent?.entries[0]) {
+						const random = createSeededRandom(`${plan.seed}:${phase.id}:${action.dieId}:source`)
+						for(let index = 0; index < handle.entries.length; index++) {
+							const entry = handle.entries[index]!
+							const parentEntry = parent.entries[index % parent.entries.length]!
+							entry.start.set(
+								parentEntry.node.position.x + random.range(-1, 1) * this.options!.timeline.effects.explode.spread,
+								parentEntry.node.position.y + parentEntry.supportHeight + entry.supportHeight
+									+ this.options!.timeline.effects.explode.burstHeight,
+								parentEntry.node.position.z + random.range(-1, 1) * this.options!.timeline.effects.explode.spread
+							)
+							entry.node.position.copyFrom(entry.start)
+							const direction = entry.end.subtract(entry.start).normalize()
+							entry.launchVelocity.copyFrom(direction.scale(Math.max(2.4, this.options!.throwForce * 0.55)))
+							entry.launchVelocity.y = Math.max(2.8, this.options!.timeline.effects.explode.burstHeight * 2)
+						}
+					}
+					handles.set(action.dieId, handle)
+					spawned.push(...handle.entries)
+				}
+				if(spawned.length) await this.animateAdditional(spawned, signal, Math.max(0, phase.durationMs - cueDuration))
+				continue
+			}
+
+			if(phase.actions[0]?.kind === 'reroll') {
+				const rerolledEntries: VisualEntry[] = []
+				for(const action of phase.actions) {
+					if(action.kind !== 'reroll') continue
+					const handle = handles.get(action.dieId)
+					if(!handle) continue
+					await this.updateTimelineTargets(handle, action.to)
+					rerolledEntries.push(...handle.entries)
+				}
+				if(rerolledEntries.length) await this.animateTimelineReroll(rerolledEntries, phase.effect, phase.durationMs, signal)
+				continue
+			}
+
+			if(phase.actions[0]?.kind === 'selection') {
+				const selectedEntries: VisualEntry[] = []
+				for(const action of phase.actions) {
+					if(action.kind !== 'selection') continue
+					const entries = handles.get(action.dieId)?.entries
+					if(entries) selectedEntries.push(...entries)
+				}
+				if(selectedEntries.length) await this.fadeTimelineEntries(selectedEntries, 0.42, phase.durationMs, signal)
+				continue
+			}
+
+			if(phase.actions[0]?.kind === 'transform') {
+				const transformedEntries: VisualEntry[] = []
+				const temporaryNodes: AbstractMesh[] = []
+				for(const action of phase.actions) {
+					if(action.kind !== 'transform') continue
+					const entries = handles.get(action.dieId)?.entries
+					if(!entries) continue
+					transformedEntries.push(...entries)
+					const badge = getTimelineTransformBadge(action, this.options!.timeline)
+					const temporary = badge ? this.createTimelineBadge(entries[0]!, badge, phase.effect) : undefined
+					if(temporary) temporaryNodes.push(temporary)
+				}
+				try {
+					if(transformedEntries.length) await this.pulseTimelineEntries(transformedEntries, phase.effect, phase.durationMs, 1, signal)
+				} finally {
+					for(const temporary of temporaryNodes) this.disposeTimelineTemporaryNode(temporary)
+				}
+				continue
+			}
+
+			const pulseEntries: VisualEntry[] = []
+			let pulses = 1
+			for(const action of phase.actions) {
+				const entries = handles.get(action.dieId)?.entries
+				if(!entries) continue
+				pulseEntries.push(...entries)
+				if(action.kind === 'classify') pulses = Math.max(pulses, action.pulses)
+			}
+			if(pulseEntries.length) await this.pulseTimelineEntries(pulseEntries, phase.effect, phase.durationMs, pulses, signal)
+		}
+	}
+
+	protected async createTimelineEntries(
+		die: NormalizedResolvedDie,
+		theme: ResolvedThemeConfig,
+		startIndex: number,
+		bodyCount: number,
+		seed: string
+	): Promise<TimelineVisualHandle> {
+		const random = createSeededRandom(seed)
+		const canvas = this.context!.canvas
+		const launchEdge = selectPresentationLaunchEdge(
+			seed,
+			Math.max(1, canvas.clientWidth || canvas.width || 300),
+			Math.max(1, canvas.clientHeight || canvas.height || 150)
+		)
+		const launchDynamics = createPresentationLaunchDynamics(seed, this.options!.aggressiveThrowChance)
+		const entries: VisualEntry[] = []
+		if(die.sides === 2) {
+			entries.push(this.createCoinEntry(theme, die.id, die.value, die.discarded, startIndex, bodyCount, random, launchEdge, launchDynamics))
+		} else if(die.sides === 100) {
+			const tens = Math.floor((die.value - 1) / 10) * 10
+			const ones = die.value - tens
+			entries.push(await this.createDieEntry(theme, die, 100, tens, `${die.id}-tens`, startIndex, bodyCount, random, launchEdge, launchDynamics))
+			entries.push(await this.createDieEntry(theme, die, 10, ones, `${die.id}-ones`, startIndex + 1, bodyCount, random, launchEdge, launchDynamics))
+		} else {
+			entries.push(await this.createDieEntry(theme, die, die.sides, die.value, die.id, startIndex, bodyCount, random, launchEdge, launchDynamics))
+		}
+		return { die, theme, entries }
+	}
+
+	protected async updateTimelineTargets(handle: TimelineVisualHandle, value: number): Promise<void> {
+		if(handle.die.sides === 2) {
+			handle.entries[0]!.target = getCoinTargetQuaternion(value)
+			return
+		}
+		const values = handle.die.sides === 100
+			? [Math.floor((value - 1) / 10) * 10, value - Math.floor((value - 1) / 10) * 10]
+			: [value]
+		for(let index = 0; index < handle.entries.length; index++) {
+			const sides = handle.die.sides === 100 ? (index === 0 ? 100 : 10) : handle.die.sides
+			const orientation = await this.polyhedra!.getOrientation(handle.theme, sides, values[index]!)
+			handle.entries[index]!.target = orientation.targetQuaternion
+		}
+	}
+
+	protected animateAdditional(entries: readonly VisualEntry[], signal: AbortSignal, durationMs: number): Promise<void> {
+		if(durationMs <= 0) {
+			if(signal.aborted) return Promise.reject(new DisplayCancelledError())
+			for(const entry of entries) {
+				entry.node.setEnabled(true)
+				entry.node.position.copyFrom(entry.end)
+				entry.node.rotationQuaternion = entry.target.clone()
+			}
+			this.scene?.render()
+			return Promise.resolve()
+		}
+		return this.animate(entries, signal, durationMs, 1)
+	}
+
+	protected animateTimelineReroll(
+		entries: readonly VisualEntry[],
+		effectName: TimelineEffectName,
+		durationMs: number,
+		signal: AbortSignal
+	): Promise<void> {
+		const effect = effectName === 'unique'
+			? this.options!.timeline.effects.unique
+			: this.options!.timeline.effects.reroll
+		const sources = entries.map(entry => ({
+			position: entry.node.position.clone(),
+			rotation: (entry.node.rotationQuaternion ?? Quaternion.Identity()).clone(),
+			edge: this.createTimelineEdgePoint(entry, effectName)
+		}))
+		const duration = Math.max(1, durationMs)
+		return this.runTimelineAnimation(duration, signal, progress => {
+			const eased = easeOutCubic(progress)
+			for(let index = 0; index < entries.length; index++) {
+				const entry = entries[index]!
+				const source = sources[index]!
+				if(effect.style === 'edge') {
+					if(progress < 0.25) Vector3.LerpToRef(source.position, source.edge, easeOutCubic(progress / 0.25), entry.node.position)
+					else {
+						const enterProgress = (progress - 0.25) / 0.75
+						Vector3.LerpToRef(source.edge, source.position, easeOutCubic(enterProgress), entry.node.position)
+						entry.node.position.y += Math.sin(enterProgress * Math.PI) * effect.hopHeight
+					}
+				} else {
+					const hopScale = effect.style === 'spin' ? 0.35 : 1
+					entry.node.position.copyFrom(source.position)
+					entry.node.position.y += Math.sin(progress * Math.PI) * effect.hopHeight * hopScale
+				}
+				const spin = Quaternion.RotationAxis(Vector3.Up(), Math.PI * 2 * effect.intensity * progress)
+				const spunTarget = spin.multiply(entry.target)
+				const target = progress < 0.82 ? spunTarget : Quaternion.Slerp(spunTarget, entry.target, (progress - 0.82) / 0.18)
+				entry.node.rotationQuaternion = Quaternion.Slerp(source.rotation, target, eased)
+			}
+		})
+	}
+
+	protected createTimelineEdgePoint(entry: VisualEntry, effectName: TimelineEffectName): Vector3 {
+		const canvas = this.context!.canvas
+		const width = Math.max(1, canvas.clientWidth || canvas.width || 300)
+		const height = Math.max(1, canvas.clientHeight || canvas.height || 150)
+		const bounds = computeDisplayViewportBounds({
+			width,
+			height,
+			cameraHeight: DISPLAY_CAMERA_HEIGHT,
+			cameraFov: DISPLAY_CAMERA_FOV,
+			planeY: entry.node.position.y,
+			minimumRadius: entry.horizontalRadius
+		})
+		const edge = selectPresentationLaunchEdge(`${entry.node.name}:${effectName}:reentry`, width, height)
+		const overscan = entry.horizontalRadius * 1.4
+		const point = entry.node.position.clone()
+		if(edge === 'left') point.x = -bounds.visibleHalfX - overscan
+		else if(edge === 'right') point.x = bounds.visibleHalfX + overscan
+		else if(edge === 'north') point.z = -bounds.visibleHalfZ - overscan
+		else point.z = bounds.visibleHalfZ + overscan
+		point.y += Math.max(0.4, entry.supportHeight)
+		return point
+	}
+
+	protected createTimelineBadge(entry: VisualEntry, text: string, effectName: TimelineEffectName): Mesh {
+		const plane = CreatePlane(`timeline-badge-${Date.now()}`, { width: 2.2, height: 0.8 }, this.scene!)
+		plane.billboardMode = Mesh.BILLBOARDMODE_ALL
+		plane.position.copyFrom(entry.node.position)
+		plane.position.y += entry.supportHeight + 1.1
+		plane.isPickable = false
+		const texture = new DynamicTexture(`${plane.name}-texture`, { width: 512, height: 192 }, this.scene!, false)
+		texture.hasAlpha = true
+		const context = texture.getContext() as unknown as CanvasRenderingContext2D
+		context.clearRect(0, 0, 512, 192)
+		context.fillStyle = 'rgba(15, 23, 42, 0.88)'
+		context.beginPath()
+		context.roundRect(12, 12, 488, 168, 36)
+		context.fill()
+		context.strokeStyle = this.options!.timeline.effects[effectName].color
+		context.lineWidth = 8
+		context.stroke()
+		context.fillStyle = '#ffffff'
+		context.font = 'bold 96px sans-serif'
+		context.textAlign = 'center'
+		context.textBaseline = 'middle'
+		context.fillText(text, 256, 100)
+		texture.update(false)
+		const material = new StandardMaterial(`${plane.name}-material`, this.scene!)
+		material.diffuseTexture = texture
+		material.emissiveTexture = texture
+		material.opacityTexture = texture
+		material.disableLighting = true
+		material.backFaceCulling = false
+		material.diffuseTexture.wrapU = Texture.CLAMP_ADDRESSMODE
+		material.diffuseTexture.wrapV = Texture.CLAMP_ADDRESSMODE
+		plane.material = material
+		this.timelineTemporaryNodes.push(plane)
+		return plane
+	}
+
+	protected disposeTimelineTemporaryNode(node: AbstractMesh): void {
+		const index = this.timelineTemporaryNodes.indexOf(node)
+		if(index >= 0) this.timelineTemporaryNodes.splice(index, 1)
+		node.material?.dispose(true, true)
+		node.dispose(false, false)
+	}
+
+	protected fadeTimelineEntries(
+		entries: readonly VisualEntry[],
+		targetVisibility: number,
+		durationMs: number,
+		signal: AbortSignal
+	): Promise<void> {
+		const meshes = entries.flatMap(entry => this.getTimelineMeshes(entry))
+		const sources = meshes.map(mesh => mesh.visibility)
+		return this.runTimelineAnimation(Math.max(1, durationMs), signal, progress => {
+			for(let index = 0; index < meshes.length; index++) {
+				meshes[index]!.visibility = sources[index]! + (targetVisibility - sources[index]!) * progress
+			}
+		})
+	}
+
+	protected pulseTimelineEntries(
+		entries: readonly VisualEntry[],
+		effectName: TimelineEffectName,
+		durationMs: number,
+		pulses: number,
+		signal: AbortSignal
+	): Promise<void> {
+		if(durationMs <= 0) return Promise.resolve()
+		const effect = this.options!.timeline.effects[effectName]
+		const layer = new HighlightLayer(`timeline-${effectName}-${Date.now()}`, this.scene!, { blurTextureSizeRatio: 0.25 })
+		let color: Color3
+		try { color = Color3.FromHexString(effect.color) } catch { color = Color3.White() }
+		for(const entry of entries) for(const mesh of this.getTimelineMeshes(entry)) {
+			if(mesh instanceof Mesh) layer.addMesh(mesh, color)
+		}
+		return this.runTimelineAnimation(Math.max(1, durationMs), signal, progress => {
+			layer.blurHorizontalSize = 0.5 + Math.sin(progress * Math.PI * Math.max(1, pulses)) ** 2 * 2.5 * effect.intensity
+			layer.blurVerticalSize = layer.blurHorizontalSize
+		}).finally(() => layer.dispose())
+	}
+
+	protected getTimelineMeshes(entry: VisualEntry): AbstractMesh[] {
+		const meshes = entry.node.getChildMeshes(false)
+		if(entry.node instanceof Mesh) return [entry.node, ...meshes.filter(mesh => mesh !== entry.node)]
+		return meshes
+	}
+
+	protected waitForTimeline(durationMs: number, signal: AbortSignal): Promise<void> {
+		if(durationMs <= 0) return signal.aborted ? Promise.reject(new DisplayCancelledError()) : Promise.resolve()
+		return this.runTimelineAnimation(durationMs, signal, () => undefined)
+	}
+
+	protected runTimelineAnimation(
+		durationMs: number,
+		signal: AbortSignal,
+		update: (progress: number) => void
+	): Promise<void> {
+		const engine = this.engine!
+		const scene = this.scene!
+		const startedAt = performance.now()
+		return new Promise<void>((resolve, reject) => {
+			let settled = false
+			const finish = (error?: unknown): void => {
+				if(settled) return
+				settled = true
+				engine.stopRenderLoop(render)
+				signal.removeEventListener('abort', abort)
+				if(error) reject(error)
+				else resolve()
+			}
+			const abort = (): void => finish(new DisplayCancelledError())
+			const render = (): void => {
+				if(signal.aborted) return abort()
+				const progress = clamp01((performance.now() - startedAt) / Math.max(1, durationMs))
+				update(progress)
+				scene.render()
+				if(progress >= 1) finish()
+			}
+			signal.addEventListener('abort', abort, { once: true })
+			engine.runRenderLoop(render)
+		})
 	}
 
 	protected async ensurePolyhedralTheme(config: ResolvedThemeConfig): Promise<void> {
@@ -630,10 +1034,15 @@ export class KinematicRenderer implements DisplayRenderer {
 		}
 	}
 
-	protected animate(entries: readonly VisualEntry[], signal: AbortSignal): Promise<void> {
+	protected animate(
+		entries: readonly VisualEntry[],
+		signal: AbortSignal,
+		durationMs = this.options!.duration,
+		minimumDurationMs = 250
+	): Promise<void> {
 		const engine = this.engine!
 		const scene = this.scene!
-		const dieDuration = Math.max(250, this.options!.duration)
+		const dieDuration = Math.max(minimumDurationMs, durationMs)
 		const duration = dieDuration + entries.reduce(
 			(maximum, entry) => Math.max(maximum, entry.launchDelayMs),
 			0
@@ -694,6 +1103,10 @@ export class KinematicRenderer implements DisplayRenderer {
 
 	clear(): void {
 		this.engine?.stopRenderLoop()
+		for(const node of this.timelineTemporaryNodes.splice(0)) {
+			node.material?.dispose(true, true)
+			node.dispose(false, false)
+		}
 		for(const node of this.activeNodes.splice(0)) {
 			if(node.metadata?.displayFactory === 'coin') this.coinFactory?.release(node)
 			else if(node instanceof Mesh && node.metadata?.displayFactory === 'polyhedron') this.polyhedra?.release(node)

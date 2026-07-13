@@ -6,7 +6,7 @@
     <title>DiceResultViewer v2 demo</title>
     <style>
       html, body, #stage { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #090b16; }
-      #controls { position: fixed; z-index: 2; top: 16px; left: 16px; display: flex; gap: 8px; }
+      #controls { position: fixed; z-index: 2; top: 16px; left: 16px; display: flex; flex-wrap: wrap; gap: 8px; max-width: calc(100% - 32px); }
       button { padding: 8px 12px; color: white; background: #24304f; border: 1px solid #60709a; border-radius: 6px; }
     </style>
   </head>
@@ -14,6 +14,12 @@
     <div id="controls">
       <button id="kinematic">Kinematic</button>
       <button id="physics">Physics</button>
+      <button id="explode">Explode</button>
+      <button id="reroll">Reroll</button>
+      <button id="compound">Compound</button>
+      <button id="penetrate">Penetrate</button>
+      <button id="selection">Keep/drop</button>
+      <button id="critical">Critical</button>
     </div>
     <div id="stage"></div>
     <script type="module" src="./main.ts"></script>

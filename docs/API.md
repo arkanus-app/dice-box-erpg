@@ -2,7 +2,7 @@
 
 [← Voltar ao README](../README.md)
 
-Esta referência descreve a API pública de `@erpg/dice3dview` 2.0.5. A biblioteca é destinada ao navegador: a criação exige DOM; a inicialização do renderer exige WebGL.
+Esta referência descreve a API pública de `@erpg/dice3dview` 2.1.0. A biblioteca é destinada ao navegador: a criação exige DOM; a inicialização do renderer exige WebGL.
 
 ## Exports públicos
 
@@ -11,6 +11,7 @@ export default DiceResultViewer
 
 export {
   DiceResultViewer,
+  DEFAULT_TIMELINE_OPTIONS,
   DISPLAY_CANCELLED_CODE,
   DisplayCancelledError,
   isDisplayCancelledError
@@ -24,10 +25,16 @@ export type {
   DisplayMode,
   DisplayRequest,
   DisplayResult,
+  DisplayTimelineRequest,
+  DisplayTimelineResult,
+  DiceTimelineEvent,
   ResolvedDie,
   ResolvedThemeConfig,
   ThemeConfig,
   ThemeMaterialConfig,
+  TimelineDieDefinition,
+  TimelineEffectOptions,
+  TimelineOptions,
   ViewerOptions
 }
 ```
@@ -47,6 +54,7 @@ class DiceResultViewer {
   constructor(options?: ViewerOptions)
   init(): Promise<this>
   display(request: DisplayRequest): Promise<DisplayResult>
+  displayTimeline(request: DisplayTimelineRequest): Promise<DisplayTimelineResult>
   clear(): void
   updateOptions(options: ViewerOptions): Promise<void>
   resize(): void
@@ -93,6 +101,27 @@ const result = await viewer.display({
 ```
 
 `durationMs` inclui inicialização lazy, carregamento de temas e animação.
+
+### `displayTimeline(request)`
+
+Apresenta um journal semântico já resolvido. Cada definição possui apenas identidade, lados e tema; as faces vêm dos eventos `roll`/`reroll`. O método valida todo o journal antes de limpar a cena: IDs, sequências positivas estritamente crescentes, rolls iniciais, referências, linhagem, ciclos e transições.
+
+```ts
+const result = await viewer.displayTimeline({
+  id: 'explosao-1',
+  dice: [
+    { id: 'root', sides: 6 },
+    { id: 'child', sides: 6 }
+  ],
+  events: [
+    { sequence: 1, type: 'roll', subject: 'die', dieId: 'root', parentDieId: null, rollIndex: 1, sourceNodeId: 'n1', value: 6 },
+    { sequence: 2, type: 'roll', subject: 'die', dieId: 'child', parentDieId: 'root', rollIndex: 1, sourceNodeId: 'n1', value: 4 },
+    { sequence: 3, type: 'explode', subject: 'die', dieId: 'root', parentDieId: null, rollIndex: 1, sourceNodeId: 'n1', childDieId: 'child', value: 4, reason: 'explode' }
+  ]
+})
+```
+
+O retorno acrescenta `eventCount`, `phaseCount` e `degraded` ao contrato de `DisplayResult`. `dice` contém faces físicas válidas e estado final de descarte; totais `compound` e ajustes `penetrate` aparecem como badges, nunca como faces inexistentes.
 
 ### `clear()`
 
@@ -163,6 +192,34 @@ interface DisplayResult {
 Na moeda d2, a frente cuja normal local é `+Y` representa o valor `1` e usa quaternion `Identity`. O verso cuja normal local é `−Y` representa o valor `2` e usa rotação `π`. Esse referencial é fixo mesmo quando o tema troca as texturas por cara/coroa ou outros símbolos.
 
 ## `ViewerOptions`
+
+### Timeline
+
+`timeline.enabled` usa `true`; `maxEvents`, `maxDurationMs` e `phaseGapMs` usam `500`, `12000` e `180`. Cada efeito aceita `enabled`, `delayMs`, `durationMs`, `intensity` (`0..1`) e `color`. Opções especializadas:
+
+| Efeito | Opções adicionais | Default |
+|---|---|---|
+| `explode` | `origin: 'source' \| 'edge'`, `burstHeight`, `spread` | `source`, `1.6`, `0.8` |
+| `reroll`, `unique` | `style: 'hop' \| 'edge' \| 'spin'`, `hopHeight` | `hop`, `2.2` |
+| `compound`, `penetrate` | `showBadge` | `true` |
+| `criticalSuccess`, `criticalFailure` | `pulses` | `2` |
+
+Também existem `keep`, `drop`, `success`, `failure` e `neutral`. Todos vêm ativos; `neutral` usa intensidade reduzida. Configurações inválidas são rejeitadas no construtor ou em `updateOptions()` sem substituir a configuração válida anterior.
+
+```ts
+await viewer.updateOptions({
+  timeline: {
+    maxDurationMs: 16_000,
+    effects: {
+      criticalSuccess: { enabled: false },
+      reroll: { style: 'edge', durationMs: 650 },
+      compound: { showBadge: false }
+    }
+  }
+})
+```
+
+O merge é profundo por efeito: no exemplo, mudar `durationMs` não apaga `style`, `enabled`, cor ou intensidade. `timeline.enabled: false` e estouros de orçamento usam a apresentação plana final e retornam `degraded: true`.
 
 ### Núcleo e temas
 

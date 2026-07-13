@@ -37,6 +37,184 @@ export interface DisplayResult {
 	readonly durationMs: number
 }
 
+export interface TimelineEffectOptions {
+	readonly enabled?: boolean
+	readonly delayMs?: number
+	readonly durationMs?: number
+	readonly intensity?: number
+	readonly color?: string
+}
+
+export interface TimelineExplodeEffectOptions extends TimelineEffectOptions {
+	readonly origin?: 'source' | 'edge'
+	readonly burstHeight?: number
+	readonly spread?: number
+}
+
+export interface TimelineRerollEffectOptions extends TimelineEffectOptions {
+	readonly style?: 'hop' | 'edge' | 'spin'
+	readonly hopHeight?: number
+}
+
+export interface TimelineBadgeEffectOptions extends TimelineEffectOptions {
+	readonly showBadge?: boolean
+}
+
+export interface TimelineCriticalEffectOptions extends TimelineEffectOptions {
+	readonly pulses?: number
+}
+
+export interface TimelineEffectsOptions {
+	readonly explode?: TimelineExplodeEffectOptions
+	readonly compound?: TimelineBadgeEffectOptions
+	readonly penetrate?: TimelineBadgeEffectOptions
+	readonly reroll?: TimelineRerollEffectOptions
+	readonly unique?: TimelineRerollEffectOptions
+	readonly keep?: TimelineEffectOptions
+	readonly drop?: TimelineEffectOptions
+	readonly success?: TimelineEffectOptions
+	readonly failure?: TimelineEffectOptions
+	readonly neutral?: TimelineEffectOptions
+	readonly criticalSuccess?: TimelineCriticalEffectOptions
+	readonly criticalFailure?: TimelineCriticalEffectOptions
+}
+
+export interface TimelineOptions {
+	readonly enabled?: boolean
+	readonly maxEvents?: number
+	readonly maxDurationMs?: number
+	readonly phaseGapMs?: number
+	readonly effects?: TimelineEffectsOptions
+}
+
+export interface NormalizedTimelineEffectOptions {
+	readonly enabled: boolean
+	readonly delayMs: number
+	readonly durationMs: number
+	readonly intensity: number
+	readonly color: string
+}
+
+export interface NormalizedTimelineExplodeEffectOptions extends NormalizedTimelineEffectOptions {
+	readonly origin: 'source' | 'edge'
+	readonly burstHeight: number
+	readonly spread: number
+}
+
+export interface NormalizedTimelineRerollEffectOptions extends NormalizedTimelineEffectOptions {
+	readonly style: 'hop' | 'edge' | 'spin'
+	readonly hopHeight: number
+}
+
+export interface NormalizedTimelineBadgeEffectOptions extends NormalizedTimelineEffectOptions {
+	readonly showBadge: boolean
+}
+
+export interface NormalizedTimelineCriticalEffectOptions extends NormalizedTimelineEffectOptions {
+	readonly pulses: number
+}
+
+export interface NormalizedTimelineOptions {
+	readonly enabled: boolean
+	readonly maxEvents: number
+	readonly maxDurationMs: number
+	readonly phaseGapMs: number
+	readonly effects: {
+		readonly explode: NormalizedTimelineExplodeEffectOptions
+		readonly compound: NormalizedTimelineBadgeEffectOptions
+		readonly penetrate: NormalizedTimelineBadgeEffectOptions
+		readonly reroll: NormalizedTimelineRerollEffectOptions
+		readonly unique: NormalizedTimelineRerollEffectOptions
+		readonly keep: NormalizedTimelineEffectOptions
+		readonly drop: NormalizedTimelineEffectOptions
+		readonly success: NormalizedTimelineEffectOptions
+		readonly failure: NormalizedTimelineEffectOptions
+		readonly neutral: NormalizedTimelineEffectOptions
+		readonly criticalSuccess: NormalizedTimelineCriticalEffectOptions
+		readonly criticalFailure: NormalizedTimelineCriticalEffectOptions
+	}
+}
+
+export interface TimelineDieDefinition {
+	readonly id: string
+	readonly sides: DiceSides
+	readonly theme?: string
+	readonly themeColor?: string
+}
+
+interface DiceTimelineEventBase {
+	readonly sequence: number
+	readonly subject?: 'die'
+	readonly dieId: string
+	readonly parentDieId: string | null
+	readonly rollIndex: number
+	readonly sourceNodeId: string
+}
+
+export interface RollTimelineEvent extends DiceTimelineEventBase {
+	readonly type: 'roll'
+	readonly value: number
+}
+
+export interface RerollTimelineEvent extends DiceTimelineEventBase {
+	readonly type: 'reroll'
+	readonly from: number
+	readonly to: number
+	readonly reason: 'reroll' | 'reroll-once' | 'unique' | 'unique-once'
+}
+
+export interface ExplodeTimelineEvent extends DiceTimelineEventBase {
+	readonly type: 'explode'
+	readonly childDieId: string
+	readonly value: number
+	readonly reason: 'explode' | 'compound' | 'penetrate'
+}
+
+export interface TransformTimelineEvent extends DiceTimelineEventBase {
+	readonly type: 'transform'
+	readonly from: number
+	readonly to: number
+	readonly reason: 'minimum' | 'maximum' | 'penetrate' | 'compound'
+}
+
+export interface IncludeTimelineEvent extends DiceTimelineEventBase {
+	readonly type: 'include'
+	readonly contribution: number
+}
+
+export interface ExcludeTimelineEvent extends DiceTimelineEventBase {
+	readonly type: 'exclude'
+	readonly reason: 'drop' | 'keep' | 'compound-absorbed'
+}
+
+export interface ClassifyTimelineEvent extends DiceTimelineEventBase {
+	readonly type: 'classify'
+	readonly outcome: 'success' | 'failure' | 'neutral' | 'critical-success' | 'critical-failure'
+}
+
+export type DiceTimelineEvent =
+	| RollTimelineEvent
+	| RerollTimelineEvent
+	| ExplodeTimelineEvent
+	| TransformTimelineEvent
+	| IncludeTimelineEvent
+	| ExcludeTimelineEvent
+	| ClassifyTimelineEvent
+
+export interface DisplayTimelineRequest {
+	readonly id: string
+	readonly dice: readonly TimelineDieDefinition[]
+	readonly events: readonly DiceTimelineEvent[]
+	readonly seed?: string
+	readonly mode?: DisplayMode
+}
+
+export interface DisplayTimelineResult extends DisplayResult {
+	readonly eventCount: number
+	readonly phaseCount: number
+	readonly degraded: boolean
+}
+
 export interface ThemeMaterialConfig {
 	readonly type: 'color' | 'standard'
 	readonly diffuseTexture?: string | Readonly<{ light: string; dark: string }>
@@ -108,6 +286,7 @@ export interface ViewerOptions {
 	readonly onCollision?: (event: CollisionEvent) => void
 	readonly onThemeConfigLoaded?: (theme: ResolvedThemeConfig) => void
 	readonly onThemeLoaded?: (theme: ResolvedThemeConfig) => void
+	readonly timeline?: TimelineOptions
 }
 
 export interface NormalizedResolvedDie extends Required<Pick<ResolvedDie, 'id' | 'sides' | 'value' | 'discarded' | 'theme' | 'themeColor'>> {}
@@ -137,6 +316,7 @@ export interface DisplayRenderer {
 	readonly mode: DisplayMode
 	init(context: RendererContext): Promise<void>
 	display(request: NormalizedDisplayRequest, signal: AbortSignal): Promise<void>
+	displayTimeline(plan: import('./timeline').DiceTimelinePlan, signal: AbortSignal): Promise<void>
 	updateOptions(options: Readonly<RequiredViewerOptions>): Promise<void> | void
 	resize(width: number, height: number): void
 	clear(): void
@@ -144,10 +324,11 @@ export interface DisplayRenderer {
 }
 
 export type RequiredViewerOptions = Required<Omit<ViewerOptions,
-	'container' | 'onCollision' | 'onThemeConfigLoaded' | 'onThemeLoaded'
+	'container' | 'onCollision' | 'onThemeConfigLoaded' | 'onThemeLoaded' | 'timeline'
 >> & {
 	container: string | HTMLElement | null
 	onCollision: (event: CollisionEvent) => void
 	onThemeConfigLoaded: (theme: ResolvedThemeConfig) => void
 	onThemeLoaded: (theme: ResolvedThemeConfig) => void
+	timeline: NormalizedTimelineOptions
 }

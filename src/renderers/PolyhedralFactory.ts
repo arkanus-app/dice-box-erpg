@@ -193,6 +193,32 @@ export class PolyhedralFactory {
 		}
 	}
 
+	async getOrientation(
+		config: ResolvedThemeConfig,
+		sides: number,
+		faceValue: number
+	): Promise<CachedOrientation> {
+		const model = await this.load(config)
+		const type = `d${sides}`
+		const collider = model.colliderMeshes.get(type)
+		const faceMap = model.faceMaps[type]
+		if(!collider || !faceMap) throw new Error(`${type} is unavailable in theme '${config.theme}'.`)
+		const orientationKey = `${config.meshName}|${type}|${faceValue}`
+		let orientation = this.#orientations.get(orientationKey)
+		if(!orientation) {
+			const targetQuaternion = getTargetQuaternion(collider, faceMap, faceValue, sides === 4)
+			orientation = {
+				supportHeight: getSupportHeight(collider, targetQuaternion),
+				targetQuaternion
+			}
+			this.#orientations.set(orientationKey, orientation)
+		}
+		return {
+			supportHeight: orientation.supportHeight,
+			targetQuaternion: orientation.targetQuaternion.clone()
+		}
+	}
+
 	release(mesh: Mesh): void {
 		const key = typeof mesh.metadata?.poolKey === 'string' ? mesh.metadata.poolKey : undefined
 		if(!key) {

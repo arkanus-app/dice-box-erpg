@@ -175,7 +175,7 @@ await viewer.display({
       id: die.id,
       sides: 20,
       value: die.value,
-      discarded: !die.useInTotal
+      discarded: !die.included
     }))
 })
 ```

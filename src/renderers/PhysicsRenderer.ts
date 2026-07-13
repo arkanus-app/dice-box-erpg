@@ -14,6 +14,7 @@ import type { AbstractMesh } from '@babylonjs/core/Meshes/abstractMesh'
 import type { Mesh } from '@babylonjs/core/Meshes/mesh'
 import type { Observer } from '@babylonjs/core/Misc/observable'
 import type { RendererContext, RequiredViewerOptions } from '../types'
+import type { TimelineEffectName } from '../timeline'
 import { DisplayCancelledError } from '../errors'
 import {
 	canStartFinalLock,
@@ -120,6 +121,20 @@ interface ActiveBody {
 
 const CONTACT_GRACE_MS = DICE_PHYSICS_SUB_TIME_STEP_MS * 3.5
 
+export interface PhysicsBodyBuildPlan {
+	readonly disposeExisting: boolean
+	readonly totalBodyCount: number
+}
+
+export const planPhysicsBodyBuild = (
+	existingBodyCount: number,
+	incomingBodyCount: number,
+	append: boolean
+): PhysicsBodyBuildPlan => ({
+	disposeExisting: !append,
+	totalBodyCount: (append ? Math.max(0, existingBodyCount) : 0) + Math.max(0, incomingBodyCount)
+})
+
 const currentQuaternion = (entry: VisualEntry): Quaternion =>
 	(entry.node.rotationQuaternion ?? Quaternion.Identity()).clone().normalize()
 
@@ -159,11 +174,56 @@ export class PhysicsRenderer extends KinematicRenderer {
 		this.buildBounds()
 	}
 
-	protected override animate(entries: readonly VisualEntry[], signal: AbortSignal): Promise<void> {
+	protected override animate(
+		entries: readonly VisualEntry[],
+		signal: AbortSignal,
+		durationMs = this.options!.settleTimeout,
+		_minimumDurationMs = 1000
+	): Promise<void> {
 		this.createBodies(entries)
+		return this.#runPhysicsAnimation(signal, durationMs)
+	}
+
+	protected override animateAdditional(
+		entries: readonly VisualEntry[],
+		signal: AbortSignal,
+		durationMs: number
+	): Promise<void> {
+		this.createBodies(entries, true)
+		if(durationMs <= 0) {
+			if(signal.aborted) return Promise.reject(new DisplayCancelledError())
+			for(const activeBody of this.#bodies) {
+				if(!entries.includes(activeBody.entry)) continue
+				const { body, entry, shape } = activeBody
+				entry.node.setEnabled(true)
+				entry.node.position.copyFrom(entry.end)
+				entry.node.rotationQuaternion = entry.target.clone()
+				entry.node.computeWorldMatrix(true)
+				shape.filterMembershipMask = PHYSICS_DICE_LAYER
+				shape.filterCollideMask = PHYSICS_ACTIVE_COLLISION_MASK
+				body.setMotionType(PhysicsMotionType.ANIMATED)
+				body.disablePreStep = false
+				body.setTargetTransform(entry.end, entry.target)
+				body.setMotionType(PhysicsMotionType.STATIC)
+				body.disablePreStep = true
+				activeBody.launched = true
+				activeBody.collisionsArmed = true
+				activeBody.state = 'complete'
+				activeBody.locked = true
+				try {
+					this.#physicsPlugin?.setActivationControl(body, PhysicsActivationControl.ALWAYS_INACTIVE)
+				} catch {}
+			}
+			this.scene?.render()
+			return Promise.resolve()
+		}
+		return this.#runPhysicsAnimation(signal, durationMs)
+	}
+
+	#runPhysicsAnimation(signal: AbortSignal, requestedDurationMs: number): Promise<void> {
 		const engine = this.engine!
 		const scene = this.scene!
-		const duration = Math.max(1000, this.options!.settleTimeout)
+		const duration = Math.max(250, requestedDurationMs)
 		return new Promise<void>((resolve, reject) => {
 			let settled = false
 		const beforePhysicsObserver = scene.onBeforePhysicsObservable.add(() => {
@@ -216,6 +276,39 @@ export class PhysicsRenderer extends KinematicRenderer {
 			}
 			signal.addEventListener('abort', abort, { once: true })
 			engine.runRenderLoop(render)
+		})
+	}
+
+	protected override animateTimelineReroll(
+		entries: readonly VisualEntry[],
+		effectName: TimelineEffectName,
+		durationMs: number,
+		signal: AbortSignal
+	): Promise<void> {
+		const activeBodies = entries
+			.map(entry => this.#bodies.find(candidate => candidate.entry === entry))
+			.filter((body): body is ActiveBody => body !== undefined)
+		for(const activeBody of activeBodies) {
+			activeBody.body.setMotionType(PhysicsMotionType.ANIMATED)
+			activeBody.body.disablePreStep = false
+			try {
+				this.#physicsPlugin?.setActivationControl(activeBody.body, PhysicsActivationControl.ALWAYS_ACTIVE)
+			} catch {}
+		}
+		return super.animateTimelineReroll(entries, effectName, durationMs, signal).finally(() => {
+			for(const activeBody of activeBodies) {
+				activeBody.body.setTargetTransform(
+					activeBody.entry.node.position,
+					activeBody.entry.node.rotationQuaternion ?? Quaternion.Identity()
+				)
+				activeBody.body.setLinearVelocity(Vector3.Zero())
+				activeBody.body.setAngularVelocity(Vector3.Zero())
+				activeBody.body.setMotionType(PhysicsMotionType.STATIC)
+				activeBody.body.disablePreStep = true
+				try {
+					this.#physicsPlugin?.setActivationControl(activeBody.body, PhysicsActivationControl.ALWAYS_INACTIVE)
+				} catch {}
+			}
 		})
 	}
 
@@ -653,16 +746,17 @@ export class PhysicsRenderer extends KinematicRenderer {
 		return new PhysicsShapeConvexHull(candidate as Mesh, this.scene!)
 	}
 
-	createBodies(entries: readonly VisualEntry[]): void {
-		this.disposeDynamicBodies()
-		const physicsStep = getDicePhysicsStep(entries.length)
+	createBodies(entries: readonly VisualEntry[], append = false): void {
+		const build = planPhysicsBodyBuild(this.#bodies.length, entries.length, append)
+		if(build.disposeExisting) this.disposeDynamicBodies()
+		const physicsStep = getDicePhysicsStep(build.totalBodyCount)
 		this.#physicsStepMs = physicsStep.milliseconds
 		const physicsEngine = this.scene?.getPhysicsEngine()
 		physicsEngine?.setTimeStep(physicsStep.seconds)
 		physicsEngine?.setSubTimeStep(physicsStep.milliseconds)
 		this.#largestRadius = entries.reduce(
 			(radius, entry) => Math.max(radius, entry.horizontalRadius),
-			0
+			append ? this.#largestRadius : 0
 		)
 		this.buildBounds(undefined, undefined, this.#largestRadius)
 		for(const entry of entries) this.#dynamicBodyNames.add(entry.node.name)

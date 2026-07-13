@@ -4,6 +4,27 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 ## [Não publicado]
 
+## [2.1.0] - 2026-07-12
+
+### Adicionado
+
+- `displayTimeline()` para journals estruturais compatíveis com `@erpg/dicecore`, sem dependência de runtime;
+- planner causal com validação de IDs, sequência, transições, referências e ciclos, agrupando ações independentes;
+- animações configuráveis de explosão, reroll/unique, compound/penetrate, keep/drop e classificações nos modos cinemático e físico;
+- badges opcionais para compound e penetrate e estilos `hop`, `edge` e `spin` para relançamentos;
+- `ViewerOptions.timeline`, defaults públicos e merge profundo por efeito em `updateOptions()`.
+
+### Segurança e compatibilidade
+
+- `display()` permanece inalterado e todo resultado continua externo e autoritativo;
+- efeitos desativados preservam faces e estados finais, enquanto estouros de orçamento degradam antes do início para uma apresentação plana;
+- explosões físicas acrescentam filhos sem remover corpos, colisores ou observers já estabilizados;
+- `clear()`, cancelamento e `dispose()` removem corpos e efeitos temporários da timeline.
+
+### Validado
+
+- cobertura de explosões causais, rerolls desativados, compound, descartes tardios, batches de target, orçamento, opções e append físico.
+
 ## [2.0.5] - 2026-07-12
 
 ### Corrigido
@@ -240,7 +261,8 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 - tema `default-v2` consolidado no baseline `81c2ca9` em 30/05/2026.
 
-[Não publicado]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.5...HEAD
+[Não publicado]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.5...v2.1.0
 [2.0.5]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.4...v2.0.5
 [2.0.4]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.3...v2.0.4
 [2.0.3]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.2...v2.0.3

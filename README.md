@@ -4,7 +4,7 @@ Camada TypeScript de apresentação 3D para resultados de dados já resolvidos.
 
 O `@erpg/dicecore` interpreta a fórmula e decide os resultados; o `@erpg/dice3dview` recebe esses valores prontos e apenas os apresenta. A biblioteca não interpreta notação, não sorteia valores e não usa a face física como fonte do resultado.
 
-Versão atual: **2.0.5**.
+Versão atual: **2.1.0**.
 
 ## Documentação
 
@@ -26,21 +26,22 @@ Versão atual: **2.0.5**.
 - palco responsivo, com piso e quatro barreiras invisíveis finas ajustados ao tamanho real do canvas;
 - nos dois modos, arremesso de grupo por uma borda comum escolhida entre as quatro, com o corpo inteiro começando fora da projeção, entrada sequencial e posições finais dispersas; no cinemático, a trajetória também é determinística por `seed`;
 - cancelamento tipado, cache de temas/modelos/materiais e pools de meshes;
+- timeline semântica opcional para explosões, rerolls, unique, compound, penetrate, keep/drop e classificações;
 - um entrypoint ESM com chunks lazy, CSS público e tipos TypeScript;
 - orçamento automatizado de até 8 MiB para toda a distribuição.
 
 ## Instalação
 
-O pacote é distribuído atualmente pela `main` do GitHub:
+Instale a versão publicada no npm:
 
 ```bash
-npm install github:arkanus-app/dice-box-erpg#main
+npm install @erpg/dice3dview
 ```
 
-`#main` é o canal móvel. Para builds reproduzíveis, prefira a tag da release:
+Para consumir diretamente uma tag do repositório:
 
 ```bash
-npm install github:arkanus-app/dice-box-erpg#v2.0.5
+npm install github:arkanus-app/dice-box-erpg#v2.1.0
 ```
 
 Em `package.json`:
@@ -48,12 +49,10 @@ Em `package.json`:
 ```json
 {
   "dependencies": {
-    "@erpg/dice3dview": "github:arkanus-app/dice-box-erpg#main"
+    "@erpg/dice3dview": "^2.1.0"
   }
 }
 ```
-
-O nome ainda não está publicado no registry público do npm. Portanto, `npm install @erpg/dice3dview` sozinho não é uma instrução válida neste momento.
 
 ## Assets obrigatórios
 
@@ -150,7 +149,7 @@ const dice = roll.dice.flatMap(die => isDisplaySide(die.sides)
       id: die.id,
       sides: die.sides,
       value: die.value,
-      discarded: !die.useInTotal
+      discarded: !die.included
     }]
   : [])
 
@@ -165,6 +164,35 @@ if(dice.length > 0) {
 ```
 
 O `seed` nunca altera `value`. No modo cinemático ele torna trajetória, posição e rotação reproduzíveis; no modo físico ele determina condições visuais iniciais, mas colisões e timing podem produzir posições finais diferentes.
+
+### Timeline semântica
+
+Quando o journal de `@erpg/dicecore` está disponível, passe as definições e os eventos diretamente para `displayTimeline()`. O pacote é estruturalmente compatível com os eventos, mas não depende do core em runtime:
+
+```ts
+const viewer = new DiceResultViewer({
+  container: '#dice-stage',
+  timeline: {
+    effects: {
+      criticalSuccess: { enabled: false },
+      explode: { origin: 'source', durationMs: 900 },
+      reroll: { style: 'hop', hopHeight: 2.2 }
+    }
+  }
+})
+
+await viewer.displayTimeline({
+  id: requestId,
+  seed: requestId,
+  mode: 'physics',
+  dice: roll.dice.flatMap(die => isDisplaySide(die.sides)
+    ? [{ id: die.id, sides: die.sides }]
+    : []),
+  events: roll.events.filter(event => event.subject === 'die')
+})
+```
+
+Todos os efeitos podem ser desligados ou ajustados por instância. `updateOptions({ timeline: ... })` faz merge profundo por efeito. Desligar um efeito remove apenas sua coreografia; a face física, o descarte e o resultado final continuam autoritativos. Se `timeline.enabled` for `false`, o journal exceder `maxEvents` ou a duração estimada exceder `maxDurationMs`, a apresentação degrada antes de começar para uma rolagem plana com o estado final.
 
 ## Dados suportados
 

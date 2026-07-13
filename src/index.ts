@@ -1,6 +1,8 @@
 export { DiceResultViewer, default } from './DiceResultViewer'
 export { DISPLAY_CANCELLED_CODE, DisplayCancelledError, isDisplayCancelledError } from './errors'
+export { DEFAULT_TIMELINE_OPTIONS } from './timelineOptions'
 export type {
+	ClassifyTimelineEvent,
 	CoinFaceTheme,
 	CoinTheme,
 	CollisionEvent,
@@ -8,9 +10,26 @@ export type {
 	DisplayMode,
 	DisplayRequest,
 	DisplayResult,
+	DisplayTimelineRequest,
+	DisplayTimelineResult,
+	DiceTimelineEvent,
+	ExplodeTimelineEvent,
+	ExcludeTimelineEvent,
+	IncludeTimelineEvent,
+	RerollTimelineEvent,
+	RollTimelineEvent,
 	ResolvedDie,
 	ResolvedThemeConfig,
 	ThemeConfig,
 	ThemeMaterialConfig,
+	TimelineBadgeEffectOptions,
+	TimelineCriticalEffectOptions,
+	TimelineDieDefinition,
+	TimelineEffectOptions,
+	TimelineEffectsOptions,
+	TimelineExplodeEffectOptions,
+	TimelineOptions,
+	TimelineRerollEffectOptions,
+	TransformTimelineEvent,
 	ViewerOptions
 } from './types'
