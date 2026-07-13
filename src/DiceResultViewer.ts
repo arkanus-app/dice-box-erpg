@@ -3,7 +3,12 @@ import { normalizeDisplayRequest, getDisplayBodyCount } from './displayRequest'
 import { DisplayCancelledError, isDisplayCancelledError, rethrowPresentationError } from './errors'
 import KinematicRenderer from './renderers/KinematicRenderer'
 import { ThemeRepository } from './themeRepository'
-import { normalizeDisplayTimelineRequest, planDiceTimeline } from './timeline'
+import {
+	createTimelineProgressTracker,
+	dispatchTimelineProgress,
+	normalizeDisplayTimelineRequest,
+	planDiceTimeline
+} from './timeline'
 import { createViewerOptions, mergeTimelineOptions, validateViewerOptions } from './timelineOptions'
 import type {
 	DisplayMode,
@@ -110,6 +115,9 @@ export class DiceResultViewer {
 					dice: plan.finalDice
 				}, this.#options)
 				await renderer.display(flat, controller.signal)
+				const progress = createTimelineProgressTracker(plan)
+				dispatchTimelineProgress(this.#options.onTimelineProgress, progress.initial())
+				dispatchTimelineProgress(this.#options.onTimelineProgress, progress.complete())
 			} else {
 				await renderer.displayTimeline(plan, controller.signal)
 			}

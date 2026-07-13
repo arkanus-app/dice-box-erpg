@@ -12,7 +12,13 @@ import type { TransformNode } from '@babylonjs/core/Meshes/transformNode'
 import type { Engine } from '@babylonjs/core/Engines/engine'
 import type { Scene } from '@babylonjs/core/scene'
 import type { ResolvedThemeConfig, DisplayMode, DisplayRenderer, NormalizedDisplayRequest, NormalizedResolvedDie, RendererContext, RequiredViewerOptions } from '../types'
-import { getTimelineTransformBadge, type DiceTimelinePlan, type TimelineEffectName } from '../timeline'
+import {
+	createTimelineProgressTracker,
+	dispatchTimelineProgress,
+	getTimelineTransformBadge,
+	type DiceTimelinePlan,
+	type TimelineEffectName
+} from '../timeline'
 import { DisplayCancelledError } from '../errors'
 import { createSeededRandom } from '../random'
 import { CoinFactory } from './coin'
@@ -44,7 +50,7 @@ export interface VisualEntry {
 	readonly spinZ: number
 }
 
-interface TimelineVisualHandle {
+export interface TimelineVisualHandle {
 	readonly die: NormalizedResolvedDie
 	readonly theme: ResolvedThemeConfig
 	readonly entries: VisualEntry[]
@@ -485,6 +491,7 @@ export class KinematicRenderer implements DisplayRenderer {
 		}
 		if(signal.aborted) throw new DisplayCancelledError()
 		const handles = new Map<string, TimelineVisualHandle>()
+		const progress = createTimelineProgressTracker(plan)
 		const initialEntries: VisualEntry[] = []
 		const initialBodyCount = plan.initialDice.reduce((count, die) => count + (die.sides === 100 ? 2 : 1), 0)
 		let initialIndex = 0
@@ -502,8 +509,13 @@ export class KinematicRenderer implements DisplayRenderer {
 			initialEntries.push(...created.entries)
 		}
 		await this.animate(initialEntries, signal)
+		dispatchTimelineProgress(this.options!.onTimelineProgress, progress.initial())
 
-		for(const phase of plan.phases) {
+		for(let phaseIndex = 0; phaseIndex < plan.phases.length; phaseIndex++) {
+			const phase = plan.phases[phaseIndex]!
+			const reportPhase = (): void => {
+				dispatchTimelineProgress(this.options!.onTimelineProgress, progress.completePhase(phaseIndex))
+			}
 			await this.waitForTimeline(this.options!.timeline.phaseGapMs + phase.delayMs, signal)
 			if(phase.actions[0]?.kind === 'explode') {
 				const parentEntries = phase.actions.flatMap(action =>
@@ -557,6 +569,7 @@ export class KinematicRenderer implements DisplayRenderer {
 					spawned.push(...handle.entries)
 				}
 				if(spawned.length) await this.animateAdditional(spawned, signal, Math.max(0, phase.durationMs - cueDuration))
+				reportPhase()
 				continue
 			}
 
@@ -570,6 +583,7 @@ export class KinematicRenderer implements DisplayRenderer {
 					rerolledEntries.push(...handle.entries)
 				}
 				if(rerolledEntries.length) await this.animateTimelineReroll(rerolledEntries, phase.effect, phase.durationMs, signal)
+				reportPhase()
 				continue
 			}
 
@@ -581,6 +595,7 @@ export class KinematicRenderer implements DisplayRenderer {
 					if(entries) selectedEntries.push(...entries)
 				}
 				if(selectedEntries.length) await this.fadeTimelineEntries(selectedEntries, 0.42, phase.durationMs, signal)
+				reportPhase()
 				continue
 			}
 
@@ -601,6 +616,7 @@ export class KinematicRenderer implements DisplayRenderer {
 				} finally {
 					for(const temporary of temporaryNodes) this.disposeTimelineTemporaryNode(temporary)
 				}
+				reportPhase()
 				continue
 			}
 
@@ -613,7 +629,9 @@ export class KinematicRenderer implements DisplayRenderer {
 				if(action.kind === 'classify') pulses = Math.max(pulses, action.pulses)
 			}
 			if(pulseEntries.length) await this.pulseTimelineEntries(pulseEntries, phase.effect, phase.durationMs, pulses, signal)
+			reportPhase()
 		}
+		dispatchTimelineProgress(this.options!.onTimelineProgress, progress.complete())
 	}
 
 	protected async createTimelineEntries(

@@ -9,6 +9,8 @@ import type {
 	RequiredViewerOptions,
 	ResolvedDie,
 	TimelineDieDefinition,
+	TimelineProgressDie,
+	TimelineProgressEvent,
 	TransformTimelineEvent
 } from './types'
 
@@ -36,6 +38,7 @@ export interface TimelineSpawnAction {
 	readonly parentDieId: string
 	readonly value: number
 	readonly discarded: boolean
+	readonly eventSequences: readonly number[]
 }
 
 export interface TimelineRerollAction {
@@ -44,6 +47,7 @@ export interface TimelineRerollAction {
 	readonly dieId: string
 	readonly from: number
 	readonly to: number
+	readonly eventSequences: readonly number[]
 }
 
 export interface TimelineTransformAction {
@@ -52,6 +56,7 @@ export interface TimelineTransformAction {
 	readonly dieId: string
 	readonly from: number
 	readonly to: number
+	readonly eventSequences: readonly number[]
 }
 
 export interface TimelineSelectionAction {
@@ -59,6 +64,7 @@ export interface TimelineSelectionAction {
 	readonly effect: 'keep' | 'drop' | 'compound'
 	readonly dieId: string
 	readonly discarded: boolean
+	readonly eventSequences: readonly number[]
 }
 
 export interface TimelineClassifyAction {
@@ -66,6 +72,7 @@ export interface TimelineClassifyAction {
 	readonly effect: 'success' | 'failure' | 'neutral' | 'criticalSuccess' | 'criticalFailure'
 	readonly dieId: string
 	readonly pulses: number
+	readonly eventSequences: readonly number[]
 }
 
 export type TimelineAction =
@@ -81,6 +88,7 @@ export interface TimelinePhase {
 	readonly delayMs: number
 	readonly durationMs: number
 	readonly actions: readonly TimelineAction[]
+	readonly eventSequences: readonly number[]
 }
 
 export interface DiceTimelinePlan {
@@ -91,6 +99,8 @@ export interface DiceTimelinePlan {
 	readonly initialDice: readonly ResolvedDie[]
 	readonly finalDice: readonly ResolvedDie[]
 	readonly phases: readonly TimelinePhase[]
+	readonly initialEventSequences: readonly number[]
+	readonly allEventSequences: readonly number[]
 	readonly eventCount: number
 	readonly estimatedDurationMs: number
 	readonly degraded: boolean
@@ -172,7 +182,8 @@ const createPhase = (
 	effect,
 	delayMs: options.effects[effect].delayMs,
 	durationMs: options.effects[effect].durationMs,
-	actions: Object.freeze(actions)
+	actions: Object.freeze(actions),
+	eventSequences: Object.freeze([...new Set(actions.flatMap(action => action.eventSequences))].sort((left, right) => left - right))
 })
 
 const freezeDie = (state: DieState, value: number, discarded = state.discarded): ResolvedDie => Object.freeze({
@@ -337,14 +348,17 @@ export const planDiceTimeline = (
 			}
 			encounteredEnabled = true
 			let to = event.to
+			const eventSequences = [event.sequence]
 			for(let lookahead = index + 1; lookahead < events.length; lookahead++) {
 				const next = events[lookahead]!
 				const nextEffect = next.reason.startsWith('unique') ? 'unique' : 'reroll'
 				if(options.effects[nextEffect].enabled) break
 				to = next.to
+				eventSequences.push(next.sequence)
 			}
 			rerollActionsBySequence.set(event.sequence, Object.freeze({
-				kind: 'reroll', effect, dieId: event.dieId, from: displayed, to
+				kind: 'reroll', effect, dieId: event.dieId, from: displayed, to,
+				eventSequences: Object.freeze(eventSequences)
 			}))
 			displayed = to
 		}
@@ -373,7 +387,11 @@ export const planDiceTimeline = (
 					.map((state): TimelineSpawnAction => Object.freeze({
 						kind: 'explode', effect: 'explode', dieId: state.definition.id,
 						parentDieId: state.parentDieId!, value: initialValueByDie.get(state.definition.id)!,
-						discarded: animatedSelectionDice.has(state.definition.id) ? false : state.discarded
+						discarded: animatedSelectionDice.has(state.definition.id) ? false : state.discarded,
+						eventSequences: Object.freeze([
+							state.roll.sequence,
+							explodeByChild.get(state.definition.id)!.sequence
+						])
 					}))
 				if(actions.length) phases.push(createPhase(`explode-depth-${depth}`, 'explode', actions, options))
 			}
@@ -412,7 +430,8 @@ export const planDiceTimeline = (
 			if(!options.effects[event.reason].enabled) continue
 			const actions = transformActions.get(event.reason) ?? []
 			actions.push(Object.freeze({
-				kind: 'transform', effect: event.reason, dieId: event.dieId, from: event.from, to: event.to
+				kind: 'transform', effect: event.reason, dieId: event.dieId, from: event.from, to: event.to,
+				eventSequences: Object.freeze([event.sequence])
 			}))
 			transformActions.set(event.reason, actions)
 		}
@@ -426,7 +445,8 @@ export const planDiceTimeline = (
 			if(!options.effects[effect].enabled) continue
 			const actions = selectionActions.get(effect) ?? []
 			actions.push(Object.freeze({
-				kind: 'selection', effect, dieId: event.dieId, discarded: true
+				kind: 'selection', effect, dieId: event.dieId, discarded: true,
+				eventSequences: Object.freeze([event.sequence])
 			}))
 			selectionActions.set(effect, actions)
 		}
@@ -442,7 +462,8 @@ export const planDiceTimeline = (
 			const pulses = 'pulses' in configured ? configured.pulses : 1
 			const actions = classificationActions.get(effect) ?? []
 			actions.push(Object.freeze({
-				kind: 'classify', effect, dieId: event.dieId, pulses
+				kind: 'classify', effect, dieId: event.dieId, pulses,
+				eventSequences: Object.freeze([event.sequence])
 			}))
 			classificationActions.set(effect, actions)
 		}
@@ -451,7 +472,37 @@ export const planDiceTimeline = (
 		}
 	}
 
-	const estimatedDurationMs = Math.max(0, baseDurationMs) + phases.reduce(
+	const assignedSequences = new Set(phases.flatMap(phase => phase.eventSequences))
+	const initialIds = new Set(initialDice.map(die => die.id))
+	const revealPhaseByDie = new Map<string, string>()
+	for(const phase of phases) for(const action of phase.actions) {
+		if(action.kind === 'explode') revealPhaseByDie.set(action.dieId, phase.id)
+	}
+	const initialEventSequences = new Set<number>()
+	const additionalPhaseSequences = new Map<string, number[]>()
+	for(const event of request.events) {
+		if(assignedSequences.has(event.sequence)) continue
+		const revealPhaseId = initialIds.has(event.dieId) ? undefined : revealPhaseByDie.get(event.dieId)
+		if(!revealPhaseId) {
+			initialEventSequences.add(event.sequence)
+			continue
+		}
+		const additional = additionalPhaseSequences.get(revealPhaseId) ?? []
+		additional.push(event.sequence)
+		additionalPhaseSequences.set(revealPhaseId, additional)
+	}
+	const scheduledPhases = phases.map(phase => {
+		const additional = additionalPhaseSequences.get(phase.id)
+		if(!additional?.length) return phase
+		return Object.freeze({
+			...phase,
+			eventSequences: Object.freeze(
+				[...new Set([...phase.eventSequences, ...additional])].sort((left, right) => left - right)
+			)
+		})
+	})
+
+	const estimatedDurationMs = Math.max(0, baseDurationMs) + scheduledPhases.reduce(
 		(total, phase) => total + options.phaseGapMs + phase.delayMs + phase.durationMs,
 		0
 	)
@@ -466,10 +517,111 @@ export const planDiceTimeline = (
 		definitions,
 		initialDice,
 		finalDice,
-		phases: Object.freeze(degraded ? [] : phases),
+		phases: Object.freeze(degraded ? [] : scheduledPhases),
+		initialEventSequences: Object.freeze(degraded
+			? request.events.map(event => event.sequence)
+			: [...initialEventSequences].sort((left, right) => left - right)),
+		allEventSequences: Object.freeze(request.events.map(event => event.sequence)),
 		eventCount: request.events.length,
 		estimatedDurationMs,
 		degraded
+	})
+}
+
+const reportTimelineProgressError = (error: unknown): void => {
+	try {
+		console.error('[DiceResultViewer] onTimelineProgress callback failed:', error)
+	} catch {
+		// A consumer-provided logger must not be able to interrupt presentation.
+	}
+}
+
+export const dispatchTimelineProgress = (
+	callback: (event: TimelineProgressEvent) => void,
+	event: TimelineProgressEvent
+): void => {
+	try {
+		const returned = callback(event) as unknown
+		if(returned && typeof (returned as PromiseLike<void>).then === 'function') {
+			Promise.resolve(returned).catch(reportTimelineProgressError)
+		}
+	} catch(error) {
+		reportTimelineProgressError(error)
+	}
+}
+
+export interface TimelineProgressTracker {
+	initial(): TimelineProgressEvent
+	completePhase(phaseIndex: number): TimelineProgressEvent
+	complete(): TimelineProgressEvent
+}
+
+export const createTimelineProgressTracker = (plan: DiceTimelinePlan): TimelineProgressTracker => {
+	const visible = new Map<string, TimelineProgressDie>()
+	const completedSequences = new Set<number>()
+	const orderedIds = [...plan.definitions.keys()]
+	const snapshot = (
+		stage: TimelineProgressEvent['stage'],
+		phaseIndex: number | null,
+		phaseId: string | null,
+		effect: TimelineEffectName | null,
+		revealedDieIds: readonly string[]
+	): TimelineProgressEvent => Object.freeze({
+		id: plan.id,
+		stage,
+		phaseIndex,
+		phaseCount: plan.phases.length,
+		phaseId,
+		effect,
+		revealedDieIds: Object.freeze([...revealedDieIds]),
+		dice: Object.freeze(orderedIds.flatMap(id => {
+			const die = visible.get(id)
+			return die ? [Object.freeze({ ...die })] : []
+		})),
+		completedEventSequences: Object.freeze([...completedSequences].sort((left, right) => left - right))
+	})
+	const setVisible = (die: Pick<ResolvedDie, 'id' | 'value' | 'discarded'>): void => {
+		visible.set(die.id, Object.freeze({
+			id: die.id,
+			value: die.value,
+			discarded: die.discarded ?? false
+		}))
+	}
+	return Object.freeze({
+		initial: (): TimelineProgressEvent => {
+			const dice = plan.degraded ? plan.finalDice : plan.initialDice
+			for(const die of dice) setVisible(die)
+			for(const sequence of plan.initialEventSequences) completedSequences.add(sequence)
+			return snapshot('initial', null, null, null, dice.map(die => die.id))
+		},
+		completePhase: (phaseIndex: number): TimelineProgressEvent => {
+			const phase = plan.phases[phaseIndex]
+			if(!phase) throw new Error(`Timeline phase index ${phaseIndex} is out of range.`)
+			for(const action of phase.actions) {
+				if(action.kind === 'explode') {
+					setVisible({ id: action.dieId, value: action.value, discarded: action.discarded })
+				} else if(action.kind === 'reroll') {
+					const current = visible.get(action.dieId)
+					if(current) setVisible({ ...current, value: action.to })
+				} else if(action.kind === 'selection') {
+					const current = visible.get(action.dieId)
+					if(current) setVisible({ ...current, discarded: action.discarded })
+				}
+			}
+			for(const sequence of phase.eventSequences) completedSequences.add(sequence)
+			return snapshot(
+				'phase',
+				phaseIndex,
+				phase.id,
+				phase.effect,
+				[...new Set(phase.actions.map(action => action.dieId))]
+			)
+		},
+		complete: (): TimelineProgressEvent => {
+			for(const die of plan.finalDice) setVisible(die)
+			for(const sequence of plan.allEventSequences) completedSequences.add(sequence)
+			return snapshot('complete', null, null, null, [])
+		}
 	})
 }
 

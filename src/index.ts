@@ -1,6 +1,7 @@
 export { DiceResultViewer, default } from './DiceResultViewer'
 export { DISPLAY_CANCELLED_CODE, DisplayCancelledError, isDisplayCancelledError } from './errors'
 export { DEFAULT_TIMELINE_OPTIONS } from './timelineOptions'
+export type { TimelineEffectName } from './timeline'
 export type {
 	ClassifyTimelineEvent,
 	CoinFaceTheme,
@@ -29,6 +30,9 @@ export type {
 	TimelineEffectsOptions,
 	TimelineExplodeEffectOptions,
 	TimelineOptions,
+	TimelineProgressDie,
+	TimelineProgressEvent,
+	TimelineProgressStage,
 	TimelineRerollEffectOptions,
 	TransformTimelineEvent,
 	ViewerOptions

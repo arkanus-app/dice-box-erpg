@@ -13,7 +13,12 @@ import { Quaternion, Vector3 } from '@babylonjs/core/Maths/math.vector'
 import type { AbstractMesh } from '@babylonjs/core/Meshes/abstractMesh'
 import type { Mesh } from '@babylonjs/core/Meshes/mesh'
 import type { Observer } from '@babylonjs/core/Misc/observable'
-import type { RendererContext, RequiredViewerOptions } from '../types'
+import type {
+	NormalizedResolvedDie,
+	RendererContext,
+	RequiredViewerOptions,
+	ResolvedThemeConfig
+} from '../types'
 import type { TimelineEffectName } from '../timeline'
 import { DisplayCancelledError } from '../errors'
 import {
@@ -49,10 +54,12 @@ import {
 	DICE_PHYSICS_TIME_STEP,
 	getDicePhysicsStep,
 	hasPhysicsLaunchPairClearance,
+	planPhysicsAppendLaunch,
 	shouldRecoverPhysicsBody
 } from '../physicsSafety'
 import KinematicRenderer, {
 	hasEnteredLaunchPortal,
+	type TimelineVisualHandle,
 	type VisualEntry
 } from './KinematicRenderer'
 import {
@@ -159,6 +166,10 @@ export class PhysicsRenderer extends KinematicRenderer {
 	#boundsSignature = ''
 	#largestRadius = 0
 	#physicsStepMs = DICE_PHYSICS_SUB_TIME_STEP_MS
+	readonly #timelineEdgeLaunch = new WeakMap<VisualEntry, {
+		readonly position: Vector3
+		readonly velocity: Vector3
+	}>()
 
 	override async init(context: RendererContext): Promise<void> {
 		await super.init(context)
@@ -172,6 +183,21 @@ export class PhysicsRenderer extends KinematicRenderer {
 		physicsEngine?.setTimeStep(DICE_PHYSICS_TIME_STEP)
 		physicsEngine?.setSubTimeStep(DICE_PHYSICS_SUB_TIME_STEP_MS)
 		this.buildBounds()
+	}
+
+	protected override async createTimelineEntries(
+		die: NormalizedResolvedDie,
+		theme: ResolvedThemeConfig,
+		startIndex: number,
+		bodyCount: number,
+		seed: string
+	): Promise<TimelineVisualHandle> {
+		const handle = await super.createTimelineEntries(die, theme, startIndex, bodyCount, seed)
+		for(const entry of handle.entries) this.#timelineEdgeLaunch.set(entry, {
+			position: entry.start.clone(),
+			velocity: entry.launchVelocity.clone()
+		})
+		return handle
 	}
 
 	protected override animate(
@@ -759,6 +785,7 @@ export class PhysicsRenderer extends KinematicRenderer {
 			append ? this.#largestRadius : 0
 		)
 		this.buildBounds(undefined, undefined, this.#largestRadius)
+		if(append) this.#prepareAppendLaunches(entries)
 		for(const entry of entries) this.#dynamicBodyNames.add(entry.node.name)
 		for(const entry of entries) {
 			if(this.#bounds) {
@@ -887,6 +914,27 @@ export class PhysicsRenderer extends KinematicRenderer {
 				})
 			})
 			this.#bodies.push(activeBody)
+		}
+	}
+
+	#prepareAppendLaunches(entries: readonly VisualEntry[]): void {
+		const occupants = this.#bodies.map(activeBody => ({
+			position: activeBody.entry.node.position,
+			radius: activeBody.entry.horizontalRadius
+		}))
+		for(const entry of entries) {
+			const edgeLaunch = this.#timelineEdgeLaunch.get(entry)
+			const plan = planPhysicsAppendLaunch(
+				entry.start,
+				edgeLaunch?.position ?? entry.start,
+				entry.horizontalRadius,
+				occupants,
+				Math.max(entry.start.y, this.options!.startingHeight)
+			)
+			entry.start.set(plan.position.x, plan.position.y, plan.position.z)
+			entry.node.position.copyFrom(entry.start)
+			if(plan.useFallback && edgeLaunch) entry.launchVelocity.copyFrom(edgeLaunch.velocity)
+			occupants.push({ position: entry.start, radius: entry.horizontalRadius })
 		}
 	}
 

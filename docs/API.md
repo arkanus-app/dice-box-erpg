@@ -2,7 +2,7 @@
 
 [← Voltar ao README](../README.md)
 
-Esta referência descreve a API pública de `@erpg/dice3dview` 2.1.1. A biblioteca é destinada ao navegador: a criação exige DOM; a inicialização do renderer exige WebGL.
+Esta referência descreve a API pública de `@erpg/dice3dview` 2.2.0. A biblioteca é destinada ao navegador: a criação exige DOM; a inicialização do renderer exige WebGL.
 
 ## Exports públicos
 
@@ -34,7 +34,11 @@ export type {
   ThemeMaterialConfig,
   TimelineDieDefinition,
   TimelineEffectOptions,
+  TimelineEffectName,
   TimelineOptions,
+  TimelineProgressDie,
+  TimelineProgressEvent,
+  TimelineProgressStage,
   ViewerOptions
 }
 ```
@@ -122,6 +126,27 @@ const result = await viewer.displayTimeline({
 ```
 
 O retorno acrescenta `eventCount`, `phaseCount` e `degraded` ao contrato de `DisplayResult`. `dice` contém faces físicas válidas e estado final de descarte; totais `compound` e ajustes `penetrate` aparecem como badges, nunca como faces inexistentes.
+
+Configure `onTimelineProgress` no viewer para sincronizar a interface com a
+estabilização visual, sem estimar tempos no consumidor:
+
+```ts
+const viewer = new DiceResultViewer({
+  container: '#dice-stage',
+  onTimelineProgress(progress) {
+    // progress.dice é o snapshot visível e imutável desta etapa.
+    renderSubtotal(progress.dice)
+  }
+})
+```
+
+O callback recebe `initial` depois da primeira rolagem estabilizar, `phase`
+depois de cada fase e `complete` ao final. Cada snapshot informa `id`,
+`phaseIndex` zero-based (ou `null`), `phaseCount`, `phaseId`, `effect`,
+`revealedDieIds`, os dados visíveis `{ id, value, discarded }` e
+`completedEventSequences` cumulativo. Em uma apresentação degradada/plana,
+somente `initial` e `complete` são emitidos. Exceções do callback são isoladas
+e nunca cancelam a animação.
 
 ### `clear()`
 

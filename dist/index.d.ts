@@ -224,6 +224,8 @@ export declare interface TimelineDieDefinition {
     readonly themeColor?: string;
 }
 
+export declare type TimelineEffectName = keyof NormalizedTimelineOptions['effects'];
+
 export declare interface TimelineEffectOptions {
     readonly enabled?: boolean;
     readonly delayMs?: number;
@@ -260,6 +262,31 @@ export declare interface TimelineOptions {
     readonly phaseGapMs?: number;
     readonly effects?: TimelineEffectsOptions;
 }
+
+export declare interface TimelineProgressDie {
+    readonly id: string;
+    readonly value: number;
+    readonly discarded: boolean;
+}
+
+/**
+ * Immutable snapshot emitted only after the corresponding visual work has
+ * settled. `phaseIndex` is zero-based and is `null` for the initial and final
+ * snapshots.
+ */
+export declare interface TimelineProgressEvent {
+    readonly id: string;
+    readonly stage: TimelineProgressStage;
+    readonly phaseIndex: number | null;
+    readonly phaseCount: number;
+    readonly phaseId: string | null;
+    readonly effect: TimelineEffectName | null;
+    readonly revealedDieIds: readonly string[];
+    readonly dice: readonly TimelineProgressDie[];
+    readonly completedEventSequences: readonly number[];
+}
+
+export declare type TimelineProgressStage = 'initial' | 'phase' | 'complete';
 
 export declare interface TimelineRerollEffectOptions extends TimelineEffectOptions {
     readonly style?: 'hop' | 'edge' | 'spin';
@@ -316,6 +343,7 @@ export declare interface ViewerOptions {
     readonly onCollision?: (event: CollisionEvent) => void;
     readonly onThemeConfigLoaded?: (theme: ResolvedThemeConfig) => void;
     readonly onThemeLoaded?: (theme: ResolvedThemeConfig) => void;
+    readonly onTimelineProgress?: (event: TimelineProgressEvent) => void;
     readonly timeline?: TimelineOptions;
 }
 

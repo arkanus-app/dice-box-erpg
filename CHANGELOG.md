@@ -4,6 +4,23 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 ## [Não publicado]
 
+## [2.2.0] - 2026-07-12
+
+### Adicionado
+
+- callback opcional `onTimelineProgress` com snapshots imutáveis após a rolagem inicial, cada fase semântica e a conclusão;
+- progresso informa dados visíveis, dados afetados, efeito atual e sequências do journal já concluídas para cards incrementais sem temporizadores.
+
+### Corrigido
+
+- preflight físico de filhos explosivos agora considera todos os corpos assentados e outros filhos da fase;
+- quando o ponto acima do pai está ocupado, o spawn sobe até uma altura segura ou usa o lançamento original pela borda, evitando que o novo dado fique bloqueado em pools grandes como `6d6!`.
+
+### Validado
+
+- cobertura do subtotal inicial, progressão por fase, callbacks isolados e apresentações degradadas;
+- regressão física reproduzida com seis d6 de escala 6 e filho explosivo, incluindo fallback pela borda.
+
 ## [2.1.1] - 2026-07-12
 
 ### Corrigido
@@ -273,7 +290,8 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 - tema `default-v2` consolidado no baseline `81c2ca9` em 30/05/2026.
 
-[Não publicado]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.1.1...HEAD
+[Não publicado]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.1.1...v2.2.0
 [2.1.1]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.5...v2.1.0
 [2.0.5]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.4...v2.0.5

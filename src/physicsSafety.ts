@@ -20,6 +20,11 @@ export interface PhysicsLaunchOccupant {
 	readonly radius: number
 }
 
+export interface PhysicsAppendLaunchPlan {
+	readonly position: PhysicsBodyPosition
+	readonly useFallback: boolean
+}
+
 export interface DicePhysicsStep {
 	readonly seconds: number
 	readonly milliseconds: number
@@ -83,6 +88,61 @@ export const hasPhysicsLaunchPairClearance = (
 	const deltaZ = position.z - occupantPosition.z
 	return deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ
 		>= minimumDistance * minimumDistance
+}
+
+const PHYSICS_APPEND_CLEARANCE_EPSILON = 0.001
+
+/** Finds the lowest point directly above a requested source that clears every
+ * active collider. Explosive children prefer that source, but use their
+ * original edge launch when a safe source would leave the normal launch
+ * volume. The fallback is lifted as a final safety measure and therefore
+ * cannot deadlock admission behind a settled body. */
+export const planPhysicsAppendLaunch = (
+	desiredPosition: PhysicsBodyPosition,
+	fallbackPosition: PhysicsBodyPosition,
+	radius: number,
+	occupants: readonly PhysicsLaunchOccupant[],
+	maximumSourceY: number
+): PhysicsAppendLaunchPlan => {
+	const liftAboveOccupants = (
+		position: PhysicsBodyPosition,
+		maximumY: number
+	): PhysicsBodyPosition | undefined => {
+		let y = position.y
+		const safeRadius = Number.isFinite(radius) ? Math.max(0, radius) : 0
+		for(const occupant of occupants) {
+			const occupantRadius = Number.isFinite(occupant.radius)
+				? Math.max(0, occupant.radius)
+				: 0
+			const minimumDistance = (safeRadius + occupantRadius)
+				* PHYSICS_LAUNCH_CLEARANCE_MULTIPLIER
+			const deltaX = position.x - occupant.position.x
+			const deltaZ = position.z - occupant.position.z
+			const horizontalDistanceSquared = deltaX * deltaX + deltaZ * deltaZ
+			const minimumDistanceSquared = minimumDistance * minimumDistance
+			if(horizontalDistanceSquared >= minimumDistanceSquared) continue
+			const verticalClearance = Math.sqrt(
+				Math.max(0, minimumDistanceSquared - horizontalDistanceSquared)
+			)
+			y = Math.max(
+				y,
+				occupant.position.y + verticalClearance + PHYSICS_APPEND_CLEARANCE_EPSILON
+			)
+		}
+		if(!Number.isFinite(y) || y > maximumY) return undefined
+		const candidate = { x: position.x, y, z: position.z }
+		return hasPhysicsLaunchClearance(candidate, safeRadius, occupants)
+			? candidate
+			: undefined
+	}
+
+	const source = liftAboveOccupants(desiredPosition, maximumSourceY)
+	if(source) return { position: source, useFallback: false }
+	return {
+		position: liftAboveOccupants(fallbackPosition, Number.POSITIVE_INFINITY)
+			?? { ...fallbackPosition },
+		useFallback: true
+	}
 }
 
 export const shouldRecoverPhysicsBody = (

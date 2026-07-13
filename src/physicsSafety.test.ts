@@ -13,6 +13,7 @@ import {
 	LARGE_DICE_PHYSICS_SUB_TIME_STEP_MS,
 	LARGE_DICE_PHYSICS_TIME_STEP,
 	PHYSICS_LAUNCH_CLEARANCE_MULTIPLIER,
+	planPhysicsAppendLaunch,
 	shouldRecoverPhysicsBody
 } from './physicsSafety'
 
@@ -60,6 +61,50 @@ describe('adaptive physics resolution and launch clearance', () => {
 			radius,
 			occupants
 		), true)
+	})
+
+	it('admits the explosive child after six scale-6 d6 roots have settled', () => {
+		const radius = 0.817
+		const roots = [
+			{ position: { x: -3.4, y: 0.5, z: -1.8 }, radius },
+			{ position: { x: 2.5, y: 0.5, z: -1.2 }, radius },
+			{ position: { x: 0.15, y: 1.62, z: 0.08 }, radius },
+			{ position: { x: 3.2, y: 0.5, z: 2.1 }, radius },
+			{ position: { x: -2.7, y: 0.5, z: 2.4 }, radius },
+			{ position: { x: 0, y: 0.5, z: 0 }, radius }
+		]
+		// This is the source-origin geometry produced for the reported
+		// 6d6! [3,5,4,3,1,6,2] case. A root stacked over the exploding 6
+		// occupies the nominal child position even though the parent itself
+		// has enough vertical separation.
+		const requestedSource = { x: 0.1, y: 3.1, z: 0.1 }
+		assert.equal(hasPhysicsLaunchClearance(requestedSource, radius, roots), false)
+
+		const planned = planPhysicsAppendLaunch(
+			requestedSource,
+			{ x: -8.4, y: 7.6, z: 0 },
+			radius,
+			roots,
+			7.6
+		)
+		assert.equal(planned.useFallback, false)
+		assert.ok(planned.position.y > requestedSource.y)
+		assert.equal(hasPhysicsLaunchClearance(planned.position, radius, roots), true)
+	})
+
+	it('falls back to the edge when clearing a source would exceed the launch volume', () => {
+		const radius = 0.817
+		const roots = [{ position: { x: 0, y: 7.2, z: 0 }, radius }]
+		const planned = planPhysicsAppendLaunch(
+			{ x: 0, y: 7.4, z: 0 },
+			{ x: -8.4, y: 7.6, z: 0 },
+			radius,
+			roots,
+			7.6
+		)
+		assert.equal(planned.useFallback, true)
+		assert.deepEqual(planned.position, { x: -8.4, y: 7.6, z: 0 })
+		assert.equal(hasPhysicsLaunchClearance(planned.position, radius, roots), true)
 	})
 })
 

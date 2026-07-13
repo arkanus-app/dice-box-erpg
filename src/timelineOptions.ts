@@ -161,6 +161,7 @@ export const createViewerOptions = (options: ViewerOptions): RequiredViewerOptio
 	onCollision: options.onCollision ?? noop,
 	onThemeConfigLoaded: options.onThemeConfigLoaded ?? noop,
 	onThemeLoaded: options.onThemeLoaded ?? noop,
+	onTimelineProgress: options.onTimelineProgress ?? noop,
 	timeline: mergeTimelineOptions(DEFAULT_TIMELINE_OPTIONS, options.timeline)
 })
 

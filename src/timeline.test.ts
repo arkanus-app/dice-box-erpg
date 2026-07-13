@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
+	createTimelineProgressTracker,
+	dispatchTimelineProgress,
 	getTimelineTransformBadge,
 	normalizeDisplayTimelineRequest,
 	planDiceTimeline,
@@ -54,6 +56,32 @@ describe('semantic dice timeline planner', () => {
 		assert.deepEqual(result.phases[0]?.actions.map(action => action.dieId), ['child'])
 		assert.equal(result.eventCount, 4)
 		assert.equal(result.degraded, false)
+
+		const progress = createTimelineProgressTracker(result)
+		const initial = progress.initial()
+		assert.equal(initial.stage, 'initial')
+		assert.equal(initial.phaseIndex, null)
+		assert.deepEqual(initial.revealedDieIds, ['root-a', 'root-b'])
+		assert.deepEqual(initial.dice.map(die => [die.id, die.value]), [['root-a', 6], ['root-b', 2]])
+		assert.deepEqual(initial.completedEventSequences, [1, 2])
+
+		const explosion = progress.completePhase(0)
+		assert.equal(explosion.stage, 'phase')
+		assert.equal(explosion.phaseIndex, 0)
+		assert.equal(explosion.phaseId, 'explode-depth-1')
+		assert.equal(explosion.effect, 'explode')
+		assert.deepEqual(explosion.revealedDieIds, ['child'])
+		assert.deepEqual(explosion.dice.map(die => [die.id, die.value]), [
+			['root-a', 6], ['root-b', 2], ['child', 4]
+		])
+		assert.deepEqual(explosion.completedEventSequences, [1, 2, 4, 7])
+
+		const complete = progress.complete()
+		assert.equal(complete.stage, 'complete')
+		assert.deepEqual(complete.completedEventSequences, [1, 2, 4, 7])
+		assert.equal(Object.isFrozen(complete), true)
+		assert.equal(Object.isFrozen(complete.dice), true)
+		assert.equal(Object.isFrozen(complete.dice[0]), true)
 	})
 
 	it('folds disabled rerolls into the first appearance without losing final faces', () => {
@@ -178,6 +206,33 @@ describe('timeline options and renderer decisions', () => {
 		assert.equal(second.effects.explode.durationMs, 123)
 	})
 
+	it('keeps progress callbacks optional, configurable, and isolated from presentation', () => {
+		const callback = (): void => { throw new Error('consumer failed') }
+		const configured = createViewerOptions({ onTimelineProgress: callback })
+		assert.equal(configured.onTimelineProgress, callback)
+		assert.equal(typeof viewerOptions.onTimelineProgress, 'function')
+
+		const originalError = console.error
+		const reported: unknown[][] = []
+		console.error = (...args: unknown[]): void => { reported.push(args) }
+		try {
+			assert.doesNotThrow(() => dispatchTimelineProgress(callback, Object.freeze({
+				id: 'isolated',
+				stage: 'complete',
+				phaseIndex: null,
+				phaseCount: 0,
+				phaseId: null,
+				effect: null,
+				revealedDieIds: Object.freeze([]),
+				dice: Object.freeze([]),
+				completedEventSequences: Object.freeze([])
+			})))
+		} finally {
+			console.error = originalError
+		}
+		assert.equal(reported.length, 1)
+	})
+
 	it('rejects invalid durations, intensity, colors, styles, and pulses', () => {
 		for(const timeline of [
 			mergeTimelineOptions(viewerOptions.timeline, { effects: { reroll: { durationMs: -1 } } }),
@@ -191,10 +246,10 @@ describe('timeline options and renderer decisions', () => {
 
 	it('honors compound and penetrate badge flags', () => {
 		const compound: TimelineTransformAction = {
-			kind: 'transform', effect: 'compound', dieId: 'die', from: 6, to: 11
+			kind: 'transform', effect: 'compound', dieId: 'die', from: 6, to: 11, eventSequences: []
 		}
 		const penetrate: TimelineTransformAction = {
-			kind: 'transform', effect: 'penetrate', dieId: 'die', from: 5, to: 4
+			kind: 'transform', effect: 'penetrate', dieId: 'die', from: 5, to: 4, eventSequences: []
 		}
 		assert.equal(getTimelineTransformBadge(compound, viewerOptions.timeline), 'Σ 11')
 		assert.equal(getTimelineTransformBadge(penetrate, viewerOptions.timeline), '−1')

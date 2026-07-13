@@ -215,6 +215,31 @@ export interface DisplayTimelineResult extends DisplayResult {
 	readonly degraded: boolean
 }
 
+export type TimelineProgressStage = 'initial' | 'phase' | 'complete'
+
+export interface TimelineProgressDie {
+	readonly id: string
+	readonly value: number
+	readonly discarded: boolean
+}
+
+/**
+ * Immutable snapshot emitted only after the corresponding visual work has
+ * settled. `phaseIndex` is zero-based and is `null` for the initial and final
+ * snapshots.
+ */
+export interface TimelineProgressEvent {
+	readonly id: string
+	readonly stage: TimelineProgressStage
+	readonly phaseIndex: number | null
+	readonly phaseCount: number
+	readonly phaseId: string | null
+	readonly effect: import('./timeline').TimelineEffectName | null
+	readonly revealedDieIds: readonly string[]
+	readonly dice: readonly TimelineProgressDie[]
+	readonly completedEventSequences: readonly number[]
+}
+
 export interface ThemeMaterialConfig {
 	readonly type: 'color' | 'standard'
 	readonly diffuseTexture?: string | Readonly<{ light: string; dark: string }>
@@ -286,6 +311,7 @@ export interface ViewerOptions {
 	readonly onCollision?: (event: CollisionEvent) => void
 	readonly onThemeConfigLoaded?: (theme: ResolvedThemeConfig) => void
 	readonly onThemeLoaded?: (theme: ResolvedThemeConfig) => void
+	readonly onTimelineProgress?: (event: TimelineProgressEvent) => void
 	readonly timeline?: TimelineOptions
 }
 
