@@ -4,6 +4,8 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 ## [Não publicado]
 
+## [2.2.2] - 2026-07-13
+
 ### Alterado
 
 - explosões físicas agora são encadeadas por dado: cada filho é lançado assim que o respectivo pai estabiliza, sem aguardar o restante da rolagem;
@@ -313,7 +315,8 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 - tema `default-v2` consolidado no baseline `81c2ca9` em 30/05/2026.
 
-[Não publicado]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.2.1...HEAD
+[Não publicado]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.2.2...HEAD
+[2.2.2]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.2.1...v2.2.2
 [2.2.1]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.1.1...v2.2.0
 [2.1.1]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.1.0...v2.1.1
