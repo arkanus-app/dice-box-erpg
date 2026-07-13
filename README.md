@@ -173,7 +173,7 @@ Quando o journal de `@erpg/dicecore` está disponível, passe as definições e 
 const viewer = new DiceResultViewer({
   container: '#dice-stage',
   onTimelineProgress(progress) {
-    // Emitido somente quando a etapa visual correspondente estabilizou.
+    // Explosões físicas podem revelar um filho assim que o dado-pai estabiliza.
     updateRollCard(progress.dice, progress.stage)
   },
   timeline: {
@@ -199,10 +199,12 @@ await viewer.displayTimeline({
 Todos os efeitos podem ser desligados ou ajustados por instância. `updateOptions({ timeline: ... })` faz merge profundo por efeito. Desligar um efeito remove apenas sua coreografia; a face física, o descarte e o resultado final continuam autoritativos. Se `timeline.enabled` for `false`, o journal exceder `maxEvents` ou a duração estimada exceder `maxDurationMs`, a apresentação degrada antes de começar para uma rolagem plana com o estado final.
 
 `onTimelineProgress` é opcional e também pode ser trocado por
-`updateOptions()`. Ele recebe snapshots imutáveis em `initial`, depois de cada
+`updateOptions()`. Ele recebe snapshots imutáveis em `initial`, durante cada
 `phase` e em `complete`, incluindo os dados visíveis e as sequências do journal
-já concluídas. Assim cards e overlays podem incrementar resultados em sincronia
-com a física, sem timers externos. Erros do callback são isolados da animação.
+já concluídas. No renderer físico, cada dado explosivo libera o próprio filho
+assim que estabiliza, sem esperar os demais dados da fase. Assim cards e overlays
+podem incrementar resultados em sincronia com a física, sem timers externos.
+Erros do callback são isolados da animação.
 
 ## Dados suportados
 

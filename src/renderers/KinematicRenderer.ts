@@ -17,7 +17,8 @@ import {
 	dispatchTimelineProgress,
 	getTimelineTransformBadge,
 	type DiceTimelinePlan,
-	type TimelineEffectName
+	type TimelineEffectName,
+	type TimelineProgressTracker
 } from '../timeline'
 import { DisplayCancelledError } from '../errors'
 import { createSeededRandom } from '../random'
@@ -54,6 +55,15 @@ export interface TimelineVisualHandle {
 	readonly die: NormalizedResolvedDie
 	readonly theme: ResolvedThemeConfig
 	readonly entries: VisualEntry[]
+}
+
+export interface TimelinePlaybackContext {
+	readonly plan: DiceTimelinePlan
+	readonly configs: ReadonlyMap<string, ResolvedThemeConfig>
+	readonly handles: Map<string, TimelineVisualHandle>
+	readonly progress: TimelineProgressTracker
+	readonly initialEntries: readonly VisualEntry[]
+	readonly signal: AbortSignal
 }
 
 const easeOutCubic = (value: number): number => 1 - Math.pow(1 - value, 3)
@@ -508,98 +518,24 @@ export class KinematicRenderer implements DisplayRenderer {
 			handles.set(die.id, created)
 			initialEntries.push(...created.entries)
 		}
-		await this.animate(initialEntries, signal)
-		dispatchTimelineProgress(this.options!.onTimelineProgress, progress.initial())
+		const playback: TimelinePlaybackContext = {
+			plan,
+			configs,
+			handles,
+			progress,
+			initialEntries,
+			signal
+		}
+		let phaseIndex = await this.displayInitialAndExplosionTimeline(playback)
 
-		for(let phaseIndex = 0; phaseIndex < plan.phases.length; phaseIndex++) {
+		for(; phaseIndex < plan.phases.length; phaseIndex++) {
 			const phase = plan.phases[phaseIndex]!
 			const reportPhase = (): void => {
 				dispatchTimelineProgress(this.options!.onTimelineProgress, progress.completePhase(phaseIndex))
 			}
 			await this.waitForTimeline(this.options!.timeline.phaseGapMs + phase.delayMs, signal)
 			if(phase.actions[0]?.kind === 'explode') {
-				const parentHandles = new Map<string, TimelineVisualHandle>()
-				for(const action of phase.actions) {
-					if(action.kind !== 'explode') continue
-					const handle = handles.get(action.parentDieId)
-					if(handle) parentHandles.set(action.parentDieId, handle)
-				}
-				const parentEntries = [...parentHandles.values()].flatMap(handle => handle.entries)
-				const pulseColorByEntry = new Map<VisualEntry, string>()
-				for(const handle of parentHandles.values()) {
-					const color = handle.die.sides === 2
-						? handle.theme.coin.edgeColor || handle.die.themeColor
-						: handle.die.themeColor
-					for(const entry of handle.entries) pulseColorByEntry.set(entry, color)
-				}
-				const cueDuration = Math.min(220, phase.durationMs * 0.25)
-				if(parentEntries.length && cueDuration > 0) {
-					await this.pulseTimelineEntries(
-						parentEntries,
-						phase.effect,
-						cueDuration,
-						1,
-						signal,
-						entry => pulseColorByEntry.get(entry)
-					)
-				}
-				const spawned: VisualEntry[] = []
-				const explosionActionCount = phase.actions.filter(action => action.kind === 'explode').length
-				const explosionStaggerMs = explosionActionCount > 1
-					? Math.min(120, Math.max(0, phase.durationMs - cueDuration) * 0.6 / (explosionActionCount - 1))
-					: 0
-				const spawnBodyCount = phase.actions.reduce((count, action) => {
-					if(action.kind !== 'explode') return count
-					return count + (plan.definitions.get(action.dieId)?.sides === 100 ? 2 : 1)
-				}, 0)
-				let spawnIndex = 0
-				let explosionChildIndex = 0
-				for(const action of phase.actions) {
-					if(action.kind !== 'explode') continue
-					const definition = plan.definitions.get(action.dieId)!
-					const die = {
-						...definition,
-						value: action.value,
-						discarded: action.discarded
-					} as NormalizedResolvedDie
-					const handle = await this.createTimelineEntries(
-						die,
-						configs.get(definition.theme)!,
-						spawnIndex,
-						spawnBodyCount,
-						`${plan.seed}:${phase.id}:${action.dieId}`
-					)
-					for(const entry of handle.entries) {
-						entry.launchDelayMs = Math.max(
-							entry.launchDelayMs,
-							explosionChildIndex * explosionStaggerMs
-						)
-					}
-					explosionChildIndex++
-					spawnIndex += handle.entries.length
-					const parent = handles.get(action.parentDieId)
-					if(this.options!.timeline.effects.explode.origin === 'source' && parent?.entries[0]) {
-						const random = createSeededRandom(`${plan.seed}:${phase.id}:${action.dieId}:source`)
-						for(let index = 0; index < handle.entries.length; index++) {
-							const entry = handle.entries[index]!
-							const parentEntry = parent.entries[index % parent.entries.length]!
-							entry.start.set(
-								parentEntry.node.position.x + random.range(-1, 1) * this.options!.timeline.effects.explode.spread,
-								parentEntry.node.position.y + parentEntry.supportHeight + entry.supportHeight
-									+ this.options!.timeline.effects.explode.burstHeight,
-								parentEntry.node.position.z + random.range(-1, 1) * this.options!.timeline.effects.explode.spread
-							)
-							entry.node.position.copyFrom(entry.start)
-							const direction = entry.end.subtract(entry.start).normalize()
-							entry.launchVelocity.copyFrom(direction.scale(Math.max(2.4, this.options!.throwForce * 0.55)))
-							entry.launchVelocity.y = Math.max(2.8, this.options!.timeline.effects.explode.burstHeight * 2)
-						}
-					}
-					handles.set(action.dieId, handle)
-					spawned.push(...handle.entries)
-				}
-				if(spawned.length) await this.animateAdditional(spawned, signal, Math.max(0, phase.durationMs - cueDuration))
-				reportPhase()
+				await this.displayExplosionPhase(playback, phaseIndex)
 				continue
 			}
 
@@ -662,6 +598,116 @@ export class KinematicRenderer implements DisplayRenderer {
 			reportPhase()
 		}
 		dispatchTimelineProgress(this.options!.onTimelineProgress, progress.complete())
+	}
+
+	protected async displayInitialAndExplosionTimeline(
+		playback: TimelinePlaybackContext
+	): Promise<number> {
+		await this.animate(playback.initialEntries, playback.signal)
+		dispatchTimelineProgress(this.options!.onTimelineProgress, playback.progress.initial())
+		let phaseIndex = 0
+		while(playback.plan.phases[phaseIndex]?.actions[0]?.kind === 'explode') {
+			const phase = playback.plan.phases[phaseIndex]!
+			await this.waitForTimeline(
+				this.options!.timeline.phaseGapMs + phase.delayMs,
+				playback.signal
+			)
+			await this.displayExplosionPhase(playback, phaseIndex)
+			phaseIndex++
+		}
+		return phaseIndex
+	}
+
+	protected async displayExplosionPhase(
+		playback: TimelinePlaybackContext,
+		phaseIndex: number
+	): Promise<void> {
+		const { configs, handles, plan, progress, signal } = playback
+		const phase = plan.phases[phaseIndex]!
+		const parentHandles = new Map<string, TimelineVisualHandle>()
+		for(const action of phase.actions) {
+			if(action.kind !== 'explode') continue
+			const handle = handles.get(action.parentDieId)
+			if(handle) parentHandles.set(action.parentDieId, handle)
+		}
+		const parentEntries = [...parentHandles.values()].flatMap(handle => handle.entries)
+		const pulseColorByEntry = new Map<VisualEntry, string>()
+		for(const handle of parentHandles.values()) {
+			const color = handle.die.sides === 2
+				? handle.theme.coin.edgeColor || handle.die.themeColor
+				: handle.die.themeColor
+			for(const entry of handle.entries) pulseColorByEntry.set(entry, color)
+		}
+		const cueDuration = Math.min(220, phase.durationMs * 0.25)
+		if(parentEntries.length && cueDuration > 0) {
+			await this.pulseTimelineEntries(
+				parentEntries,
+				phase.effect,
+				cueDuration,
+				1,
+				signal,
+				entry => pulseColorByEntry.get(entry)
+			)
+		}
+		const spawned: VisualEntry[] = []
+		const explosionActionCount = phase.actions.filter(action => action.kind === 'explode').length
+		const explosionStaggerMs = explosionActionCount > 1
+			? Math.min(120, Math.max(0, phase.durationMs - cueDuration) * 0.6 / (explosionActionCount - 1))
+			: 0
+		const spawnBodyCount = phase.actions.reduce((count, action) => {
+			if(action.kind !== 'explode') return count
+			return count + (plan.definitions.get(action.dieId)?.sides === 100 ? 2 : 1)
+		}, 0)
+		let spawnIndex = 0
+		let explosionChildIndex = 0
+		for(const action of phase.actions) {
+			if(action.kind !== 'explode') continue
+			const definition = plan.definitions.get(action.dieId)!
+			const die = {
+				...definition,
+				value: action.value,
+				discarded: action.discarded
+			} as NormalizedResolvedDie
+			const handle = await this.createTimelineEntries(
+				die,
+				configs.get(definition.theme)!,
+				spawnIndex,
+				spawnBodyCount,
+				`${plan.seed}:${phase.id}:${action.dieId}`
+			)
+			for(const entry of handle.entries) {
+				entry.launchDelayMs = Math.max(
+					entry.launchDelayMs,
+					explosionChildIndex * explosionStaggerMs
+				)
+			}
+			explosionChildIndex++
+			spawnIndex += handle.entries.length
+			const parent = handles.get(action.parentDieId)
+			if(this.options!.timeline.effects.explode.origin === 'source' && parent?.entries[0]) {
+				const random = createSeededRandom(`${plan.seed}:${phase.id}:${action.dieId}:source`)
+				for(let index = 0; index < handle.entries.length; index++) {
+					const entry = handle.entries[index]!
+					const parentEntry = parent.entries[index % parent.entries.length]!
+					entry.start.set(
+						parentEntry.node.position.x + random.range(-1, 1) * this.options!.timeline.effects.explode.spread,
+						parentEntry.node.position.y + parentEntry.supportHeight + entry.supportHeight
+							+ this.options!.timeline.effects.explode.burstHeight,
+						parentEntry.node.position.z + random.range(-1, 1) * this.options!.timeline.effects.explode.spread
+					)
+					entry.node.position.copyFrom(entry.start)
+					const direction = entry.end.subtract(entry.start).normalize()
+					entry.launchVelocity.copyFrom(direction.scale(Math.max(2.4, this.options!.throwForce * 0.55)))
+					entry.launchVelocity.y = Math.max(2.8, this.options!.timeline.effects.explode.burstHeight * 2)
+				}
+			}
+			handles.set(action.dieId, handle)
+			spawned.push(...handle.entries)
+		}
+		if(spawned.length) {
+			await this.animateAdditional(spawned, signal, Math.max(0, phase.durationMs - cueDuration))
+		}
+		dispatchTimelineProgress(this.options!.onTimelineProgress, progress.completePhase(phaseIndex))
 	}
 
 	protected async createTimelineEntries(

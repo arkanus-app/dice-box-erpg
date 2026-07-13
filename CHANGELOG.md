@@ -4,6 +4,16 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 ## [Não publicado]
 
+### Alterado
+
+- explosões físicas agora são encadeadas por dado: cada filho é lançado assim que o respectivo pai estabiliza, sem aguardar o restante da rolagem;
+- `onTimelineProgress` pode emitir progresso parcial para uma ação de explosão dentro da fase, mantendo o card sincronizado com cada dado.
+
+### Validado
+
+- cobertura do agendador causal para pais simultâneos, descendentes e notificações duplicadas;
+- cobertura de snapshots independentes para explosões irmãs dentro da mesma fase.
+
 ## [2.2.1] - 2026-07-13
 
 ### Corrigido

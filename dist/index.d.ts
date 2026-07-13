@@ -270,9 +270,10 @@ export declare interface TimelineProgressDie {
 }
 
 /**
- * Immutable snapshot emitted only after the corresponding visual work has
- * settled. `phaseIndex` is zero-based and is `null` for the initial and final
- * snapshots.
+ * Immutable presentation snapshot. The initial snapshot announces the root
+ * dice when playback starts; physical explosion snapshots may represent one
+ * settled die within a semantic phase. `phaseIndex` is zero-based and is
+ * `null` for the initial and final snapshots.
  */
 export declare interface TimelineProgressEvent {
     readonly id: string;

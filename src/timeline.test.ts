@@ -113,6 +113,38 @@ describe('semantic dice timeline planner', () => {
 		assert.deepEqual(progress.completePhase(1).dice.map(die => die.id), ['coin-root', 'coin-child-1', 'coin-child-2'])
 	})
 
+	it('reports sibling explosion actions independently as their dice settle', () => {
+		const result = plan({
+			id: 'independent-explosions',
+			dice: [
+				{ id: 'root-a', sides: 6 },
+				{ id: 'root-b', sides: 6 },
+				{ id: 'child-a', sides: 6 },
+				{ id: 'child-b', sides: 6 }
+			],
+			events: [
+				{ ...dieEvent, sequence: 1, type: 'roll', dieId: 'root-a', parentDieId: null, value: 6 },
+				{ ...dieEvent, sequence: 2, type: 'roll', dieId: 'root-b', parentDieId: null, value: 6 },
+				{ ...dieEvent, sequence: 3, type: 'roll', dieId: 'child-a', parentDieId: 'root-a', value: 2 },
+				{ ...dieEvent, sequence: 4, type: 'explode', dieId: 'root-a', parentDieId: null, childDieId: 'child-a', value: 2, reason: 'explode' },
+				{ ...dieEvent, sequence: 5, type: 'roll', dieId: 'child-b', parentDieId: 'root-b', value: 3 },
+				{ ...dieEvent, sequence: 6, type: 'explode', dieId: 'root-b', parentDieId: null, childDieId: 'child-b', value: 3, reason: 'explode' }
+			]
+		})
+		const progress = createTimelineProgressTracker(result)
+		progress.initial()
+
+		const childB = progress.completePhaseAction(0, 1)
+		assert.deepEqual(childB.revealedDieIds, ['child-b'])
+		assert.deepEqual(childB.dice.map(die => die.id), ['root-a', 'root-b', 'child-b'])
+		assert.deepEqual(childB.completedEventSequences, [1, 2, 5, 6])
+
+		const childA = progress.completePhaseAction(0, 0)
+		assert.deepEqual(childA.revealedDieIds, ['child-a'])
+		assert.deepEqual(childA.dice.map(die => die.id), ['root-a', 'root-b', 'child-a', 'child-b'])
+		assert.deepEqual(childA.completedEventSequences, [1, 2, 3, 4, 5, 6])
+	})
+
 	it('folds disabled rerolls into the first appearance without losing final faces', () => {
 		const options = mergeTimelineOptions(viewerOptions.timeline, {
 			effects: { reroll: { enabled: false } }

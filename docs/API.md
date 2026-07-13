@@ -140,8 +140,10 @@ const viewer = new DiceResultViewer({
 })
 ```
 
-O callback recebe `initial` depois da primeira rolagem estabilizar, `phase`
-depois de cada fase e `complete` ao final. Cada snapshot informa `id`,
+O callback recebe `initial` quando a apresentação dos dados-raiz começa, `phase`
+durante a progressão semântica e `complete` ao final. No renderer físico, uma
+explosão emite seu snapshot e libera o dado-filho assim que o dado-pai estabiliza,
+mesmo que outros dados da mesma fase ainda estejam em movimento. Cada snapshot informa `id`,
 `phaseIndex` zero-based (ou `null`), `phaseCount`, `phaseId`, `effect`,
 `revealedDieIds`, os dados visíveis `{ id, value, discarded }` e
 `completedEventSequences` cumulativo. Em uma apresentação degradada/plana,

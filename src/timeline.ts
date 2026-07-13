@@ -552,6 +552,7 @@ export const dispatchTimelineProgress = (
 
 export interface TimelineProgressTracker {
 	initial(): TimelineProgressEvent
+	completePhaseAction(phaseIndex: number, actionIndex: number): TimelineProgressEvent
 	completePhase(phaseIndex: number): TimelineProgressEvent
 	complete(): TimelineProgressEvent
 }
@@ -587,6 +588,18 @@ export const createTimelineProgressTracker = (plan: DiceTimelinePlan): TimelineP
 			discarded: die.discarded ?? false
 		}))
 	}
+	const applyAction = (action: TimelinePhase['actions'][number]): void => {
+		if(action.kind === 'explode') {
+			setVisible({ id: action.dieId, value: action.value, discarded: action.discarded })
+		} else if(action.kind === 'reroll') {
+			const current = visible.get(action.dieId)
+			if(current) setVisible({ ...current, value: action.to })
+		} else if(action.kind === 'selection') {
+			const current = visible.get(action.dieId)
+			if(current) setVisible({ ...current, discarded: action.discarded })
+		}
+		for(const sequence of action.eventSequences) completedSequences.add(sequence)
+	}
 	return Object.freeze({
 		initial: (): TimelineProgressEvent => {
 			const dice = plan.degraded ? plan.finalDice : plan.initialDice
@@ -594,20 +607,24 @@ export const createTimelineProgressTracker = (plan: DiceTimelinePlan): TimelineP
 			for(const sequence of plan.initialEventSequences) completedSequences.add(sequence)
 			return snapshot('initial', null, null, null, dice.map(die => die.id))
 		},
+		completePhaseAction: (phaseIndex: number, actionIndex: number): TimelineProgressEvent => {
+			const phase = plan.phases[phaseIndex]
+			if(!phase) throw new Error(`Timeline phase index ${phaseIndex} is out of range.`)
+			const action = phase.actions[actionIndex]
+			if(!action) throw new Error(`Timeline phase action index ${actionIndex} is out of range.`)
+			applyAction(action)
+			return snapshot(
+				'phase',
+				phaseIndex,
+				`${phase.id}:${action.dieId}`,
+				phase.effect,
+				[action.dieId]
+			)
+		},
 		completePhase: (phaseIndex: number): TimelineProgressEvent => {
 			const phase = plan.phases[phaseIndex]
 			if(!phase) throw new Error(`Timeline phase index ${phaseIndex} is out of range.`)
-			for(const action of phase.actions) {
-				if(action.kind === 'explode') {
-					setVisible({ id: action.dieId, value: action.value, discarded: action.discarded })
-				} else if(action.kind === 'reroll') {
-					const current = visible.get(action.dieId)
-					if(current) setVisible({ ...current, value: action.to })
-				} else if(action.kind === 'selection') {
-					const current = visible.get(action.dieId)
-					if(current) setVisible({ ...current, discarded: action.discarded })
-				}
-			}
+			for(const action of phase.actions) applyAction(action)
 			for(const sequence of phase.eventSequences) completedSequences.add(sequence)
 			return snapshot(
 				'phase',

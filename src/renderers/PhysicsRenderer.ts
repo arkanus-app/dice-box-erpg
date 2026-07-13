@@ -19,8 +19,14 @@ import type {
 	RequiredViewerOptions,
 	ResolvedThemeConfig
 } from '../types'
-import type { TimelineEffectName } from '../timeline'
+import {
+	dispatchTimelineProgress,
+	type TimelineEffectName,
+	type TimelineSpawnAction
+} from '../timeline'
 import { DisplayCancelledError } from '../errors'
+import { createSeededRandom } from '../random'
+import { createPhysicsExplosionScheduler } from '../physicsTimelineScheduler'
 import {
 	canStartFinalLock,
 	canBodyContactActAsSupport,
@@ -61,6 +67,7 @@ import {
 import KinematicRenderer, {
 	hasEnteredLaunchPortal,
 	type TimelineVisualHandle,
+	type TimelinePlaybackContext,
 	type VisualEntry
 } from './KinematicRenderer'
 import {
@@ -133,6 +140,13 @@ const CONTACT_GRACE_MS = DICE_PHYSICS_SUB_TIME_STEP_MS * 3.5
 export interface PhysicsBodyBuildPlan {
 	readonly disposeExisting: boolean
 	readonly totalBodyCount: number
+}
+
+interface ScheduledPhysicsExplosion {
+	readonly phaseIndex: number
+	readonly actionIndex: number
+	readonly action: TimelineSpawnAction
+	readonly handle: TimelineVisualHandle
 }
 
 export const planPhysicsBodyBuild = (
@@ -248,13 +262,150 @@ export class PhysicsRenderer extends KinematicRenderer {
 		return this.#runPhysicsAnimation(signal, durationMs)
 	}
 
-	#runPhysicsAnimation(signal: AbortSignal, requestedDurationMs: number): Promise<void> {
+	protected override async displayInitialAndExplosionTimeline(
+		playback: TimelinePlaybackContext
+	): Promise<number> {
+		let explosionPhaseCount = 0
+		while(playback.plan.phases[explosionPhaseCount]?.actions[0]?.kind === 'explode') {
+			explosionPhaseCount++
+		}
+		if(explosionPhaseCount === 0) {
+			return super.displayInitialAndExplosionTimeline(playback)
+		}
+
+		const scheduledByChild = new Map<string, ScheduledPhysicsExplosion>()
+		const scheduledItems: ScheduledPhysicsExplosion[] = []
+		const entriesByDieId = new Map<string, readonly VisualEntry[]>()
+		const dieIdByEntry = new Map<VisualEntry, string>()
+		for(const [dieId, handle] of playback.handles) {
+			entriesByDieId.set(dieId, handle.entries)
+			for(const entry of handle.entries) dieIdByEntry.set(entry, dieId)
+		}
+
+		for(let phaseIndex = 0; phaseIndex < explosionPhaseCount; phaseIndex++) {
+			const phase = playback.plan.phases[phaseIndex]!
+			const spawnBodyCount = phase.actions.reduce((count, action) => {
+				if(action.kind !== 'explode') return count
+				return count + (playback.plan.definitions.get(action.dieId)?.sides === 100 ? 2 : 1)
+			}, 0)
+			let spawnIndex = 0
+			for(let actionIndex = 0; actionIndex < phase.actions.length; actionIndex++) {
+				const action = phase.actions[actionIndex]!
+				if(action.kind !== 'explode') continue
+				const definition = playback.plan.definitions.get(action.dieId)!
+				const die = {
+					...definition,
+					value: action.value,
+					discarded: action.discarded
+				} as NormalizedResolvedDie
+				const handle = await this.createTimelineEntries(
+					die,
+					playback.configs.get(definition.theme)!,
+					spawnIndex,
+					spawnBodyCount,
+					`${playback.plan.seed}:${phase.id}:${action.dieId}`
+				)
+				spawnIndex += handle.entries.length
+				for(const entry of handle.entries) {
+					entry.launchDelayMs = 0
+					entry.node.setEnabled(false)
+				}
+				playback.handles.set(action.dieId, handle)
+				entriesByDieId.set(action.dieId, handle.entries)
+				for(const entry of handle.entries) dieIdByEntry.set(entry, action.dieId)
+				const scheduled = { phaseIndex, actionIndex, action, handle }
+				scheduledByChild.set(action.dieId, scheduled)
+				scheduledItems.push(scheduled)
+			}
+		}
+
+		const settledEntries = new Set<VisualEntry>()
+		const settledDice = new Set<string>()
+		const scheduler = createPhysicsExplosionScheduler(scheduledItems.map(scheduled => ({
+			phaseIndex: scheduled.phaseIndex,
+			actionIndex: scheduled.actionIndex,
+			parentDieId: scheduled.action.parentDieId,
+			dieId: scheduled.action.dieId
+		})))
+		const configureSourceLaunch = (scheduled: ScheduledPhysicsExplosion): void => {
+			const parent = playback.handles.get(scheduled.action.parentDieId)
+			if(this.options!.timeline.effects.explode.origin !== 'source' || !parent?.entries[0]) return
+			const phase = playback.plan.phases[scheduled.phaseIndex]!
+			const random = createSeededRandom(
+				`${playback.plan.seed}:${phase.id}:${scheduled.action.dieId}:source`
+			)
+			for(let index = 0; index < scheduled.handle.entries.length; index++) {
+				const entry = scheduled.handle.entries[index]!
+				const parentEntry = parent.entries[index % parent.entries.length]!
+				entry.start.set(
+					parentEntry.node.position.x
+						+ random.range(-1, 1) * this.options!.timeline.effects.explode.spread,
+					parentEntry.node.position.y + parentEntry.supportHeight + entry.supportHeight
+						+ this.options!.timeline.effects.explode.burstHeight,
+					parentEntry.node.position.z
+						+ random.range(-1, 1) * this.options!.timeline.effects.explode.spread
+				)
+				entry.node.position.copyFrom(entry.start)
+				const direction = entry.end.subtract(entry.start).normalize()
+				entry.launchVelocity.copyFrom(
+					direction.scale(Math.max(2.4, this.options!.throwForce * 0.55))
+				)
+				entry.launchVelocity.y = Math.max(
+					2.8,
+					this.options!.timeline.effects.explode.burstHeight * 2
+				)
+			}
+		}
+		const spawnChildren = (items: readonly { readonly dieId: string }[]): void => {
+			for(const item of items) {
+				const scheduled = scheduledByChild.get(item.dieId)
+				if(!scheduled) continue
+				configureSourceLaunch(scheduled)
+				this.createBodies(scheduled.handle.entries, true)
+			}
+		}
+		const reportSettledEntry = (entry: VisualEntry): void => {
+			settledEntries.add(entry)
+			const dieId = dieIdByEntry.get(entry)
+			if(!dieId || settledDice.has(dieId)) return
+			const entries = entriesByDieId.get(dieId) ?? []
+			if(entries.some(candidate => !settledEntries.has(candidate))) return
+			settledDice.add(dieId)
+			const transition = scheduler.settle(dieId)
+			if(transition.completed) {
+				dispatchTimelineProgress(
+					this.options!.onTimelineProgress,
+					playback.progress.completePhaseAction(
+						transition.completed.phaseIndex,
+						transition.completed.actionIndex
+					)
+				)
+			}
+			spawnChildren(transition.spawned)
+		}
+
+		dispatchTimelineProgress(this.options!.onTimelineProgress, playback.progress.initial())
+		this.createBodies(playback.initialEntries)
+		await this.#runPhysicsAnimation(
+			playback.signal,
+			this.options!.settleTimeout,
+			reportSettledEntry
+		)
+		return explosionPhaseCount
+	}
+
+	#runPhysicsAnimation(
+		signal: AbortSignal,
+		requestedDurationMs: number,
+		onEntrySettled?: (entry: VisualEntry) => void
+	): Promise<void> {
 		const engine = this.engine!
 		const scene = this.scene!
 		const duration = Math.max(250, requestedDurationMs)
 		return new Promise<void>((resolve, reject) => {
 			let settled = false
-		const beforePhysicsObserver = scene.onBeforePhysicsObservable.add(() => {
+			const reportedEntries = new Set<VisualEntry>()
+			const beforePhysicsObserver = scene.onBeforePhysicsObservable.add(() => {
 				for(const activeBody of this.#bodies) {
 					this.#updateGuidance(activeBody, this.#physicsStepMs, duration)
 				}
@@ -300,6 +451,18 @@ export class PhysicsRenderer extends KinematicRenderer {
 					if(candidate) this.#startFinalLock(candidate, true)
 				}
 				scene.render()
+				if(onEntrySettled) {
+					try {
+						for(const activeBody of this.#bodies) {
+							if(!activeBody.locked || reportedEntries.has(activeBody.entry)) continue
+							reportedEntries.add(activeBody.entry)
+							onEntrySettled(activeBody.entry)
+						}
+					} catch(error) {
+						finish(error)
+						return
+					}
+				}
 				if(this.#bodies.every(activeBody => activeBody.locked)) finish()
 			}
 			signal.addEventListener('abort', abort, { once: true })
