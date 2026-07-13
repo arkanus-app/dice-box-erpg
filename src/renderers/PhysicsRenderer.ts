@@ -54,6 +54,7 @@ import {
 	DICE_PHYSICS_TIME_STEP,
 	getDicePhysicsStep,
 	hasPhysicsLaunchPairClearance,
+	planPhysicsAppendLanding,
 	planPhysicsAppendLaunch,
 	shouldRecoverPhysicsBody
 } from '../physicsSafety'
@@ -77,6 +78,7 @@ import { DISPLAY_CAMERA_FOV, DISPLAY_CAMERA_HEIGHT } from './sceneEnvironment'
 import {
 	clampHorizontalPosition,
 	computeDisplayViewportBounds,
+	getHorizontalCenterBounds,
 	type DisplayViewportBounds
 } from './viewportBounds'
 
@@ -918,23 +920,55 @@ export class PhysicsRenderer extends KinematicRenderer {
 	}
 
 	#prepareAppendLaunches(entries: readonly VisualEntry[]): void {
-		const occupants = this.#bodies.map(activeBody => ({
+		const launchOccupants = this.#bodies.map(activeBody => ({
+			position: activeBody.entry.node.position,
+			radius: activeBody.entry.horizontalRadius
+		}))
+		const landingOccupants = this.#bodies.map(activeBody => ({
 			position: activeBody.entry.node.position,
 			radius: activeBody.entry.horizontalRadius
 		}))
 		for(const entry of entries) {
 			const edgeLaunch = this.#timelineEdgeLaunch.get(entry)
+			if(this.#bounds) {
+				const landing = planPhysicsAppendLanding(
+					entry.end,
+					entry.horizontalRadius,
+					landingOccupants,
+					getHorizontalCenterBounds(this.#bounds, entry.horizontalRadius)
+				)
+				entry.end.set(landing.x, entry.supportHeight, landing.z)
+			}
+			const maximumSourceY = Math.max(entry.start.y, this.options!.startingHeight)
 			const plan = planPhysicsAppendLaunch(
 				entry.start,
+				{ x: entry.end.x, y: maximumSourceY, z: entry.end.z },
 				edgeLaunch?.position ?? entry.start,
 				entry.horizontalRadius,
-				occupants,
-				Math.max(entry.start.y, this.options!.startingHeight)
+				launchOccupants,
+				maximumSourceY
 			)
 			entry.start.set(plan.position.x, plan.position.y, plan.position.z)
 			entry.node.position.copyFrom(entry.start)
-			if(plan.useFallback && edgeLaunch) entry.launchVelocity.copyFrom(edgeLaunch.velocity)
-			occupants.push({ position: entry.start, radius: entry.horizontalRadius })
+			if(plan.origin === 'overhead') {
+				entry.launchVelocity.set(0, -Math.max(1.4, this.options!.throwForce * 0.25), 0)
+			} else if(plan.origin === 'edge' && edgeLaunch) {
+				entry.launchVelocity.copyFrom(edgeLaunch.velocity)
+			} else if(plan.origin === 'source') {
+				const deltaX = entry.end.x - entry.start.x
+				const deltaZ = entry.end.z - entry.start.z
+				const distance = Math.hypot(deltaX, deltaZ)
+				if(distance > 0.0001) {
+					const horizontalSpeed = Math.max(
+						2.4,
+						Math.hypot(entry.launchVelocity.x, entry.launchVelocity.z)
+					)
+					entry.launchVelocity.x = deltaX / distance * horizontalSpeed
+					entry.launchVelocity.z = deltaZ / distance * horizontalSpeed
+				}
+			}
+			launchOccupants.push({ position: entry.start, radius: entry.horizontalRadius })
+			landingOccupants.push({ position: entry.end, radius: entry.horizontalRadius })
 		}
 	}
 

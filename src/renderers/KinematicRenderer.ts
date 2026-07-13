@@ -43,7 +43,7 @@ export interface VisualEntry {
 	readonly supportHeight: number
 	readonly horizontalRadius: number
 	readonly launchEdge: LaunchEdge
-	readonly launchDelayMs: number
+	launchDelayMs: number
 	target: Quaternion
 	readonly spinX: number
 	readonly spinY: number
@@ -518,19 +518,42 @@ export class KinematicRenderer implements DisplayRenderer {
 			}
 			await this.waitForTimeline(this.options!.timeline.phaseGapMs + phase.delayMs, signal)
 			if(phase.actions[0]?.kind === 'explode') {
-				const parentEntries = phase.actions.flatMap(action =>
-					action.kind === 'explode' ? handles.get(action.parentDieId)?.entries ?? [] : []
-				)
+				const parentHandles = new Map<string, TimelineVisualHandle>()
+				for(const action of phase.actions) {
+					if(action.kind !== 'explode') continue
+					const handle = handles.get(action.parentDieId)
+					if(handle) parentHandles.set(action.parentDieId, handle)
+				}
+				const parentEntries = [...parentHandles.values()].flatMap(handle => handle.entries)
+				const pulseColorByEntry = new Map<VisualEntry, string>()
+				for(const handle of parentHandles.values()) {
+					const color = handle.die.sides === 2
+						? handle.theme.coin.edgeColor || handle.die.themeColor
+						: handle.die.themeColor
+					for(const entry of handle.entries) pulseColorByEntry.set(entry, color)
+				}
 				const cueDuration = Math.min(220, phase.durationMs * 0.25)
 				if(parentEntries.length && cueDuration > 0) {
-					await this.pulseTimelineEntries(parentEntries, phase.effect, cueDuration, 1, signal)
+					await this.pulseTimelineEntries(
+						parentEntries,
+						phase.effect,
+						cueDuration,
+						1,
+						signal,
+						entry => pulseColorByEntry.get(entry)
+					)
 				}
 				const spawned: VisualEntry[] = []
+				const explosionActionCount = phase.actions.filter(action => action.kind === 'explode').length
+				const explosionStaggerMs = explosionActionCount > 1
+					? Math.min(120, Math.max(0, phase.durationMs - cueDuration) * 0.6 / (explosionActionCount - 1))
+					: 0
 				const spawnBodyCount = phase.actions.reduce((count, action) => {
 					if(action.kind !== 'explode') return count
 					return count + (plan.definitions.get(action.dieId)?.sides === 100 ? 2 : 1)
 				}, 0)
 				let spawnIndex = 0
+				let explosionChildIndex = 0
 				for(const action of phase.actions) {
 					if(action.kind !== 'explode') continue
 					const definition = plan.definitions.get(action.dieId)!
@@ -546,6 +569,13 @@ export class KinematicRenderer implements DisplayRenderer {
 						spawnBodyCount,
 						`${plan.seed}:${phase.id}:${action.dieId}`
 					)
+					for(const entry of handle.entries) {
+						entry.launchDelayMs = Math.max(
+							entry.launchDelayMs,
+							explosionChildIndex * explosionStaggerMs
+						)
+					}
+					explosionChildIndex++
 					spawnIndex += handle.entries.length
 					const parent = handles.get(action.parentDieId)
 					if(this.options!.timeline.effects.explode.origin === 'source' && parent?.entries[0]) {
@@ -818,15 +848,21 @@ export class KinematicRenderer implements DisplayRenderer {
 		effectName: TimelineEffectName,
 		durationMs: number,
 		pulses: number,
-		signal: AbortSignal
+		signal: AbortSignal,
+		colorForEntry?: (entry: VisualEntry) => string | undefined
 	): Promise<void> {
 		if(durationMs <= 0) return Promise.resolve()
 		const effect = this.options!.timeline.effects[effectName]
 		const layer = new HighlightLayer(`timeline-${effectName}-${Date.now()}`, this.scene!, { blurTextureSizeRatio: 0.25 })
-		let color: Color3
-		try { color = Color3.FromHexString(effect.color) } catch { color = Color3.White() }
 		for(const entry of entries) for(const mesh of this.getTimelineMeshes(entry)) {
-			if(mesh instanceof Mesh) layer.addMesh(mesh, color)
+			if(!(mesh instanceof Mesh)) continue
+			let color: Color3
+			try {
+				color = Color3.FromHexString(colorForEntry?.(entry) || effect.color)
+			} catch {
+				try { color = Color3.FromHexString(effect.color) } catch { color = Color3.White() }
+			}
+			layer.addMesh(mesh, color)
 		}
 		return this.runTimelineAnimation(Math.max(1, durationMs), signal, progress => {
 			layer.blurHorizontalSize = 0.5 + Math.sin(progress * Math.PI * Math.max(1, pulses)) ** 2 * 2.5 * effect.intensity

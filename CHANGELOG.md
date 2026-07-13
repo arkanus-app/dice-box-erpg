@@ -4,6 +4,19 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 ## [Não publicado]
 
+## [2.2.1] - 2026-07-13
+
+### Corrigido
+
+- filhos explosivos agora reservam um destino livre entre os corpos já assentados, evitando dados e moedas visualmente sobrepostos;
+- quando a região acima do pai está ocupada, o filho cai pelo alto sobre o destino reservado antes de recorrer à borda;
+- o brilho do cue de explosão usa a cor efetiva de cada dado, incluindo a cor da borda para moedas, com a cor configurada do efeito como fallback.
+
+### Validado
+
+- cadeias de moedas explosivas permanecem faseadas e revelam um filho por vez;
+- testes de clearance cobrem queda superior e múltiplos destinos anexados sem sobreposição.
+
 ## [2.2.0] - 2026-07-12
 
 ### Adicionado
@@ -290,7 +303,8 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 - tema `default-v2` consolidado no baseline `81c2ca9` em 30/05/2026.
 
-[Não publicado]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.2.0...HEAD
+[Não publicado]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.2.1...HEAD
+[2.2.1]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.1.1...v2.2.0
 [2.1.1]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.5...v2.1.0

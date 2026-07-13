@@ -22,7 +22,14 @@ export interface PhysicsLaunchOccupant {
 
 export interface PhysicsAppendLaunchPlan {
 	readonly position: PhysicsBodyPosition
-	readonly useFallback: boolean
+	readonly origin: 'source' | 'overhead' | 'edge'
+}
+
+export interface PhysicsLandingBounds {
+	readonly minX: number
+	readonly maxX: number
+	readonly minZ: number
+	readonly maxZ: number
 }
 
 export interface DicePhysicsStep {
@@ -92,13 +99,68 @@ export const hasPhysicsLaunchPairClearance = (
 
 const PHYSICS_APPEND_CLEARANCE_EPSILON = 0.001
 
+const hasPhysicsHorizontalClearance = (
+	position: PhysicsBodyPosition,
+	radius: number,
+	occupants: readonly PhysicsLaunchOccupant[]
+): boolean => {
+	const safeRadius = Number.isFinite(radius) ? Math.max(0, radius) : 0
+	for(const occupant of occupants) {
+		const occupantRadius = Number.isFinite(occupant.radius)
+			? Math.max(0, occupant.radius)
+			: 0
+		const minimumDistance = (safeRadius + occupantRadius)
+			* PHYSICS_LAUNCH_CLEARANCE_MULTIPLIER
+		const deltaX = position.x - occupant.position.x
+		const deltaZ = position.z - occupant.position.z
+		if(deltaX * deltaX + deltaZ * deltaZ < minimumDistance * minimumDistance) return false
+	}
+	return true
+}
+
+const clampLandingCoordinate = (value: number, minimum: number, maximum: number): number =>
+	Math.max(minimum, Math.min(maximum, Number.isFinite(value) ? value : 0))
+
+/** Reserves a deterministic visible landing slot for an appended die. Timeline
+ * children are planned separately from the initial throw, so their original
+ * target often overlaps a root. The expanding golden-angle search keeps the
+ * closest clear slot and lets Havok handle the genuinely full-board case. */
+export const planPhysicsAppendLanding = (
+	desiredPosition: PhysicsBodyPosition,
+	radius: number,
+	occupants: readonly PhysicsLaunchOccupant[],
+	bounds: PhysicsLandingBounds
+): PhysicsBodyPosition => {
+	const clampCandidate = (x: number, z: number): PhysicsBodyPosition => ({
+		x: clampLandingCoordinate(x, bounds.minX, bounds.maxX),
+		y: desiredPosition.y,
+		z: clampLandingCoordinate(z, bounds.minZ, bounds.maxZ)
+	})
+	const desired = clampCandidate(desiredPosition.x, desiredPosition.z)
+	if(hasPhysicsHorizontalClearance(desired, radius, occupants)) return desired
+
+	const safeRadius = Number.isFinite(radius) ? Math.max(0.01, radius) : 0.01
+	const spacing = safeRadius * 2 * PHYSICS_LAUNCH_CLEARANCE_MULTIPLIER
+	const goldenAngle = Math.PI * (3 - Math.sqrt(5))
+	for(let index = 1; index <= 96; index++) {
+		const distance = spacing * Math.sqrt(index)
+		const angle = goldenAngle * index
+		const candidate = clampCandidate(
+			desired.x + Math.cos(angle) * distance,
+			desired.z + Math.sin(angle) * distance
+		)
+		if(hasPhysicsHorizontalClearance(candidate, safeRadius, occupants)) return candidate
+	}
+	return desired
+}
+
 /** Finds the lowest point directly above a requested source that clears every
- * active collider. Explosive children prefer that source, but use their
- * original edge launch when a safe source would leave the normal launch
- * volume. The fallback is lifted as a final safety measure and therefore
- * cannot deadlock admission behind a settled body. */
+ * active collider. Explosive children prefer that source, then fall vertically
+ * over their reserved landing slot. The original edge trajectory remains only
+ * as an emergency for invalid geometry. */
 export const planPhysicsAppendLaunch = (
 	desiredPosition: PhysicsBodyPosition,
+	overheadPosition: PhysicsBodyPosition,
 	fallbackPosition: PhysicsBodyPosition,
 	radius: number,
 	occupants: readonly PhysicsLaunchOccupant[],
@@ -137,11 +199,17 @@ export const planPhysicsAppendLaunch = (
 	}
 
 	const source = liftAboveOccupants(desiredPosition, maximumSourceY)
-	if(source) return { position: source, useFallback: false }
+	if(source) return { position: source, origin: 'source' }
+	const overhead = liftAboveOccupants({
+		x: overheadPosition.x,
+		y: Math.max(overheadPosition.y, maximumSourceY),
+		z: overheadPosition.z
+	}, Number.POSITIVE_INFINITY)
+	if(overhead) return { position: overhead, origin: 'overhead' }
 	return {
 		position: liftAboveOccupants(fallbackPosition, Number.POSITIVE_INFINITY)
 			?? { ...fallbackPosition },
-		useFallback: true
+		origin: 'edge'
 	}
 }
 

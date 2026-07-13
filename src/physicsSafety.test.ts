@@ -13,6 +13,7 @@ import {
 	LARGE_DICE_PHYSICS_SUB_TIME_STEP_MS,
 	LARGE_DICE_PHYSICS_TIME_STEP,
 	PHYSICS_LAUNCH_CLEARANCE_MULTIPLIER,
+	planPhysicsAppendLanding,
 	planPhysicsAppendLaunch,
 	shouldRecoverPhysicsBody
 } from './physicsSafety'
@@ -82,29 +83,51 @@ describe('adaptive physics resolution and launch clearance', () => {
 
 		const planned = planPhysicsAppendLaunch(
 			requestedSource,
+			{ x: 2.4, y: 7.6, z: 1.8 },
 			{ x: -8.4, y: 7.6, z: 0 },
 			radius,
 			roots,
 			7.6
 		)
-		assert.equal(planned.useFallback, false)
+		assert.equal(planned.origin, 'source')
 		assert.ok(planned.position.y > requestedSource.y)
 		assert.equal(hasPhysicsLaunchClearance(planned.position, radius, roots), true)
 	})
 
-	it('falls back to the edge when clearing a source would exceed the launch volume', () => {
+	it('falls from overhead when clearing a source would exceed the launch volume', () => {
 		const radius = 0.817
 		const roots = [{ position: { x: 0, y: 7.2, z: 0 }, radius }]
 		const planned = planPhysicsAppendLaunch(
 			{ x: 0, y: 7.4, z: 0 },
+			{ x: 2.4, y: 7.6, z: 1.8 },
 			{ x: -8.4, y: 7.6, z: 0 },
 			radius,
 			roots,
 			7.6
 		)
-		assert.equal(planned.useFallback, true)
-		assert.deepEqual(planned.position, { x: -8.4, y: 7.6, z: 0 })
+		assert.equal(planned.origin, 'overhead')
+		assert.deepEqual(planned.position, { x: 2.4, y: 7.6, z: 1.8 })
 		assert.equal(hasPhysicsLaunchClearance(planned.position, radius, roots), true)
+	})
+
+	it('reserves separate visible landing slots for appended children', () => {
+		const radius = 0.8
+		const bounds = { minX: -4, maxX: 4, minZ: -3, maxZ: 3 }
+		const occupants = [{ position: { x: 0, y: 0.8, z: 0 }, radius }]
+		const first = planPhysicsAppendLanding({ x: 0, y: 0.8, z: 0 }, radius, occupants, bounds)
+		const second = planPhysicsAppendLanding(
+			{ x: 0, y: 0.8, z: 0 },
+			radius,
+			[...occupants, { position: first, radius }],
+			bounds
+		)
+
+		assert.notDeepEqual(first, occupants[0]!.position)
+		assert.notDeepEqual(second, first)
+		assert.ok(first.x >= bounds.minX && first.x <= bounds.maxX)
+		assert.ok(first.z >= bounds.minZ && first.z <= bounds.maxZ)
+		assert.equal(hasPhysicsLaunchClearance(first, radius, occupants), true)
+		assert.equal(hasPhysicsLaunchClearance(second, radius, [...occupants, { position: first, radius }]), true)
 	})
 })
 
