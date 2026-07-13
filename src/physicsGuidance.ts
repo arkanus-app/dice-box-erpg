@@ -95,8 +95,10 @@ const BASE_PROFILE: PhysicsGuidanceProfile = {
 	minGroundImpacts: 1,
 	bounceGraceMs: 130,
 	durationMs: 1800,
-	angleThreshold: 0.04,
-	settleDeadZoneAngle: 0.024,
+	// Minor collision-induced lean must not delay semantic phases once the
+	// authoritative face is still clearly the resolved top face.
+	angleThreshold: Math.PI / 12,
+	settleDeadZoneAngle: Math.PI / 18,
 	landingSpinRetention: 0.28,
 	landingApproachAngle: 0.12,
 	finalLockDurationMs: 220,
@@ -134,6 +136,10 @@ const PROFILES: Readonly<Record<number, PhysicsGuidanceProfile>> = {
 		minElapsedMs: 450,
 		forceGuideElapsedMs: 1120,
 		durationMs: 1450,
+		// A coin face remains unambiguous with a modest natural tilt. Accepting
+		// that cone prevents a readable d2 resting against another coin from
+		// waiting for the timeout before its semantic follow-up can begin.
+		angleThreshold: Math.PI / 9,
 		angularStrength: 4.2,
 		maxAngularVelocity: 5.2,
 		landingSpinRetention: 0.1,
@@ -147,7 +153,7 @@ const PROFILES: Readonly<Record<number, PhysicsGuidanceProfile>> = {
 		settleMaxAngularAcceleration: 12,
 		stableDurationMs: 220,
 		minFinalLockElapsedMs: 1900,
-		settleDeadZoneAngle: 0.018,
+		settleDeadZoneAngle: Math.PI / 12,
 		maxSettleLinearVelocity: 0.22,
 		maxSettleAngularVelocity: 0.28,
 		finalLockMaxAngularSpeed: 0.6,

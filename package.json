@@ -1,12 +1,12 @@
 {
   "name": "@erpg/dice3dview",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "author": {
     "name": "Quir and Codex"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/arkanus-app/dice-box-erpg"
+    "url": "git+https://github.com/arkanus-app/dice-box-erpg.git"
   },
   "main": "./dist/dice3dview.es.js",
   "module": "./dist/dice3dview.es.js",

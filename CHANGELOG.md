@@ -4,6 +4,18 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 ## [Não publicado]
 
+## [2.2.3] - 2026-07-13
+
+### Corrigido
+
+- dados apoiados com uma pequena inclinação causada por colisões agora podem estabilizar e liberar explosões ou rerolls sem aguardar o timeout;
+- a d2 usa um cone de inferência próprio, mais amplo, sem confundir a face oposta nem aceitar a moeda apoiada de lado.
+
+### Validado
+
+- cobertura de assentamento inclinado para d2, d4, d6, d8, d10, d12, d20 e d100;
+- os cones aceitos permanecem menores que metade da distância angular até a face vizinha em todos os modelos poliédricos.
+
 ## [2.2.2] - 2026-07-13
 
 ### Alterado
@@ -315,7 +327,8 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 - tema `default-v2` consolidado no baseline `81c2ca9` em 30/05/2026.
 
-[Não publicado]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.2.2...HEAD
+[Não publicado]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.2.3...HEAD
+[2.2.3]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.2.2...v2.2.3
 [2.2.2]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.2.1...v2.2.2
 [2.2.1]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.1.1...v2.2.0

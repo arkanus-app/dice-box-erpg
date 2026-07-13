@@ -10,6 +10,7 @@ import {
 	getSupportHeight,
 	getTargetQuaternion
 } from './renderers/PolyhedralFactory'
+import { getPhysicsGuidanceProfile } from './physicsGuidance'
 
 interface SerializedMesh {
 	readonly name: string
@@ -152,6 +153,44 @@ describe('default polyhedral orientation data', () => {
 						`${type} yaw tilted selected value ${String(selectedValue)} away from vertical`
 					)
 				}
+			}
+		} finally {
+			scene.dispose()
+			engine.dispose()
+		}
+	})
+
+	it('keeps every settle inference cone inside the nearest face boundary', () => {
+		const model = loadDefaultModel()
+		const engine = new NullEngine()
+		const scene = new Scene(engine)
+
+		try {
+			for(const sides of SUPPORTED_POLYHEDRA) {
+				const type = `d${String(sides)}`
+				const source = model.meshes.find(mesh => mesh.name === `${type}_collider`)
+				const faceMap = model.colliderFaceMap[type]
+				assert.ok(source)
+				assert.ok(faceMap)
+				const collider = createCollider(source, scene)
+				const normals = getFaceValues(faceMap).map(value =>
+					getAggregateFaceNormal(collider, faceMap, value)
+				)
+				let nearestFaceAngle = Math.PI
+				for(let left = 0; left < normals.length; left++) {
+					for(let right = left + 1; right < normals.length; right++) {
+						const dot = Vector3.Dot(normals[left]!, normals[right]!)
+						nearestFaceAngle = Math.min(
+							nearestFaceAngle,
+							Math.acos(Math.max(-1, Math.min(1, dot)))
+						)
+					}
+				}
+
+				assert.ok(
+					getPhysicsGuidanceProfile(sides).angleThreshold < nearestFaceAngle / 2,
+					`${type} inference cone could overlap a neighbouring face`
+				)
 			}
 		} finally {
 			scene.dispose()

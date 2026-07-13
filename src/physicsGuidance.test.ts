@@ -159,7 +159,8 @@ describe('physics guidance profiles', () => {
 			const actual = getPhysicsGuidanceProfile(sides)
 			assert.equal(actual.minGroundImpacts, 1)
 			assert.equal(actual.bounceGraceMs, 130)
-			assert.equal(actual.angleThreshold, 0.04)
+			assertApproximately(actual.angleThreshold, sides === 2 ? Math.PI / 9 : Math.PI / 12)
+			assertApproximately(actual.settleDeadZoneAngle, sides === 2 ? Math.PI / 12 : Math.PI / 18)
 			assert.equal(actual.maxLockHeight, 2.05)
 			assert.equal(actual.bodyContactSettleDelayMs, 180)
 			assert.equal(actual.timeoutWindowMs, 650)
@@ -247,7 +248,10 @@ describe('resolved-face alignment', () => {
 				assertApproximately(natural.remainingAngle, 0.03, 1e-8)
 				assertQuaternionEquivalent(natural.targetQuaternion, safePose, 1e-10)
 
-				const tiltedPose = Quaternion.RotationAxis(Vector3.Forward(), 0.12)
+				const tiltedPose = Quaternion.RotationAxis(
+					Vector3.Forward(),
+					profile.settleDeadZoneAngle + 0.12
+				)
 					.multiply(Quaternion.RotationAxis(Vector3.Up(), yaw))
 					.normalize()
 				const corrected = getTolerantFaceAlignment(
@@ -934,6 +938,33 @@ describe('guidance transition criteria', () => {
 			bodyContactElapsedMs: profile.bodyContactSettleDelayMs,
 			lastBodyContactElapsedMs: ready.elapsedMs
 		}, profile), true)
+	})
+
+	it('accepts readable collision tilt for every supported die profile', () => {
+		for(const sides of [2, 4, 6, 8, 10, 12, 20, 100]) {
+			const dieProfile = getPhysicsGuidanceProfile(sides)
+			const readiness = {
+				angle: dieProfile.settleDeadZoneAngle * 0.95,
+				angularSpeed: 0,
+				elapsedMs: dieProfile.minFinalLockElapsedMs,
+				groundContactElapsedMs: 220,
+				hasGroundContact: true,
+				linearSpeed: 0,
+				positionY: dieProfile.maxLockHeight,
+				stableElapsedMs: dieProfile.stableDurationMs
+			}
+
+			assert.equal(
+				canStartFinalLock(readiness, dieProfile),
+				true,
+				`d${String(sides)} should settle with a readable collision tilt`
+			)
+			assert.equal(
+				canStartFinalLock({ ...readiness, angle: dieProfile.angleThreshold + 0.001 }, dieProfile),
+				false,
+				`d${String(sides)} should reject a pose outside its inference cone`
+			)
+		}
 	})
 
 	it('never releases the lock gate merely because timeout expired while the angle is large', () => {
