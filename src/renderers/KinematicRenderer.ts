@@ -1,5 +1,6 @@
 import { Quaternion, Vector3 } from '@babylonjs/core/Maths/math.vector'
 import { Color3 } from '@babylonjs/core/Maths/math.color'
+import '@babylonjs/core/Layers/effectLayerSceneComponent'
 import { HighlightLayer } from '@babylonjs/core/Layers/highlightLayer'
 import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture'
 import { Texture } from '@babylonjs/core/Materials/Textures/texture'

@@ -4,6 +4,18 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 ## [Não publicado]
 
+## [2.1.1] - 2026-07-12
+
+### Corrigido
+
+- registro do `EffectLayerSceneComponent` do Babylon antes de criar os highlights usados pelos cues da timeline;
+- falhas de renderização da timeline agora são propagadas ao consumidor em vez de resolver a apresentação parcialmente como sucesso.
+
+### Validado
+
+- teste de regressão com `NullEngine` confirma que o highlight da explosão pode ser criado sem a exceção de side effect;
+- reprodução física de `3d6!` confirma que o filho explosivo aparece depois dos três corpos iniciais.
+
 ## [2.1.0] - 2026-07-12
 
 ### Adicionado
@@ -261,7 +273,8 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 - tema `default-v2` consolidado no baseline `81c2ca9` em 30/05/2026.
 
-[Não publicado]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.1.0...HEAD
+[Não publicado]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.1.1...HEAD
+[2.1.1]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.5...v2.1.0
 [2.0.5]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.4...v2.0.5
 [2.0.4]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.0.3...v2.0.4

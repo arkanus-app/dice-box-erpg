@@ -1,6 +1,6 @@
 import { createDisplayCanvas } from './canvas'
 import { normalizeDisplayRequest, getDisplayBodyCount } from './displayRequest'
-import { DisplayCancelledError, isDisplayCancelledError } from './errors'
+import { DisplayCancelledError, isDisplayCancelledError, rethrowPresentationError } from './errors'
 import KinematicRenderer from './renderers/KinematicRenderer'
 import { ThemeRepository } from './themeRepository'
 import { normalizeDisplayTimelineRequest, planDiceTimeline } from './timeline'
@@ -114,8 +114,10 @@ export class DiceResultViewer {
 				await renderer.displayTimeline(plan, controller.signal)
 			}
 		} catch(error) {
-			if(isDisplayCancelledError(error) || controller.signal.aborted) throw new DisplayCancelledError()
-			console.error('[DiceResultViewer] Timeline presentation failed:', error)
+			if(!isDisplayCancelledError(error) && !controller.signal.aborted) {
+				console.error('[DiceResultViewer] Timeline presentation failed:', error)
+			}
+			rethrowPresentationError(error, controller.signal.aborted)
 		} finally {
 			if(this.#active === controller) this.#active = undefined
 		}
