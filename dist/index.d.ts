@@ -11,6 +11,8 @@ export declare interface CoinFaceTheme {
 export declare interface CoinTheme {
     readonly front: CoinFaceTheme;
     readonly back: CoinFaceTheme;
+    /** Uses each die's themeColor as the coin surface behind alpha-masked face artwork. */
+    readonly colorize?: boolean;
     readonly edgeColor?: string;
     readonly diameter?: number;
     readonly thickness?: number;
@@ -22,6 +24,14 @@ export declare interface CollisionEvent {
     readonly body1Id?: string;
     readonly force: number;
 }
+
+export declare const createMixedDisplayRequest: (input: MixedDisplayRequestInput) => DisplayRequest;
+
+/**
+ * Converts the structural SystemDieResult contract from @erpg/dicecore into
+ * the display-only request consumed by DiceResultViewer.
+ */
+export declare const createSystemDisplayRequest: (input: SystemDisplayRequestInput) => DisplayRequest;
 
 export declare const DEFAULT_TIMELINE_OPTIONS: NormalizedTimelineOptions;
 
@@ -101,12 +111,70 @@ export declare interface ExplodeTimelineEvent extends DiceTimelineEventBase {
     readonly reason: 'explode' | 'compound' | 'penetrate';
 }
 
+export declare const getSystemThemeProfile: (profileId: string) => Readonly<{
+    theme: "vampire-v5-normal";
+    themeColor: "#20242e";
+    sides: 10;
+}> | Readonly<{
+    theme: "vampire-v5-hunger";
+    themeColor: "#761827";
+    sides: 10;
+}> | Readonly<{
+    theme: "assimilation";
+    themeColor: "#123b4a";
+    sides: 6;
+}> | Readonly<{
+    theme: "assimilation";
+    themeColor: "#123b4a";
+    sides: 10;
+}> | Readonly<{
+    theme: "assimilation";
+    themeColor: "#123b4a";
+    sides: 12;
+}> | Readonly<{
+    theme: "fate";
+    themeColor: "#315d9b";
+    sides: 6;
+}>;
+
 export declare interface IncludeTimelineEvent extends DiceTimelineEventBase {
     readonly type: 'include';
     readonly contribution: number;
 }
 
 export declare const isDisplayCancelledError: (error: unknown) => error is DisplayCancelledError;
+
+export declare const isSystemDiceProfileId: (value: unknown) => value is SystemDiceProfileId;
+
+export declare interface MixedDicePresentationOptions extends SystemDicePresentationOptions {
+    /**
+     * Unsupported generic dice (for example dF or d7) are omitted by default.
+     * System profiles are always validated and never silently omitted.
+     */
+    readonly unsupportedDice?: 'omit' | 'error';
+    readonly theme?: string;
+    readonly themeColor?: string;
+}
+
+export declare interface MixedDiePresentationInput {
+    readonly id: string;
+    readonly sides: number | string;
+    readonly value: number;
+    readonly rawValue?: number;
+    readonly physicalValue?: number;
+    readonly profileId?: string | null;
+    readonly included?: boolean;
+    readonly discarded?: boolean;
+    readonly theme?: string;
+    readonly themeColor?: string;
+}
+
+export declare interface MixedDisplayRequestInput extends MixedDicePresentationOptions {
+    readonly id: string;
+    readonly dice: readonly MixedDiePresentationInput[];
+    readonly seed?: string;
+    readonly mode?: DisplayMode;
+}
 
 declare interface NormalizedTimelineBadgeEffectOptions extends NormalizedTimelineEffectOptions {
     readonly showBadge: boolean;
@@ -185,6 +253,66 @@ export declare interface RollTimelineEvent extends DiceTimelineEventBase {
     readonly value: number;
 }
 
+export declare const SYSTEM_THEME_PROFILES: Readonly<{
+    readonly 'vampire-v5-normal-d10': Readonly<{
+        theme: "vampire-v5-normal";
+        themeColor: "#20242e";
+        sides: 10;
+    }>;
+    readonly 'vampire-v5-hunger-d10': Readonly<{
+        theme: "vampire-v5-hunger";
+        themeColor: "#761827";
+        sides: 10;
+    }>;
+    readonly 'assimilation-d6': Readonly<{
+        theme: "assimilation";
+        themeColor: "#123b4a";
+        sides: 6;
+    }>;
+    readonly 'assimilation-d10': Readonly<{
+        theme: "assimilation";
+        themeColor: "#123b4a";
+        sides: 10;
+    }>;
+    readonly 'assimilation-d12': Readonly<{
+        theme: "assimilation";
+        themeColor: "#123b4a";
+        sides: 12;
+    }>;
+    readonly 'fate-df': Readonly<{
+        theme: "fate";
+        themeColor: "#315d9b";
+        sides: 6;
+    }>;
+}>;
+
+export declare interface SystemDicePresentationOptions {
+    /**
+     * Assimilação selection IDs. When supplied, every non-selected die is
+     * presented as discarded. Both semantic IDs and sourceDieIds are accepted.
+     */
+    readonly keptIds?: readonly string[];
+    readonly themeColors?: Readonly<Partial<Record<SystemDiceProfileId, string>>>;
+}
+
+export declare type SystemDiceProfileId = keyof typeof SYSTEM_THEME_PROFILES;
+
+export declare interface SystemDiePresentationInput {
+    readonly id: string;
+    readonly sourceDieId?: string;
+    readonly sides: number;
+    readonly value: number;
+    readonly profileId: string;
+    readonly discarded?: boolean;
+}
+
+export declare interface SystemDisplayRequestInput extends SystemDicePresentationOptions {
+    readonly id: string;
+    readonly dice: readonly SystemDiePresentationInput[];
+    readonly seed?: string;
+    readonly mode?: DisplayMode;
+}
+
 export declare interface ThemeConfig {
     readonly name?: string;
     readonly systemName?: string;
@@ -192,8 +320,29 @@ export declare interface ThemeConfig {
     readonly meshFile?: string;
     readonly material: ThemeMaterialConfig;
     readonly diceAvailable: readonly string[];
+    readonly faceAtlas?: ThemeFaceAtlasConfig;
+    readonly faceMetadata?: ThemeFaceMetadata;
     readonly coin?: CoinTheme;
     readonly [key: string]: unknown;
+}
+
+export declare interface ThemeFaceAtlasConfig {
+    readonly layoutId: string;
+    readonly width: number;
+    readonly height: number;
+    readonly model?: string;
+}
+
+export declare interface ThemeFaceDefinition {
+    readonly label: string;
+    readonly symbols: readonly string[];
+}
+
+export declare interface ThemeFaceMetadata {
+    readonly schemaVersion: 1;
+    readonly mappingId: string;
+    readonly symbols: Readonly<Record<string, ThemeSymbolDefinition>>;
+    readonly dice: Readonly<Record<string, Readonly<Record<string, ThemeFaceDefinition>>>>;
 }
 
 export declare interface ThemeMaterialConfig {
@@ -207,6 +356,10 @@ export declare interface ThemeMaterialConfig {
     readonly diffuseLevel?: number;
     readonly bumpLevel?: number;
     readonly specularPower?: number;
+}
+
+export declare interface ThemeSymbolDefinition {
+    readonly label: string;
 }
 
 export declare interface TimelineBadgeEffectOptions extends TimelineEffectOptions {
@@ -293,6 +446,16 @@ export declare interface TimelineRerollEffectOptions extends TimelineEffectOptio
     readonly style?: 'hop' | 'edge' | 'spin';
     readonly hopHeight?: number;
 }
+
+/**
+ * Converts the flattened `rollMixedDice().dice` contract into one 3D request.
+ * Generic and profiled dice preserve their original order and physical faces.
+ */
+export declare const toMixedResolvedDice: (dice: readonly MixedDiePresentationInput[], options?: MixedDicePresentationOptions) => readonly ResolvedDie[];
+
+export declare const toSystemResolvedDice: (dice: readonly SystemDiePresentationInput[], options?: SystemDicePresentationOptions) => readonly ResolvedDie[];
+
+export declare const toSystemResolvedDie: (die: SystemDiePresentationInput, options?: SystemDicePresentationOptions) => ResolvedDie;
 
 export declare interface TransformTimelineEvent extends DiceTimelineEventBase {
     readonly type: 'transform';

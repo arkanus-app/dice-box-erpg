@@ -1,6 +1,6 @@
 {
   "name": "@erpg/dice3dview",
-  "version": "2.2.3",
+  "version": "2.5.0",
   "author": {
     "name": "Quir and Codex"
   },
@@ -66,17 +66,21 @@
     "rpg",
     "dnd",
     "d&d",
-    "tabletop"
+    "tabletop",
+    "fate"
   ],
   "license": "MIT",
   "main-dev": "./src/index",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build && npm run docs:check && npm run bundle:check",
+    "example": "vite --open /example/index.html",
+    "themes:generate:vampire": "node scripts/generate-vampire-themes.mjs",
+    "build": "npm run themes:check && tsc --noEmit && vite build && npm run docs:check && npm run bundle:check",
     "bundle:check": "node scripts/check-bundle.mjs",
     "docs:check": "node scripts/check-docs.mjs",
     "serve": "vite preview",
     "test": "tsx --test src/*.test.ts",
+    "themes:check": "tsx --test src/systemThemeAssets.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "type": "module",

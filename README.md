@@ -4,12 +4,15 @@ Camada TypeScript de apresentação 3D para resultados de dados já resolvidos.
 
 O `@erpg/dicecore` interpreta a fórmula e decide os resultados; o `@erpg/dice3dview` recebe esses valores prontos e apenas os apresenta. A biblioteca não interpreta notação, não sorteia valores e não usa a face física como fonte do resultado.
 
-Versão atual: **2.2.3**.
+Versão atual: **2.5.0**.
+
+> A versão `2.5.0` está preparada neste repositório; este documento não afirma que ela já foi publicada no npm ou marcada com uma tag Git.
 
 ## Documentação
 
 - [Referência completa da API](docs/API.md)
 - [Criação e hospedagem de temas](docs/THEMES.md)
+- [Dados simbólicos: Vampiro V5, Assimilação e Fate](docs/SYMBOLIC_DICE.md)
 - [Migração da v1 para a v2](docs/MIGRATION_V2.md)
 - [Devlog da v2](DEVLOG_V2.md)
 - [Changelog](CHANGELOG.md)
@@ -21,6 +24,8 @@ Versão atual: **2.2.3**.
 - pipeline exclusivamente visual, com o resultado externo como única autoridade;
 - `d2` nativo como moeda procedural configurável por tema;
 - `d4`, `d6`, `d8`, `d10`, `d12`, `d20` e `d100`;
+- temas simbólicos e adaptador estrutural para Vampiro V5, Assimilação e Fate/Fudge;
+- adaptador para apresentar dados genéricos e de múltiplos sistemas no mesmo lançamento;
 - modo cinemático leve como padrão, sem Havok no grafo inicial;
 - modo físico lazy com colisões desde a liberação, variação seedada de energia/direção, preflight orientado ao resultado, stacking e aterrissagem guiada na face solicitada;
 - palco responsivo, com piso e quatro barreiras invisíveis finas ajustados ao tamanho real do canvas;
@@ -41,7 +46,7 @@ npm install @erpg/dice3dview
 Para consumir diretamente uma tag do repositório:
 
 ```bash
-npm install github:arkanus-app/dice-box-erpg#v2.2.3
+npm install github:arkanus-app/dice-box-erpg#v2.5.0
 ```
 
 Em `package.json`:
@@ -49,7 +54,7 @@ Em `package.json`:
 ```json
 {
   "dependencies": {
-    "@erpg/dice3dview": "^2.2.3"
+    "@erpg/dice3dview": "^2.5.0"
   }
 }
 ```
@@ -69,7 +74,11 @@ public/assets/dice-box/
 ├── havok/HavokPhysics.wasm
 └── themes/
     ├── default/
-    └── default-v2/
+    ├── default-v2/
+    ├── vampire-v5-normal/
+    ├── vampire-v5-hunger/
+    ├── assimilation/
+    └── fate/
 ```
 
 Também importe o CSS estável do canvas:
@@ -130,7 +139,7 @@ try {
 
 ## Integração com `@erpg/dicecore`
 
-O adaptador fica deliberadamente na aplicação. Isso mantém parsing, regras, explosões, rerolls e descartes fora do renderer:
+Para rolagens genéricas, o adaptador continua deliberadamente na aplicação. Isso mantém parsing, regras, explosões, rerolls e descartes fora do renderer:
 
 ```ts
 import { rollRpgDice } from '@erpg/dicecore'
@@ -164,6 +173,35 @@ if(dice.length > 0) {
 ```
 
 O `seed` nunca altera `value`. No modo cinemático ele torna trajetória, posição e rotação reproduzíveis; no modo físico ele determina condições visuais iniciais, mas colisões e timing podem produzir posições finais diferentes.
+
+### Rolagens mistas
+
+`@erpg/dicecore` 3.4.0 separa fórmulas e sistemas por `;`. O resultado
+achatado entra diretamente no adaptador misto:
+
+```ts
+import { rollMixedDice } from '@erpg/dicecore'
+import { createMixedDisplayRequest } from '@erpg/dice3dview'
+
+const mixed = rollMixedDice(
+  '2d20+5; v5(7,3,4); fate(4); assim(2,1,1,1)',
+  { seed: 'sessao-42' }
+)
+
+await viewer.display(createMixedDisplayRequest({
+  id: 'misto-42',
+  seed: 'misto-42',
+  dice: mixed.dice,
+  mode: 'physics'
+}))
+```
+
+O adaptador preserva a ordem e `physicalValue`, aplica automaticamente os
+temas de `profileId`, converte d3 genérico para a geometria d6 e omite por
+padrão formatos genéricos sem representação física, como `dF`. Use
+`unsupportedDice: 'error'` para rejeitá-los em vez de omitir. Para Fate 3D,
+use `fate()` na notação mista: ele preserva a face d6, enquanto o `dF`
+genérico expõe apenas −1, 0 ou +1.
 
 ### Timeline semântica
 
@@ -276,6 +314,7 @@ A moeda usa cilindro e duas faces gerados em runtime, sem adicionar uma nova mal
   "coin": {
     "front": { "value": 1, "texture": "coin-heads.webp" },
     "back": { "value": 2, "texture": "coin-tails.webp" },
+    "colorize": false,
     "edgeColor": "#c89b3c",
     "diameter": 1,
     "thickness": 0.12
@@ -284,6 +323,11 @@ A moeda usa cilindro e duas faces gerados em runtime, sem adicionar uma nova mal
 ```
 
 Temas podem usar números, cara/coroa, brasões ou qualquer outra arte. Os valores internos continuam sendo `1` e `2`. Se o bloco `coin` não existir, o tema recebe a moeda numérica padrão.
+
+A moeda numérica padrão usa SVGs transparentes contendo somente `1` e `2`. Com
+`colorize: true`, o renderer aplica `themeColor` ao corpo e ao aro da moeda;
+assim, o d2 acompanha a mesma skin de cor dos demais dados. Temas com arte
+completa devem usar `colorize: false` e podem continuar definindo `edgeColor`.
 
 O mapeamento geométrico é fixo: a frente com normal local `+Y` usa `Identity` e representa o valor `1`; o verso com normal local `−Y` usa rotação `π` e representa o valor `2`. A validação visual confirmou `1d2[2]` exibindo a textura do verso/valor 2.
 
@@ -332,6 +376,28 @@ npm run build
 ```
 
 O demo local está em `demo/` e permite alternar entre os dois renderers.
+
+### Exemplo integrado com o dicecore
+
+O arquivo [`example/index.html`](example/index.html) importa os builds locais de
+`@erpg/dicecore` e `@erpg/dice3dview`. A própria página recebe uma fórmula,
+resolve a rolagem, mostra o total e apresenta os dados em 3D nos modos cinemático
+ou físico.
+
+Com este repositório e `rpg-dice-roller` lado a lado, gere os dois builds e abra
+o exemplo:
+
+```bash
+cd ../rpg-dice-roller
+npm run build
+cd ../dice-box-erpg
+npm run build
+npm run example
+```
+
+O servidor abre `http://localhost:5173/example/index.html`. O exemplo precisa
+ser servido por HTTP; módulos ESM, WebAssembly e assets 3D não funcionam
+corretamente ao abrir o HTML diretamente com `file://`.
 
 ## Estado e próximos passos
 

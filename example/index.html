@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Exemplo local de integração entre @erpg/dicecore e @erpg/dice3dview."
+    />
+    <title>ERPG · Dicecore + Dice3DView</title>
+    <link rel="stylesheet" href="../dist/dice3dview.css" />
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        background: #090b13;
+        color: #f4f4f5;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+      }
+
+      body {
+        background:
+          radial-gradient(circle at 72% 28%, rgb(124 58 237 / 18%), transparent 34%),
+          radial-gradient(circle at 30% 80%, rgb(14 165 233 / 10%), transparent 28%),
+          #090b13;
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      button:disabled {
+        cursor: wait;
+        opacity: 0.65;
+      }
+
+      #stage {
+        position: fixed;
+        inset: 0;
+      }
+
+      .panel {
+        position: fixed;
+        z-index: 2;
+        top: 24px;
+        left: 24px;
+        width: min(430px, calc(100vw - 48px));
+        max-height: calc(100vh - 48px);
+        overflow: auto;
+        padding: 20px;
+        border: 1px solid rgb(255 255 255 / 12%);
+        border-radius: 18px;
+        background: rgb(12 15 27 / 88%);
+        box-shadow: 0 24px 80px rgb(0 0 0 / 36%);
+        backdrop-filter: blur(18px);
+      }
+
+      .eyebrow {
+        margin: 0 0 6px;
+        color: #a78bfa;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(1.35rem, 3vw, 1.8rem);
+        line-height: 1.1;
+      }
+
+      .intro {
+        margin: 10px 0 18px;
+        color: #a1a1aa;
+        font-size: 0.88rem;
+        line-height: 1.5;
+      }
+
+      .field {
+        display: grid;
+        gap: 7px;
+        margin-top: 12px;
+      }
+
+      label,
+      legend {
+        color: #d4d4d8;
+        font-size: 0.76rem;
+        font-weight: 700;
+      }
+
+      input,
+      select {
+        width: 100%;
+        min-height: 44px;
+        border: 1px solid rgb(255 255 255 / 13%);
+        border-radius: 10px;
+        outline: none;
+        background: rgb(255 255 255 / 6%);
+        color: #fafafa;
+        padding: 0 12px;
+      }
+
+      input:focus,
+      select:focus {
+        border-color: #8b5cf6;
+        box-shadow: 0 0 0 3px rgb(139 92 246 / 18%);
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .presets {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin-top: 10px;
+        padding: 0;
+        border: 0;
+      }
+
+      .preset {
+        border: 1px solid rgb(255 255 255 / 11%);
+        border-radius: 999px;
+        background: rgb(255 255 255 / 5%);
+        color: #c4b5fd;
+        padding: 6px 10px;
+        font-size: 0.76rem;
+      }
+
+      .preset:hover {
+        border-color: rgb(167 139 250 / 55%);
+        background: rgb(139 92 246 / 12%);
+      }
+
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 9px;
+        margin-top: 16px;
+      }
+
+      .primary,
+      .secondary {
+        min-height: 44px;
+        border-radius: 11px;
+        padding: 0 16px;
+        font-weight: 800;
+      }
+
+      .primary {
+        border: 0;
+        background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+        color: white;
+        box-shadow: 0 10px 30px rgb(109 40 217 / 28%);
+      }
+
+      .secondary {
+        border: 1px solid rgb(255 255 255 / 12%);
+        background: rgb(255 255 255 / 5%);
+        color: #d4d4d8;
+      }
+
+      .status {
+        min-height: 20px;
+        margin: 13px 0 0;
+        color: #a1a1aa;
+        font-size: 0.78rem;
+      }
+
+      .status[data-state="error"] {
+        color: #fda4af;
+      }
+
+      .status[data-state="success"] {
+        color: #86efac;
+      }
+
+      .result {
+        display: none;
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid rgb(255 255 255 / 9%);
+      }
+
+      .result.visible {
+        display: block;
+      }
+
+      .total-line {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .total-line span {
+        color: #a1a1aa;
+        font-size: 0.76rem;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .total-line strong {
+        color: #c4b5fd;
+        font-size: 1.75rem;
+      }
+
+      .output {
+        margin: 5px 0 10px;
+        color: #e4e4e7;
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-size: 0.76rem;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+      }
+
+      .dice-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .die {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        border: 1px solid rgb(255 255 255 / 10%);
+        border-radius: 8px;
+        background: rgb(255 255 255 / 5%);
+        padding: 6px 8px;
+        color: #e4e4e7;
+        font-size: 0.74rem;
+      }
+
+      .die strong {
+        color: white;
+      }
+
+      .die.discarded {
+        opacity: 0.46;
+        text-decoration: line-through;
+      }
+
+      .warning {
+        margin: 10px 0 0;
+        color: #fcd34d;
+        font-size: 0.73rem;
+        line-height: 1.4;
+      }
+
+      .help {
+        position: fixed;
+        z-index: 2;
+        right: 20px;
+        bottom: 16px;
+        margin: 0;
+        color: rgb(255 255 255 / 46%);
+        font-size: 0.7rem;
+      }
+
+      @media (max-width: 680px) {
+        .panel {
+          top: 12px;
+          left: 12px;
+          width: calc(100vw - 24px);
+          max-height: min(62vh, 570px);
+          padding: 16px;
+        }
+
+        .help {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="panel">
+      <p class="eyebrow">Exemplo das duas bibliotecas</p>
+      <h1>Role e visualize em 3D</h1>
+      <p class="intro">
+        O <code>@erpg/dicecore</code> resolve a fórmula. O
+        <code>@erpg/dice3dview</code> recebe o resultado pronto e o apresenta.
+      </p>
+
+      <form id="roll-form">
+        <div class="field">
+          <label for="notation">Fórmula</label>
+          <input
+            id="notation"
+            name="notation"
+            value="4d6kh3 + 2"
+            autocomplete="off"
+            spellcheck="false"
+            required
+          />
+        </div>
+
+        <fieldset class="presets">
+          <legend>Exemplos rápidos</legend>
+          <button class="preset" type="button" data-notation="1d20">1d20</button>
+          <button class="preset" type="button" data-notation="2d20kh1">Vantagem</button>
+          <button class="preset" type="button" data-notation="4d6kh3 + 2">Atributo</button>
+          <button class="preset" type="button" data-notation="2d6!">Explosão</button>
+          <button class="preset" type="button" data-notation="1d%">Percentual</button>
+        </fieldset>
+
+        <div class="row">
+          <div class="field">
+            <label for="mode">Apresentação</label>
+            <select id="mode" name="mode">
+              <option value="kinematic">Cinemática</option>
+              <option value="physics">Física (Havok)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="seed">Seed (opcional)</label>
+            <input id="seed" name="seed" placeholder="aleatória" autocomplete="off" />
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="primary" id="roll-button" type="submit">Rolar dados</button>
+          <button class="secondary" id="clear-button" type="button">Limpar</button>
+        </div>
+      </form>
+
+      <p class="status" id="status" role="status" aria-live="polite">
+        Inicializando o visualizador…
+      </p>
+
+      <section class="result" id="result" aria-live="polite">
+        <div class="total-line">
+          <span>Total resolvido</span>
+          <strong id="total">—</strong>
+        </div>
+        <p class="output" id="output"></p>
+        <ul class="dice-list" id="dice-list"></ul>
+        <p class="warning" id="warning" hidden></p>
+      </section>
+    </main>
+
+    <div id="stage" aria-hidden="true"></div>
+    <p class="help">Enter rola novamente · os resultados vêm sempre do dicecore</p>
+
+    <script type="module">
+      import { rollRpgDice } from '../../rpg-dice-roller/dist/index.js'
+      import {
+        DiceResultViewer,
+        isDisplayCancelledError
+      } from '../dist/dice3dview.es.js'
+
+      const supportedSides = new Set([2, 4, 6, 8, 10, 12, 20, 100])
+
+      const form = document.querySelector('#roll-form')
+      const notationInput = document.querySelector('#notation')
+      const modeInput = document.querySelector('#mode')
+      const seedInput = document.querySelector('#seed')
+      const rollButton = document.querySelector('#roll-button')
+      const clearButton = document.querySelector('#clear-button')
+      const status = document.querySelector('#status')
+      const resultPanel = document.querySelector('#result')
+      const total = document.querySelector('#total')
+      const output = document.querySelector('#output')
+      const diceList = document.querySelector('#dice-list')
+      const warning = document.querySelector('#warning')
+
+      const viewer = new DiceResultViewer({
+        container: '#stage',
+        assetPath: '/dist/assets/dice-box/',
+        theme: 'default',
+        themeColor: '#8b5cf6',
+        duration: 1400,
+        settleTimeout: 3200,
+        scale: 4.6
+      })
+
+      const setStatus = (message, state = 'idle') => {
+        status.textContent = message
+        status.dataset.state = state
+      }
+
+      const renderResult = (roll, visualDice, skippedDice) => {
+        total.textContent = String(roll.total)
+        output.textContent = roll.output
+        diceList.replaceChildren()
+
+        for(const die of roll.dice) {
+          const item = document.createElement('li')
+          item.className = `die${die.included ? '' : ' discarded'}`
+
+          const label = document.createElement('span')
+          label.textContent = `d${die.sides}`
+
+          const value = document.createElement('strong')
+          value.textContent = String(die.value)
+
+          item.append(label, value)
+          diceList.append(item)
+        }
+
+        if(skippedDice.length > 0) {
+          warning.hidden = false
+          warning.textContent =
+            `${skippedDice.length} dado(s) não possuem modelo 3D e foram exibidos somente no resultado textual.`
+        } else {
+          warning.hidden = true
+          warning.textContent = ''
+        }
+
+        resultPanel.classList.add('visible')
+
+        if(visualDice.length === 0) {
+          setStatus('Resultado calculado, mas a fórmula não gerou dados 3D compatíveis.', 'success')
+        }
+      }
+
+      const rollAndDisplay = async () => {
+        const notation = notationInput.value.trim()
+        const seed = seedInput.value.trim()
+        const mode = modeInput.value
+
+        if(!notation) {
+          setStatus('Informe uma fórmula para rolar.', 'error')
+          notationInput.focus()
+          return
+        }
+
+        rollButton.disabled = true
+        setStatus('Resolvendo a fórmula com o dicecore…')
+
+        try {
+          const roll = rollRpgDice(notation, seed ? { seed } : undefined)
+          const visualDice = roll.dice.filter(
+            die => typeof die.sides === 'number' && supportedSides.has(die.sides)
+          )
+          const visualIds = new Set(visualDice.map(die => die.id))
+          const skippedDice = roll.dice.filter(die => !visualIds.has(die.id))
+
+          renderResult(roll, visualDice, skippedDice)
+
+          if(visualDice.length === 0) return
+
+          const requestId = crypto.randomUUID()
+          setStatus(`Apresentando ${visualDice.length} dado(s) em modo ${mode === 'physics' ? 'físico' : 'cinemático'}…`)
+
+          await viewer.displayTimeline({
+            id: requestId,
+            seed: requestId,
+            mode,
+            dice: visualDice.map(die => ({
+              id: die.id,
+              sides: die.sides
+            })),
+            events: roll.events.filter(
+              event => event.subject === 'die' && visualIds.has(event.dieId)
+            )
+          })
+
+          setStatus('Rolagem concluída.', 'success')
+        } catch(error) {
+          if(isDisplayCancelledError(error)) return
+          console.error(error)
+          setStatus(
+            error instanceof Error ? error.message : 'Não foi possível concluir a rolagem.',
+            'error'
+          )
+        } finally {
+          rollButton.disabled = false
+        }
+      }
+
+      form.addEventListener('submit', event => {
+        event.preventDefault()
+        void rollAndDisplay()
+      })
+
+      clearButton.addEventListener('click', () => {
+        viewer.clear()
+        resultPanel.classList.remove('visible')
+        setStatus('Cena limpa. Pronto para uma nova rolagem.')
+        notationInput.focus()
+      })
+
+      for(const preset of document.querySelectorAll('[data-notation]')) {
+        preset.addEventListener('click', () => {
+          notationInput.value = preset.dataset.notation
+          void rollAndDisplay()
+        })
+      }
+
+      try {
+        await viewer.init()
+        setStatus('Pronto para rolar.', 'success')
+        await rollAndDisplay()
+      } catch(error) {
+        console.error(error)
+        rollButton.disabled = true
+        setStatus(
+          error instanceof Error ? error.message : 'Falha ao inicializar o visualizador 3D.',
+          'error'
+        )
+      }
+    </script>
+  </body>
+</html>

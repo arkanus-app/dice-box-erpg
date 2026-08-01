@@ -10,6 +10,8 @@ export interface CoinFaceTheme {
 export interface CoinTheme {
 	readonly front: CoinFaceTheme
 	readonly back: CoinFaceTheme
+	/** Uses each die's themeColor as the coin surface behind alpha-masked face artwork. */
+	readonly colorize?: boolean
 	readonly edgeColor?: string
 	readonly diameter?: number
 	readonly thickness?: number
@@ -251,6 +253,29 @@ export interface ThemeMaterialConfig {
 	readonly specularPower?: number
 }
 
+export interface ThemeFaceAtlasConfig {
+	readonly layoutId: string
+	readonly width: number
+	readonly height: number
+	readonly model?: string
+}
+
+export interface ThemeSymbolDefinition {
+	readonly label: string
+}
+
+export interface ThemeFaceDefinition {
+	readonly label: string
+	readonly symbols: readonly string[]
+}
+
+export interface ThemeFaceMetadata {
+	readonly schemaVersion: 1
+	readonly mappingId: string
+	readonly symbols: Readonly<Record<string, ThemeSymbolDefinition>>
+	readonly dice: Readonly<Record<string, Readonly<Record<string, ThemeFaceDefinition>>>>
+}
+
 export interface ThemeConfig {
 	readonly name?: string
 	readonly systemName?: string
@@ -258,6 +283,8 @@ export interface ThemeConfig {
 	readonly meshFile?: string
 	readonly material: ThemeMaterialConfig
 	readonly diceAvailable: readonly string[]
+	readonly faceAtlas?: ThemeFaceAtlasConfig
+	readonly faceMetadata?: ThemeFaceMetadata
 	readonly coin?: CoinTheme
 	readonly [key: string]: unknown
 }

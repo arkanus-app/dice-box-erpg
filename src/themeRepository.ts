@@ -3,6 +3,7 @@ import type { CoinTheme, RequiredViewerOptions, ResolvedThemeConfig, ThemeConfig
 const DEFAULT_COIN_THEME: CoinTheme = Object.freeze({
 	front: Object.freeze({ value: 1, texture: 'coin-1.svg' }),
 	back: Object.freeze({ value: 2, texture: 'coin-2.svg' }),
+	colorize: true,
 	edgeColor: '#c89b3c',
 	diameter: 1,
 	thickness: 0.12

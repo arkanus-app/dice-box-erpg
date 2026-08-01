@@ -2,7 +2,7 @@
 
 [← Voltar ao README](../README.md)
 
-Esta referência descreve a API pública de `@erpg/dice3dview` 2.2.3. A biblioteca é destinada ao navegador: a criação exige DOM; a inicialização do renderer exige WebGL.
+Esta referência descreve a API pública de `@erpg/dice3dview` 2.5.0. A biblioteca é destinada ao navegador: a criação exige DOM; a inicialização do renderer exige WebGL.
 
 ## Exports públicos
 
@@ -10,6 +10,8 @@ Esta referência descreve a API pública de `@erpg/dice3dview` 2.2.3. A bibliote
 export default DiceResultViewer
 
 export {
+  createMixedDisplayRequest,
+  createSystemDisplayRequest,
   DiceResultViewer,
   DEFAULT_TIMELINE_OPTIONS,
   DISPLAY_CANCELLED_CODE,
@@ -28,6 +30,9 @@ export type {
   DisplayTimelineRequest,
   DisplayTimelineResult,
   DiceTimelineEvent,
+  MixedDicePresentationOptions,
+  MixedDiePresentationInput,
+  MixedDisplayRequestInput,
   ResolvedDie,
   ResolvedThemeConfig,
   ThemeConfig,
@@ -198,6 +203,28 @@ interface DisplayResult {
   readonly durationMs: number
 }
 ```
+
+### `createMixedDisplayRequest(input)`
+
+Aceita diretamente a lista achatada de `rollMixedDice().dice`:
+
+```ts
+const mixed = rollMixedDice(
+  '2d20+5; v5(7,3,4); fate(4); assim(2,1,1,1)'
+)
+
+await viewer.display(createMixedDisplayRequest({
+  id: 'mixed-42',
+  dice: mixed.dice,
+  unsupportedDice: 'omit'
+}))
+```
+
+Para dados com `profileId`, o adaptador aplica o tema simbólico e valida os
+lados do perfil. Para dados genéricos, usa `physicalValue`, depois `rawValue`
+e por último `value`. d3 usa a geometria d6; lados sem geometria, inclusive o
+`dF` genérico, são omitidos por padrão. `unsupportedDice: 'error'` transforma
+essa omissão em erro. IDs duplicados no lote são rejeitados.
 
 ### Normalização e validação
 

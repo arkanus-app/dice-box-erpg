@@ -4,6 +4,75 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 ## [Não publicado]
 
+### Alterado
+
+- a moeda numérica padrão agora usa SVGs transparentes contendo somente `1` e
+  `2`, e aplica `themeColor` ao corpo e ao aro para acompanhar a skin equipada;
+- temas de moeda com arte completa podem preservar textura e `edgeColor` usando
+  `colorize: false`;
+- os atlas normal e de Fome de Vampiro V5 agora usam os quatro SVGs fornecidos
+  pelo projeto para Sucesso, Crítico, Falha de Fome e Crítico de Fome;
+- `npm run themes:generate:vampire` recompõe deterministicamente as faces 1,
+  6–9 e 10 sem alterar o valor físico dos d10.
+
+## [2.5.0] - 2026-07-31
+
+### Adicionado
+
+- `createMixedDisplayRequest()` e `toMixedResolvedDice()` para apresentar
+  dados genéricos, Vampiro V5, Fate e Assimilação no mesmo lançamento;
+- suporte estrutural direto a `rollMixedDice().dice`, incluindo
+  `physicalValue`, `profileId`, descarte e ordem original;
+- conversão documentada de d3 genérico para d6 e política configurável
+  `unsupportedDice: 'omit' | 'error'`.
+
+### Segurança e compatibilidade
+
+- o viewer continua sem interpretar notação nem recalcular resultados;
+- perfis de sistema desconhecidos geram erro e nunca caem silenciosamente no
+  tema genérico;
+- o `dF` genérico sem face física é omitido por padrão; `fate()` continua
+  usando o perfil d6 apropriado.
+
+## [2.4.0] - 2026-07-31
+
+### Adicionado
+
+- perfil `fate-df` compatível com o resultado estrutural de `rollFateDice()`;
+- tema Fate d6 com duas faces “−”, duas vazias e duas “+”;
+- metadados acessíveis para −1, 0 e +1, demonstração 4dF e instruções de personalização.
+
+### Segurança e compatibilidade
+
+- a face física 1–6 permanece autoritativa para orientação 3D; o total Fate continua sendo calculado exclusivamente pelo core;
+- o tema usa sinais geométricos originais e não inclui logotipos ou ilustrações editoriais.
+
+### Validado
+
+- cobertura do perfil, das seis faces, do atlas claro/escuro e da integração estrutural com `@erpg/dicecore`.
+
+## [2.3.0] - 2026-07-31
+
+### Adicionado
+
+- temas simbólicos originais e não oficiais para dados normais/de Fome de Vampiro V5 e d6/d10/d12 de Assimilação;
+- perfis estruturais compatíveis com os resultados de sistema do `@erpg/dicecore`;
+- `createSystemDisplayRequest()`, seleção visual por `keptIds` e cores substituíveis por perfil;
+- metadados tipados de faces e atlas para acessibilidade, documentação e validação;
+- gerador que deriva as ilhas UV do modelo/collider e verifica se os assets versionados estão atualizados.
+
+### Segurança e compatibilidade
+
+- os novos temas não copiam arte oficial e não reutilizam o normal map que contém números em relevo;
+- valores numéricos externos continuam sendo a única autoridade da apresentação;
+- `colliderFaceMap`, meshes, colliders e orientação física permanecem inalterados.
+
+### Validado
+
+- cobertura dos cinco perfis, lados, valores, cores, seleção e IDs duplicados;
+- atlas claro/escuro inspecionado para todas as faces simbólicas;
+- geração determinística incluída no preflight do build.
+
 ## [2.2.3] - 2026-07-13
 
 ### Corrigido

@@ -1,4 +1,9 @@
-import { DiceResultViewer, isDisplayCancelledError } from '../src'
+import {
+  DiceResultViewer,
+  createMixedDisplayRequest,
+  createSystemDisplayRequest,
+  isDisplayCancelledError
+} from '../src'
 import type { DisplayMode, DisplayTimelineRequest } from '../src'
 
 const viewer = new DiceResultViewer({
@@ -87,4 +92,82 @@ for(const name of Object.keys(timelinePresets)) document.querySelector(`#${name}
 
 document.querySelector('#kinematic')?.addEventListener('click', () => showFromControl('kinematic'))
 document.querySelector('#physics')?.addEventListener('click', () => showFromControl('physics'))
+document.querySelector('#vampire')?.addEventListener('click', () => {
+  const requestId = `vampire-${Date.now()}`
+  void viewer.display(createSystemDisplayRequest({
+    id: requestId,
+    seed: requestId,
+    dice: [
+      { id: 'normal-success', sides: 10, value: 8, profileId: 'vampire-v5-normal-d10' },
+      { id: 'normal-critical', sides: 10, value: 10, profileId: 'vampire-v5-normal-d10' },
+      { id: 'hunger-bestial', sides: 10, value: 1, profileId: 'vampire-v5-hunger-d10' },
+      { id: 'hunger-critical', sides: 10, value: 10, profileId: 'vampire-v5-hunger-d10' }
+    ]
+  })).catch(error => {
+    if(!isDisplayCancelledError(error)) console.error(error)
+  })
+})
+document.querySelector('#assimilation')?.addEventListener('click', () => {
+  const requestId = `assimilation-${Date.now()}`
+  void viewer.display(createSystemDisplayRequest({
+    id: requestId,
+    seed: requestId,
+    keptIds: ['assimilation-d12'],
+    dice: [
+      { id: 'assimilation-d6', sides: 6, value: 5, profileId: 'assimilation-d6' },
+      { id: 'assimilation-d10', sides: 10, value: 9, profileId: 'assimilation-d10' },
+      { id: 'assimilation-d12', sides: 12, value: 11, profileId: 'assimilation-d12' }
+    ]
+  })).catch(error => {
+    if(!isDisplayCancelledError(error)) console.error(error)
+  })
+})
+document.querySelector('#fate')?.addEventListener('click', () => {
+  const requestId = `fate-${Date.now()}`
+  void viewer.display(createSystemDisplayRequest({
+    id: requestId,
+    seed: requestId,
+    dice: [
+      { id: 'fate-minus', sides: 6, value: 1, profileId: 'fate-df' },
+      { id: 'fate-blank-one', sides: 6, value: 3, profileId: 'fate-df' },
+      { id: 'fate-blank-two', sides: 6, value: 4, profileId: 'fate-df' },
+      { id: 'fate-plus', sides: 6, value: 6, profileId: 'fate-df' }
+    ]
+  })).catch(error => {
+    if(!isDisplayCancelledError(error)) console.error(error)
+  })
+})
+document.querySelector('#mixed')?.addEventListener('click', () => {
+  const requestId = `mixed-${Date.now()}`
+  void viewer.display(createMixedDisplayRequest({
+    id: requestId,
+    seed: requestId,
+    dice: [
+      { id: 'mixed-d20', sides: 20, value: 17, physicalValue: 17, included: true },
+      {
+        id: 'mixed-hunger',
+        sides: 10,
+        value: 10,
+        physicalValue: 10,
+        profileId: 'vampire-v5-hunger-d10'
+      },
+      {
+        id: 'mixed-fate',
+        sides: 6,
+        value: 5,
+        physicalValue: 5,
+        profileId: 'fate-df'
+      },
+      {
+        id: 'mixed-assimilation',
+        sides: 12,
+        value: 11,
+        physicalValue: 11,
+        profileId: 'assimilation-d12'
+      }
+    ]
+  })).catch(error => {
+    if(!isDisplayCancelledError(error)) console.error(error)
+  })
+})
 await show('kinematic')

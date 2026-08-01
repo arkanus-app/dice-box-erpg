@@ -1,0 +1,79 @@
+{
+  "name": "Fate-compatible — Fate dice",
+  "systemName": "fate",
+  "author": "ERPG contributors — original generic glyphs",
+  "version": 1,
+  "material": {
+    "type": "color",
+    "diffuseTexture": {
+      "light": "faces-light.svg",
+      "dark": "faces-dark.svg"
+    },
+    "diffuseLevel": 1
+  },
+  "diceAvailable": [
+    "d6"
+  ],
+  "faceAtlas": {
+    "layoutId": "erpg-default-v1",
+    "width": 1024,
+    "height": 1024,
+    "model": "../default/default.json"
+  },
+  "faceMetadata": {
+    "schemaVersion": 1,
+    "mappingId": "fate-faces-v1",
+    "symbols": {
+      "minus": {
+        "label": "Menos (−1)"
+      },
+      "blank": {
+        "label": "Vazio (0)"
+      },
+      "plus": {
+        "label": "Mais (+1)"
+      }
+    },
+    "dice": {
+      "d6": {
+        "1": {
+          "label": "Menos (−1)",
+          "symbols": [
+            "minus"
+          ]
+        },
+        "2": {
+          "label": "Menos (−1)",
+          "symbols": [
+            "minus"
+          ]
+        },
+        "3": {
+          "label": "Vazio (0)",
+          "symbols": []
+        },
+        "4": {
+          "label": "Vazio (0)",
+          "symbols": []
+        },
+        "5": {
+          "label": "Mais (+1)",
+          "symbols": [
+            "plus"
+          ]
+        },
+        "6": {
+          "label": "Mais (+1)",
+          "symbols": [
+            "plus"
+          ]
+        }
+      }
+    }
+  },
+  "artwork": {
+    "kind": "original-generic",
+    "license": "MIT",
+    "note": "Compatibility artwork; no publisher logos or official glyph artwork included."
+  }
+}
