@@ -63,6 +63,16 @@ describe('system dice themes', () => {
 		assert.deepEqual(resolved.map(item => item.value), [1, 4, 6])
 	})
 
+	it('maps Daggerheart Hope and Fear d12s to distinct default-theme colors', () => {
+		const resolved = toSystemResolvedDice([
+			die('hope', 'daggerheart-hope-d12', 12, 9),
+			die('fear', 'daggerheart-fear-d12', 12, 4)
+		])
+		assert.deepEqual(resolved.map(item => item.theme), ['default-v2', 'default-v2'])
+		assert.deepEqual(resolved.map(item => item.themeColor), ['#ff0a7a', '#00f585'])
+		assert.deepEqual(resolved.map(item => item.sides), [12, 12])
+	})
+
 	it('marks non-kept Assimilação dice as discarded without choosing for the caller', () => {
 		const resolved = toSystemResolvedDice([
 			die('assimilation-d6:a', 'assimilation-d6', 6, 6, 'a'),
@@ -78,6 +88,12 @@ describe('system dice themes', () => {
 			{ themeColors: { 'vampire-v5-hunger-d10': '#43000d' } }
 		)
 		assert.equal(resolved.themeColor, '#43000d')
+
+		const fear = toSystemResolvedDie(
+			die('fear', 'daggerheart-fear-d12', 12, 12),
+			{ themeColors: { 'daggerheart-fear-d12': '#004477' } }
+		)
+		assert.equal(fear.themeColor, '#004477')
 	})
 
 	it('creates a display request that remains authoritative about numeric values', () => {

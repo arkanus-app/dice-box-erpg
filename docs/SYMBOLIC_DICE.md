@@ -19,6 +19,8 @@ O símbolo é apresentação. O número continua sendo a autoridade para replay,
 | `assimilation-d10` | `assimilation` | d10 |
 | `assimilation-d12` | `assimilation` | d12 |
 | `fate-df` | `fate` | d6 |
+| `daggerheart-hope-d12` | `default-v2` | d12 |
+| `daggerheart-fear-d12` | `default-v2` | d12 |
 
 Os três perfis de Assimilação compartilham um atlas, mas validam lados diferentes.
 O perfil Fate usa um d6 físico: `value` permanece entre 1 e 6 para orientar a malha, enquanto `fateValue` no resultado do core informa −1, 0 ou +1.
@@ -96,7 +98,7 @@ import { rollMixedDice } from '@erpg/dicecore'
 import { createMixedDisplayRequest } from '@erpg/dice3dview'
 
 const mixed = rollMixedDice(
-  '2d20+5; v5(7,3,4); fate(4); assim(2,1,1,1)',
+  '2d20+5; v5(7,3,4); fate(4); assim(2,1,1,1); daggerheart(modifier=2,difficulty=15)',
   { seed: 'sessao-42' }
 )
 
@@ -143,6 +145,19 @@ O kit atual da New Order associa Joaninha a Sucesso, Cervo a Adaptação e Coruj
 | 12 | 2 Pressões |
 
 O d6 usa as linhas 1–6; o d10, 1–10; o d12, 1–12. Esta tabela acompanha o rolador web publicado em 31 de julho de 2026. Se a editora alterar a edição vigente, atualize primeiro o mapa em `rpg-dice-roller/src/v3/systems/assimilation.ts`, depois `faceMetadata.dice` no tema e, por fim, os dois atlas SVG.
+
+### Daggerheart
+
+Daggerheart usa dois d12 numericos distintos: Esperanca e Medo. O viewer
+mantem ambos como d12 `default-v2`; o perfil estabelece qual resultado deve
+receber a cor da skin e qual deve receber sua inversa RGB. O core soma as duas
+faces e o modificador, usa a Dificuldade opcional para sucesso/falha e trata
+faces iguais como sucesso critico.
+
+| `profileId` | Papel | Cor padrao |
+|---|---|---|
+| `daggerheart-hope-d12` | Esperanca | `#ff0a7a` |
+| `daggerheart-fear-d12` | Medo | `#00f585` |
 
 ### Fate/Fudge
 

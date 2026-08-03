@@ -135,6 +135,14 @@ export declare const getSystemThemeProfile: (profileId: string) => Readonly<{
     theme: "fate";
     themeColor: "#315d9b";
     sides: 6;
+}> | Readonly<{
+    theme: "default-v2";
+    themeColor: "#ff0a7a";
+    sides: 12;
+}> | Readonly<{
+    theme: "default-v2";
+    themeColor: "#00f585";
+    sides: 12;
 }>;
 
 export declare interface IncludeTimelineEvent extends DiceTimelineEventBase {
@@ -283,6 +291,16 @@ export declare const SYSTEM_THEME_PROFILES: Readonly<{
         theme: "fate";
         themeColor: "#315d9b";
         sides: 6;
+    }>;
+    readonly 'daggerheart-hope-d12': Readonly<{
+        theme: "default-v2";
+        themeColor: "#ff0a7a";
+        sides: 12;
+    }>;
+    readonly 'daggerheart-fear-d12': Readonly<{
+        theme: "default-v2";
+        themeColor: "#00f585";
+        sides: 12;
     }>;
 }>;
 

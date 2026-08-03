@@ -30,6 +30,16 @@ export const SYSTEM_THEME_PROFILES = Object.freeze({
 		theme: 'fate',
 		themeColor: '#315d9b',
 		sides: 6
+	}),
+	'daggerheart-hope-d12': Object.freeze({
+		theme: 'default-v2',
+		themeColor: '#ff0a7a',
+		sides: 12
+	}),
+	'daggerheart-fear-d12': Object.freeze({
+		theme: 'default-v2',
+		themeColor: '#00f585',
+		sides: 12
 	})
 } as const)
 

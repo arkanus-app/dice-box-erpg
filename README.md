@@ -184,7 +184,7 @@ import { rollMixedDice } from '@erpg/dicecore'
 import { createMixedDisplayRequest } from '@erpg/dice3dview'
 
 const mixed = rollMixedDice(
-  '2d20+5; v5(7,3,4); fate(4); assim(2,1,1,1)',
+  '2d20+5; v5(7,3,4); fate(4); assim(2,1,1,1); daggerheart(modifier=2,difficulty=15)',
   { seed: 'sessao-42' }
 )
 

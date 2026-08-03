@@ -4,6 +4,11 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 ## [Não publicado]
 
+### Adicionado
+
+- perfis `daggerheart-hope-d12` e `daggerheart-fear-d12` para os dois d12 de
+  Duality Dice, com d12 fisicos e cores distintas substituiveis por perfil.
+
 ### Alterado
 
 - a moeda numérica padrão agora usa SVGs transparentes contendo somente `1` e
