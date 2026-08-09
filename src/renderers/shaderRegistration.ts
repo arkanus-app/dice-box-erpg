@@ -1,7 +1,7 @@
-import { defaultPixelShader } from '@babylonjs/core/Shaders/default.fragment'
-import { defaultVertexShader } from '@babylonjs/core/Shaders/default.vertex'
-import { shadowMapPixelShader } from '@babylonjs/core/Shaders/shadowMap.fragment'
-import { shadowMapVertexShader } from '@babylonjs/core/Shaders/shadowMap.vertex'
+import '@babylonjs/core/Shaders/default.fragment'
+import '@babylonjs/core/Shaders/default.vertex'
+import '@babylonjs/core/Shaders/shadowMap.fragment'
+import '@babylonjs/core/Shaders/shadowMap.vertex'
 
 /**
  * Babylon's modular shaders register their sources and includes through module
@@ -10,8 +10,6 @@ import { shadowMapVertexShader } from '@babylonjs/core/Shaders/shadowMap.vertex'
  * requesting development-only `.fx` files from `src/Shaders`.
  */
 export const registerDiceMaterialShaders = (): void => {
-	void defaultPixelShader
-	void defaultVertexShader
-	void shadowMapPixelShader
-	void shadowMapVertexShader
+	// Registration happens through the imports above. Keeping an explicit
+	// function preserves the factory boundary and makes the intent testable.
 }

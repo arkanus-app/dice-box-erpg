@@ -17,7 +17,7 @@
   "coin": {
     "front": { "value": 1, "texture": "../default/coin-1.svg" },
     "back": { "value": 2, "texture": "../default/coin-2.svg" },
-    "edgeColor": "#c89b3c",
+    "colorize": true,
     "diameter": 1,
     "thickness": 0.12
   }

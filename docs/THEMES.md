@@ -38,6 +38,7 @@ assets/dice-box/themes/bronze/
   "coin": {
     "front": { "value": 1, "texture": "coin-front.webp" },
     "back": { "value": 2, "texture": "coin-back.webp" },
+    "colorize": false,
     "edgeColor": "#a66b2b",
     "diameter": 1,
     "thickness": 0.12
@@ -112,6 +113,7 @@ Quando `meshFile` não é informado, o renderer usa `themes/default/default.json
 interface CoinTheme {
   readonly front: { readonly value: 1; readonly texture: string }
   readonly back: { readonly value: 2; readonly texture: string }
+  readonly colorize?: boolean
   readonly edgeColor?: string
   readonly diameter?: number
   readonly thickness?: number
@@ -125,7 +127,13 @@ O contrato numérico é fixo:
 
 A geometria usa um cilindro e dois discos procedurais com 48 segmentos. `diameter` tem mínimo efetivo de `0.3`; `thickness`, de `0.04`. Uma moeda descartada usa visibilidade reduzida.
 
-`themeColor` não recolore a moeda. Use as texturas e `edgeColor` do próprio tema.
+Com `colorize: true`, a textura funciona como máscara alfa: as áreas
+transparentes recebem `themeColor`, enquanto o numeral ou símbolo opaco
+permanece visível. O aro deriva da mesma cor da skin. A moeda numérica padrão
+usa esse modo e seus SVGs contêm somente `1` e `2`.
+
+Para moedas com ilustração completa, use `colorize: false`; nesse modo a textura
+e o `edgeColor` do próprio tema continuam sendo preservados.
 
 ## Modelo dos poliedros
 
@@ -177,6 +185,32 @@ await viewer.display({
 ```
 
 Cada URL deve apontar para uma pasta que contenha `theme.config.json`. Configure CORS para o domínio da aplicação.
+
+## Temas simbólicos incluídos
+
+A distribuição inclui `vampire-v5-normal`, `vampire-v5-hunger` e
+`assimilation`. Eles reutilizam a geometria e a cor do tema padrão, aplicando
+somente atlas vetoriais transparentes às faces e omitindo o normal map numérico.
+Vampiro usa os quatro SVGs fornecidos pelo projeto para Sucesso, Crítico, Falha
+de Fome e Crítico de Fome; Assimilação usa os SVGs de joaninha/Sucesso,
+cervo/Adaptação e coruja/Pressão. O tema `fate` usa o mesmo pipeline para duas
+faces “−”, duas vazias e duas “+”.
+
+Os manifests podem declarar `faceAtlas` e `faceMetadata`. Esses campos são descritivos e não alteram física ou resultado:
+
+```ts
+interface ThemeFaceMetadata {
+  readonly schemaVersion: 1
+  readonly mappingId: string
+  readonly symbols: Record<string, { readonly label: string }>
+  readonly dice: Record<
+    string,
+    Record<string, { readonly label: string; readonly symbols: readonly string[] }>
+  >
+}
+```
+
+Veja [Dados simbólicos: Vampiro V5, Assimilação e Fate](SYMBOLIC_DICE.md) para o mapeamento, o gerador UV e o procedimento de troca de glifos.
 
 ## Cache e callbacks
 

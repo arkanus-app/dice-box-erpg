@@ -1,0 +1,98 @@
+{
+  "name": "Vampire V5 compatible — normal dice",
+  "systemName": "vampire-v5",
+  "author": "Project-supplied Vampire V5 vector glyphs",
+  "version": 3,
+  "material": {
+    "type": "color",
+    "diffuseTexture": {
+      "light": "faces-light.svg",
+      "dark": "faces-dark.svg"
+    },
+    "diffuseLevel": 1
+  },
+  "diceAvailable": [
+    "d10"
+  ],
+  "faceAtlas": {
+    "layoutId": "erpg-default-v1",
+    "width": 1024,
+    "height": 1024,
+    "model": "../default/default.json"
+  },
+  "faceMetadata": {
+    "schemaVersion": 1,
+    "mappingId": "vampire-v5-faces-v1",
+    "symbols": {
+      "success": {
+        "label": "Sucesso"
+      },
+      "critical": {
+        "label": "Crítico"
+      }
+    },
+    "dice": {
+      "d10": {
+        "1": {
+          "label": "Vazio",
+          "symbols": []
+        },
+        "2": {
+          "label": "Vazio",
+          "symbols": []
+        },
+        "3": {
+          "label": "Vazio",
+          "symbols": []
+        },
+        "4": {
+          "label": "Vazio",
+          "symbols": []
+        },
+        "5": {
+          "label": "Vazio",
+          "symbols": []
+        },
+        "6": {
+          "label": "Sucesso",
+          "symbols": [
+            "success"
+          ]
+        },
+        "7": {
+          "label": "Sucesso",
+          "symbols": [
+            "success"
+          ]
+        },
+        "8": {
+          "label": "Sucesso",
+          "symbols": [
+            "success"
+          ]
+        },
+        "9": {
+          "label": "Sucesso",
+          "symbols": [
+            "success"
+          ]
+        },
+        "10": {
+          "label": "Sucesso + Crítico",
+          "symbols": [
+            "success",
+            "critical"
+          ]
+        }
+      }
+    }
+  },
+  "artwork": {
+    "kind": "project-supplied-vector-glyphs",
+    "license": "Project-supplied; redistribution rights must be confirmed by the project owner.",
+    "glyphSources": {
+      "success": "scripts/theme-artwork/vampire-v5-success.svg",
+      "critical": "scripts/theme-artwork/vampire-v5-critical.svg"
+    }
+  }
+}

@@ -27,6 +27,7 @@ import {
 import { DisplayCancelledError } from '../errors'
 import { createSeededRandom } from '../random'
 import { createPhysicsExplosionScheduler } from '../physicsTimelineScheduler'
+import type { PhysicsPerformanceRecorder } from '../physicsPerformance'
 import {
 	canStartFinalLock,
 	canBodyContactActAsSupport,
@@ -58,6 +59,7 @@ import {
 import {
 	DICE_PHYSICS_SUB_TIME_STEP_MS,
 	DICE_PHYSICS_TIME_STEP,
+	getAdaptiveDicePhysicsStep,
 	getDicePhysicsStep,
 	hasPhysicsLaunchPairClearance,
 	planPhysicsAppendLanding,
@@ -102,6 +104,11 @@ interface ActiveBody {
 	readonly launchDelayMs: number
 	readonly settleRollAxis: Vector3
 	readonly flightDurationMs: number
+	readonly currentQuaternionScratch: Quaternion
+	readonly lockRotationScratch: Quaternion
+	readonly lockPositionScratch: Vector3
+	readonly guidanceStartInput: MutableGuidanceStartInput
+	readonly finalLockInput: MutableFinalLockInput
 	flightCorrectionVelocity: Vector3
 	launchDelayElapsedMs: number
 	launched: boolean
@@ -128,14 +135,17 @@ interface ActiveBody {
 	lastBodyContactElapsedMs: number | undefined
 	lastBodyCollisionElapsedMs: number | undefined
 	bodyCollisionStartedElapsedMs: number | undefined
-	bodySupportName: string | undefined
+	bodySupport: ActiveBody | undefined
 	wallImpactCount: number
 	lastWallImpactElapsedMs: number | undefined
 	forcedLock: boolean
 	forcedLockBodyCollision: boolean
+	settledReported: boolean
 }
 
 const CONTACT_GRACE_MS = DICE_PHYSICS_SUB_TIME_STEP_MS * 3.5
+const ZERO_VECTOR = Vector3.Zero()
+const IDENTITY_QUATERNION = Quaternion.Identity()
 
 export interface PhysicsBodyBuildPlan {
 	readonly disposeExisting: boolean
@@ -158,8 +168,36 @@ export const planPhysicsBodyBuild = (
 	totalBodyCount: (append ? Math.max(0, existingBodyCount) : 0) + Math.max(0, incomingBodyCount)
 })
 
-const currentQuaternion = (entry: VisualEntry): Quaternion =>
-	(entry.node.rotationQuaternion ?? Quaternion.Identity()).clone().normalize()
+const currentQuaternionToRef = (entry: VisualEntry, result: Quaternion): Quaternion => {
+	result.copyFrom(entry.node.rotationQuaternion ?? IDENTITY_QUATERNION)
+	return result.normalize()
+}
+
+interface PhysicsPerformanceSession {
+	readonly recorder: PhysicsPerformanceRecorder
+	readonly publish: () => void
+}
+
+interface MutableGuidanceStartInput {
+	elapsedMs: number
+	firstGroundImpactElapsedMs: number | undefined
+	groundImpactCount: number
+	positionY: number
+	timeoutRemainingMs: number
+}
+
+interface MutableFinalLockInput {
+	angle: number
+	angularSpeed: number
+	elapsedMs: number
+	groundContactElapsedMs: number
+	hasGroundContact: boolean
+	bodyContactElapsedMs: number
+	lastBodyContactElapsedMs: number | undefined
+	linearSpeed: number
+	positionY: number
+	stableElapsedMs: number
+}
 
 const hasFiniteQuaternion = (entry: VisualEntry): boolean => {
 	const rotation = entry.node.rotationQuaternion
@@ -175,13 +213,16 @@ const hasFiniteQuaternion = (entry: VisualEntry): boolean => {
 export class PhysicsRenderer extends KinematicRenderer {
 	readonly mode = 'physics' as const
 	readonly #bodies: ActiveBody[] = []
-	readonly #dynamicBodyNames = new Set<string>()
+	readonly #bodyByEntry = new Map<VisualEntry, ActiveBody>()
+	readonly #bodyByNodeName = new Map<string, ActiveBody>()
 	#staticBodies: Array<{ body: PhysicsBody; mesh: AbstractMesh }> = []
 	#physicsPlugin: HavokPlugin | undefined
 	#bounds: DisplayViewportBounds | undefined
 	#boundsSignature = ''
 	#largestRadius = 0
 	#physicsStepMs = DICE_PHYSICS_SUB_TIME_STEP_MS
+	#remainingBodyCount = 0
+	#performanceRecorder: PhysicsPerformanceRecorder | undefined
 	readonly #timelineEdgeLaunch = new WeakMap<VisualEntry, {
 		readonly position: Vector3
 		readonly velocity: Vector3
@@ -234,8 +275,9 @@ export class PhysicsRenderer extends KinematicRenderer {
 		this.createBodies(entries, true)
 		if(durationMs <= 0) {
 			if(signal.aborted) return Promise.reject(new DisplayCancelledError())
-			for(const activeBody of this.#bodies) {
-				if(!entries.includes(activeBody.entry)) continue
+			for(const entryToComplete of entries) {
+				const activeBody = this.#bodyByEntry.get(entryToComplete)
+				if(!activeBody) continue
 				const { body, entry, shape } = activeBody
 				entry.node.setEnabled(true)
 				entry.node.position.copyFrom(entry.end)
@@ -252,6 +294,7 @@ export class PhysicsRenderer extends KinematicRenderer {
 				activeBody.collisionsArmed = true
 				activeBody.state = 'complete'
 				activeBody.locked = true
+				this.#remainingBodyCount = Math.max(0, this.#remainingBodyCount - 1)
 				try {
 					this.#physicsPlugin?.setActivationControl(body, PhysicsActivationControl.ALWAYS_INACTIVE)
 				} catch {}
@@ -399,16 +442,43 @@ export class PhysicsRenderer extends KinematicRenderer {
 		requestedDurationMs: number,
 		onEntrySettled?: (entry: VisualEntry) => void
 	): Promise<void> {
+		const profilingEnabled = (
+			globalThis as typeof globalThis & { __DICE3DVIEW_PHYSICS_PROFILE__?: boolean }
+		).__DICE3DVIEW_PHYSICS_PROFILE__ === true
+		if(profilingEnabled) return import('../physicsPerformance').then(module => {
+			const recorder = new module.PhysicsPerformanceRecorder()
+			return this.#executePhysicsAnimation(signal, requestedDurationMs, onEntrySettled, {
+				recorder,
+				publish: () => module.publishPhysicsPerformanceSnapshot(recorder.complete())
+			})
+		})
+		return this.#executePhysicsAnimation(signal, requestedDurationMs, onEntrySettled)
+	}
+
+	#executePhysicsAnimation(
+		signal: AbortSignal,
+		requestedDurationMs: number,
+		onEntrySettled?: (entry: VisualEntry) => void,
+		performanceSession?: PhysicsPerformanceSession
+	): Promise<void> {
 		const engine = this.engine!
 		const scene = this.scene!
 		const duration = Math.max(250, requestedDurationMs)
+		const performanceRecorder = performanceSession?.recorder
+		this.#performanceRecorder = performanceRecorder
+		performanceRecorder?.recordBodies(this.#bodies.length)
 		return new Promise<void>((resolve, reject) => {
 			let settled = false
-			const reportedEntries = new Set<VisualEntry>()
 			const beforePhysicsObserver = scene.onBeforePhysicsObservable.add(() => {
+				const startedAt = performanceRecorder?.now() ?? 0
 				for(const activeBody of this.#bodies) {
 					this.#updateGuidance(activeBody, this.#physicsStepMs, duration)
 				}
+				if(performanceRecorder) performanceRecorder.recordPhysicsStep(
+					performanceRecorder.now() - startedAt,
+					this.#bodies.length,
+					this.#physicsStepMs
+				)
 			})
 			const afterPhysicsObserver = scene.onAfterPhysicsObservable.add(() => {
 				for(const activeBody of this.#bodies) {
@@ -422,17 +492,22 @@ export class PhysicsRenderer extends KinematicRenderer {
 				scene.onBeforePhysicsObservable.remove(beforePhysicsObserver)
 				scene.onAfterPhysicsObservable.remove(afterPhysicsObserver)
 				signal.removeEventListener('abort', abort)
+				if(performanceRecorder) {
+					performanceSession?.publish()
+					if(this.#performanceRecorder === performanceRecorder) this.#performanceRecorder = undefined
+				}
 				if(error) reject(error)
 				else resolve()
 			}
 			const abort = (): void => finish(new DisplayCancelledError())
 			const render = (): void => {
+				const frameStartedAt = performanceRecorder?.now() ?? 0
 				if(signal.aborted) return abort()
-				const forcedLockActive = this.#bodies.some(activeBody =>
-					activeBody.state === 'finalLock' && activeBody.forcedLock
-				)
-				const overdueBodies: ActiveBody[] = []
+				this.#updatePhysicsResolution()
+				let forcedLockActive = false
+				let overdueCandidate: ActiveBody | undefined
 				for(const activeBody of this.#bodies) {
+					if(activeBody.state === 'finalLock' && activeBody.forcedLock) forcedLockActive = true
 					if(activeBody.locked || activeBody.state === 'commit') continue
 					if(!activeBody.launched) continue
 					if(
@@ -440,22 +515,25 @@ export class PhysicsRenderer extends KinematicRenderer {
 						|| !hasFiniteQuaternion(activeBody.entry)
 					) {
 						this.#beginEmergencyRecovery(activeBody)
-					} else if(activeBody.elapsedMs >= duration + activeBody.profile.timeoutExtensionMs) {
-						overdueBodies.push(activeBody)
+					} else if(
+						activeBody.elapsedMs >= duration + activeBody.profile.timeoutExtensionMs
+						&& !this.#hasRecentBodyCollision(activeBody)
+						&& (
+							overdueCandidate === undefined
+							|| activeBody.entry.node.position.y < overdueCandidate.entry.node.position.y
+						)
+					) {
+						overdueCandidate = activeBody
 					}
 				}
-				if(!forcedLockActive) {
-					const candidate = overdueBodies
-						.filter(activeBody => !this.#hasRecentBodyCollision(activeBody))
-						.sort((left, right) => left.entry.node.position.y - right.entry.node.position.y)[0]
-					if(candidate) this.#startFinalLock(candidate, true)
-				}
+				if(!forcedLockActive && overdueCandidate) this.#startFinalLock(overdueCandidate, true)
 				scene.render()
+				performanceRecorder?.recordFrame(performanceRecorder.now() - frameStartedAt)
 				if(onEntrySettled) {
 					try {
 						for(const activeBody of this.#bodies) {
-							if(!activeBody.locked || reportedEntries.has(activeBody.entry)) continue
-							reportedEntries.add(activeBody.entry)
+							if(!activeBody.locked || activeBody.settledReported) continue
+							activeBody.settledReported = true
 							onEntrySettled(activeBody.entry)
 						}
 					} catch(error) {
@@ -463,11 +541,36 @@ export class PhysicsRenderer extends KinematicRenderer {
 						return
 					}
 				}
-				if(this.#bodies.every(activeBody => activeBody.locked)) finish()
+				if(this.#remainingBodyCount === 0) finish()
 			}
 			signal.addEventListener('abort', abort, { once: true })
 			engine.runRenderLoop(render)
 		})
+	}
+
+	#updatePhysicsResolution(): void {
+		let activeBodyCount = 0
+		let requiresDenseResolution = false
+		for(const activeBody of this.#bodies) {
+			if(activeBody.locked || activeBody.state === 'commit' || activeBody.state === 'complete') {
+				continue
+			}
+			activeBodyCount++
+			if(
+				!activeBody.launched
+				|| activeBody.groundImpactCount + activeBody.bodySupportImpactCount === 0
+			) requiresDenseResolution = true
+		}
+		const physicsStep = getAdaptiveDicePhysicsStep({
+			totalBodyCount: this.#bodies.length,
+			activeBodyCount,
+			requiresDenseResolution
+		})
+		if(Math.abs(this.#physicsStepMs - physicsStep.milliseconds) <= 1e-6) return
+		this.#physicsStepMs = physicsStep.milliseconds
+		const physicsEngine = this.scene?.getPhysicsEngine()
+		physicsEngine?.setTimeStep(physicsStep.seconds)
+		physicsEngine?.setSubTimeStep(physicsStep.milliseconds)
 	}
 
 	protected override animateTimelineReroll(
@@ -476,9 +579,11 @@ export class PhysicsRenderer extends KinematicRenderer {
 		durationMs: number,
 		signal: AbortSignal
 	): Promise<void> {
-		const activeBodies = entries
-			.map(entry => this.#bodies.find(candidate => candidate.entry === entry))
-			.filter((body): body is ActiveBody => body !== undefined)
+		const activeBodies: ActiveBody[] = []
+		for(const entry of entries) {
+			const activeBody = this.#bodyByEntry.get(entry)
+			if(activeBody) activeBodies.push(activeBody)
+		}
 		for(const activeBody of activeBodies) {
 			activeBody.body.setMotionType(PhysicsMotionType.ANIMATED)
 			activeBody.body.disablePreStep = false
@@ -490,10 +595,10 @@ export class PhysicsRenderer extends KinematicRenderer {
 			for(const activeBody of activeBodies) {
 				activeBody.body.setTargetTransform(
 					activeBody.entry.node.position,
-					activeBody.entry.node.rotationQuaternion ?? Quaternion.Identity()
+					activeBody.entry.node.rotationQuaternion ?? IDENTITY_QUATERNION
 				)
-				activeBody.body.setLinearVelocity(Vector3.Zero())
-				activeBody.body.setAngularVelocity(Vector3.Zero())
+				activeBody.body.setLinearVelocity(ZERO_VECTOR)
+				activeBody.body.setAngularVelocity(ZERO_VECTOR)
 				activeBody.body.setMotionType(PhysicsMotionType.STATIC)
 				activeBody.body.disablePreStep = true
 				try {
@@ -533,8 +638,10 @@ export class PhysicsRenderer extends KinematicRenderer {
 	}
 
 	#hasLaunchClearance(activeBody: ActiveBody): boolean {
+		this.#performanceRecorder?.recordLaunchClearanceQuery()
 		for(const candidate of this.#bodies) {
 			if(candidate === activeBody || !candidate.launched) continue
+			this.#performanceRecorder?.recordLaunchPairCheck()
 			if(!hasPhysicsLaunchPairClearance(
 				activeBody.entry.node.position,
 				activeBody.entry.horizontalRadius,
@@ -602,7 +709,7 @@ export class PhysicsRenderer extends KinematicRenderer {
 			&& activeBody.elapsedMs - activeBody.lastBodyContactElapsedMs <= CONTACT_GRACE_MS
 		if(!hasBodyContact) {
 			activeBody.bodyContactStartedElapsedMs = undefined
-			activeBody.bodySupportName = undefined
+			activeBody.bodySupport = undefined
 		}
 		const hasBodyCollision = activeBody.lastBodyCollisionElapsedMs !== undefined
 			&& activeBody.elapsedMs - activeBody.lastBodyCollisionElapsedMs <= CONTACT_GRACE_MS
@@ -625,8 +732,8 @@ export class PhysicsRenderer extends KinematicRenderer {
 				profile.landingSpinRetention
 			)
 			const flightAssist = getPlannedFlightAngularVelocity(
-				body.getAngularVelocity() ?? Vector3.Zero(),
-				currentQuaternion(entry),
+				body.getAngularVelocity() ?? ZERO_VECTOR,
+				currentQuaternionToRef(entry, activeBody.currentQuaternionScratch),
 				activeBody.localFaceNormal,
 				plannedOrientation,
 				plannedVelocity,
@@ -671,23 +778,21 @@ export class PhysicsRenderer extends KinematicRenderer {
 				activeBody.groundImpactCount + activeBody.bodySupportImpactCount === 0
 				&& timeoutRemainingMs >= profile.timeoutWindowMs
 			) return
-			const firstSupportImpactElapsedMs = [
-				activeBody.firstGroundImpactElapsedMs,
-				activeBody.firstBodySupportImpactElapsedMs
-			].filter((value): value is number => value !== undefined)
-				.reduce<number | undefined>(
-					(earliest, value) => earliest === undefined ? value : Math.min(earliest, value),
-					undefined
-				)
-			if(!shouldStartGuidance({
-				elapsedMs: activeBody.elapsedMs,
-				...(firstSupportImpactElapsedMs === undefined
-					? {}
-					: { firstGroundImpactElapsedMs: firstSupportImpactElapsedMs }),
-				groundImpactCount: activeBody.groundImpactCount + activeBody.bodySupportImpactCount,
-				positionY: entry.node.position.y,
-				timeoutRemainingMs
-			}, profile)) return
+			const groundImpactElapsedMs = activeBody.firstGroundImpactElapsedMs
+			const bodyImpactElapsedMs = activeBody.firstBodySupportImpactElapsedMs
+			const firstSupportImpactElapsedMs = groundImpactElapsedMs === undefined
+				? bodyImpactElapsedMs
+				: bodyImpactElapsedMs === undefined
+					? groundImpactElapsedMs
+					: Math.min(groundImpactElapsedMs, bodyImpactElapsedMs)
+			const guidanceStartInput = activeBody.guidanceStartInput
+			guidanceStartInput.elapsedMs = activeBody.elapsedMs
+			guidanceStartInput.firstGroundImpactElapsedMs = firstSupportImpactElapsedMs
+			guidanceStartInput.groundImpactCount = activeBody.groundImpactCount
+				+ activeBody.bodySupportImpactCount
+			guidanceStartInput.positionY = entry.node.position.y
+			guidanceStartInput.timeoutRemainingMs = timeoutRemainingMs
+			if(!shouldStartGuidance(guidanceStartInput, profile)) return
 			activeBody.state = 'guidedSettle'
 			activeBody.guidanceElapsedMs = 0
 			body.setAngularDamping(this.options!.angularDamping)
@@ -700,9 +805,9 @@ export class PhysicsRenderer extends KinematicRenderer {
 				Math.min(1, activeBody.guidanceElapsedMs / profile.durationMs),
 				timeoutUrgency
 			)
-			const orientation = currentQuaternion(entry)
+			const orientation = currentQuaternionToRef(entry, activeBody.currentQuaternionScratch)
 			const sustainedAngularVelocity = getSustainedRollAngularVelocity(
-				body.getAngularVelocity() ?? Vector3.Zero(),
+				body.getAngularVelocity() ?? ZERO_VECTOR,
 				activeBody.settleRollAxis,
 				profile,
 				activeBody.guidanceElapsedMs,
@@ -719,7 +824,7 @@ export class PhysicsRenderer extends KinematicRenderer {
 				'settle'
 			)
 			body.setAngularVelocity(guidedAngular.velocity)
-			let linearVelocity = body.getLinearVelocity() ?? Vector3.Zero()
+			let linearVelocity = body.getLinearVelocity() ?? ZERO_VECTOR
 			if(
 				hasGroundContact
 				|| hasBodyContact
@@ -737,37 +842,28 @@ export class PhysicsRenderer extends KinematicRenderer {
 			const groundContactElapsedMs = hasGroundContact && activeBody.groundContactStartedElapsedMs !== undefined
 				? activeBody.elapsedMs - activeBody.groundContactStartedElapsedMs
 				: 0
-			const supportingBody = activeBody.bodySupportName === undefined
-				? undefined
-				: this.#bodies.find(candidate => candidate.entry.node.name === activeBody.bodySupportName)
-			const hasStableBodySupport = hasBodyContact && supportingBody?.locked === true
+			const hasStableBodySupport = hasBodyContact && activeBody.bodySupport?.locked === true
 			const bodyContactElapsedMs = hasBodyCollision && activeBody.bodyCollisionStartedElapsedMs !== undefined
 				? activeBody.elapsedMs - activeBody.bodyCollisionStartedElapsedMs
 				: 0
-			const readiness = {
-				angle: guidedAngular.angle,
-				angularSpeed: guidedAngular.velocity.length(),
-				elapsedMs: activeBody.elapsedMs,
-				groundContactElapsedMs,
-				hasGroundContact: hasGroundContact || hasStableBodySupport,
-				bodyContactElapsedMs,
-				...(activeBody.lastBodyCollisionElapsedMs === undefined
-					? {}
-					: { lastBodyContactElapsedMs: activeBody.lastBodyCollisionElapsedMs }),
-				linearSpeed: linearVelocity.length(),
-				positionY: entry.node.position.y
-			}
-			const stableThisStep = canStartFinalLock({
-				...readiness,
-				stableElapsedMs: profile.stableDurationMs
-			}, profile)
+			const finalLockInput = activeBody.finalLockInput
+			finalLockInput.angle = guidedAngular.angle
+			finalLockInput.angularSpeed = guidedAngular.velocity.length()
+			finalLockInput.elapsedMs = activeBody.elapsedMs
+			finalLockInput.groundContactElapsedMs = groundContactElapsedMs
+			finalLockInput.hasGroundContact = hasGroundContact || hasStableBodySupport
+			finalLockInput.bodyContactElapsedMs = bodyContactElapsedMs
+			finalLockInput.lastBodyContactElapsedMs = activeBody.lastBodyCollisionElapsedMs
+			finalLockInput.linearSpeed = linearVelocity.length()
+			finalLockInput.positionY = entry.node.position.y
+			finalLockInput.stableElapsedMs = profile.stableDurationMs
+			const stableThisStep = canStartFinalLock(finalLockInput, profile)
 			activeBody.stableElapsedMs = stableThisStep
 				? activeBody.stableElapsedMs + deltaMs
 				: 0
-			if(canStartFinalLock({
-				...readiness,
-				stableElapsedMs: activeBody.stableElapsedMs
-			}, profile)) this.#startFinalLock(activeBody, false)
+			if(stableThisStep && activeBody.stableElapsedMs >= profile.stableDurationMs) {
+				this.#startFinalLock(activeBody, false)
+			}
 			return
 		}
 
@@ -779,12 +875,14 @@ export class PhysicsRenderer extends KinematicRenderer {
 			activeBody.lockElapsedMs += deltaMs
 			const rawProgress = Math.min(1, activeBody.lockElapsedMs / Math.max(1, activeBody.lockDurationMs))
 			const progress = smoothStep(rawProgress)
-			const source = activeBody.lockSourceQuaternion ?? currentQuaternion(entry)
+			const source = activeBody.lockSourceQuaternion
+				?? currentQuaternionToRef(entry, activeBody.currentQuaternionScratch)
 			const target = activeBody.lockTargetQuaternion ?? source
-			const rotation = Quaternion.Slerp(source, target, progress).normalize()
+			const rotation = Quaternion.SlerpToRef(source, target, progress, activeBody.lockRotationScratch).normalize()
 			const sourcePosition = activeBody.lockSourcePosition ?? entry.node.position
 			const targetPosition = activeBody.lockTargetPosition ?? sourcePosition
-			body.setTargetTransform(Vector3.Lerp(sourcePosition, targetPosition, progress), rotation)
+			const position = Vector3.LerpToRef(sourcePosition, targetPosition, progress, activeBody.lockPositionScratch)
+			body.setTargetTransform(position, rotation)
 			if(rawProgress >= 1) activeBody.state = 'commit'
 		}
 	}
@@ -797,13 +895,13 @@ export class PhysicsRenderer extends KinematicRenderer {
 			|| activeBody.state === 'complete'
 			|| (!forced && activeBody.state !== 'guidedSettle')
 		) return
-		const orientation = currentQuaternion(activeBody.entry)
+		const orientation = currentQuaternionToRef(activeBody.entry, activeBody.currentQuaternionScratch)
 		// A normal settle is already inside the accepted face cone. Commit the
 		// real Havok pose in place instead of animating neighbours through one
 		// another; the small remaining yaw/tilt is intentionally natural.
 		if(!forced) {
-			activeBody.body.setLinearVelocity(Vector3.Zero())
-			activeBody.body.setAngularVelocity(Vector3.Zero())
+			activeBody.body.setLinearVelocity(ZERO_VECTOR)
+			activeBody.body.setAngularVelocity(ZERO_VECTOR)
 			activeBody.state = 'commit'
 			return
 		}
@@ -841,18 +939,18 @@ export class PhysicsRenderer extends KinematicRenderer {
 		activeBody.lockDurationMs = getFinalLockDurationMs(alignment.angle, activeBody.profile, forced)
 		activeBody.lockSourcePosition = sourcePosition
 		activeBody.lockTargetPosition = targetPosition
-		activeBody.lockSourceQuaternion = orientation
+		activeBody.lockSourceQuaternion = orientation.clone()
 		activeBody.lockTargetQuaternion = chooseShortestQuaternion(orientation, alignment.targetQuaternion)
-		activeBody.body.setLinearVelocity(Vector3.Zero())
-		activeBody.body.setAngularVelocity(Vector3.Zero())
+		activeBody.body.setLinearVelocity(ZERO_VECTOR)
+		activeBody.body.setAngularVelocity(ZERO_VECTOR)
 		activeBody.body.setMotionType(PhysicsMotionType.ANIMATED)
 		activeBody.body.setTargetTransform(sourcePosition, orientation)
 	}
 
 	#abortForcedFinalLock(activeBody: ActiveBody): void {
 		const { body } = activeBody
-		const linearVelocity = body.getLinearVelocity()?.clone() ?? Vector3.Zero()
-		const angularVelocity = body.getAngularVelocity()?.clone() ?? Vector3.Zero()
+		const linearVelocity = body.getLinearVelocity()?.clone() ?? ZERO_VECTOR
+		const angularVelocity = body.getAngularVelocity()?.clone() ?? ZERO_VECTOR
 		body.setMotionType(PhysicsMotionType.DYNAMIC)
 		body.disablePreStep = true
 		try {
@@ -878,14 +976,14 @@ export class PhysicsRenderer extends KinematicRenderer {
 		if(this.#bounds) clampHorizontalPosition(targetPosition, this.#bounds, entry.horizontalRadius)
 		const recoveryTarget = hasFiniteQuaternion(entry)
 			? getFaceAlignment(
-				currentQuaternion(entry),
+				currentQuaternionToRef(entry, activeBody.currentQuaternionScratch),
 				activeBody.localFaceNormal,
 				activeBody.restDirection
 			).targetQuaternion
 			: entry.target.clone()
 		body.setMotionType(PhysicsMotionType.ANIMATED)
-		body.setLinearVelocity(Vector3.Zero())
-		body.setAngularVelocity(Vector3.Zero())
+		body.setLinearVelocity(ZERO_VECTOR)
+		body.setAngularVelocity(ZERO_VECTOR)
 		entry.node.position.copyFrom(targetPosition)
 		entry.node.rotationQuaternion = recoveryTarget
 		entry.node.computeWorldMatrix(true)
@@ -899,14 +997,15 @@ export class PhysicsRenderer extends KinematicRenderer {
 		if(activeBody.state !== 'commit') return
 		const { body } = activeBody
 		body.disablePreStep = true
-		body.setLinearVelocity(Vector3.Zero())
-		body.setAngularVelocity(Vector3.Zero())
+		body.setLinearVelocity(ZERO_VECTOR)
+		body.setAngularVelocity(ZERO_VECTOR)
 		body.setMotionType(PhysicsMotionType.STATIC)
 		try {
 			this.#physicsPlugin?.setActivationControl(body, PhysicsActivationControl.ALWAYS_INACTIVE)
 		} catch {}
 		activeBody.state = 'complete'
 		activeBody.locked = true
+		this.#remainingBodyCount = Math.max(0, this.#remainingBodyCount - 1)
 	}
 
 	#createShape(entry: VisualEntry): PhysicsShapeConvexHull {
@@ -916,7 +1015,7 @@ export class PhysicsRenderer extends KinematicRenderer {
 			collider.setEnabled(true)
 			collider.isVisible = false
 			collider.position.setAll(0)
-			collider.rotationQuaternion = Quaternion.Identity()
+			collider.rotationQuaternion = IDENTITY_QUATERNION.clone()
 			collider.scaling.set(
 				entry.node.scaling.x * this.options!.colliderScale,
 				entry.node.scaling.y * this.options!.colliderScale,
@@ -951,8 +1050,10 @@ export class PhysicsRenderer extends KinematicRenderer {
 		)
 		this.buildBounds(undefined, undefined, this.#largestRadius)
 		if(append) this.#prepareAppendLaunches(entries)
-		for(const entry of entries) this.#dynamicBodyNames.add(entry.node.name)
 		for(const entry of entries) {
+			if(this.#bodyByEntry.has(entry) || this.#bodyByNodeName.has(entry.node.name)) {
+				throw new Error(`Duplicate physics body identity '${entry.node.name}'.`)
+			}
 			if(this.#bounds) {
 				clampHorizontalPosition(entry.end, this.#bounds, entry.horizontalRadius)
 				entry.node.position.copyFrom(entry.start)
@@ -1013,8 +1114,8 @@ export class PhysicsRenderer extends KinematicRenderer {
 			body.setMotionType(PhysicsMotionType.ANIMATED)
 			body.setLinearDamping(this.options!.linearDamping)
 			body.setAngularDamping(0)
-			body.setLinearVelocity(Vector3.Zero())
-			body.setAngularVelocity(Vector3.Zero())
+			body.setLinearVelocity(ZERO_VECTOR)
+			body.setAngularVelocity(ZERO_VECTOR)
 			entry.node.setEnabled(false)
 			try {
 				this.#physicsPlugin?.setActivationControl(body, PhysicsActivationControl.ALWAYS_INACTIVE)
@@ -1035,6 +1136,28 @@ export class PhysicsRenderer extends KinematicRenderer {
 					.add(resultFaceFrame.restDirection.scale(0.65))
 					.normalize(),
 				flightDurationMs: flightSeconds * 1000,
+				currentQuaternionScratch: Quaternion.Identity(),
+				lockRotationScratch: Quaternion.Identity(),
+				lockPositionScratch: Vector3.Zero(),
+				guidanceStartInput: {
+					elapsedMs: 0,
+					firstGroundImpactElapsedMs: undefined,
+					groundImpactCount: 0,
+					positionY: 0,
+					timeoutRemainingMs: 0
+				},
+				finalLockInput: {
+					angle: 0,
+					angularSpeed: 0,
+					elapsedMs: 0,
+					groundContactElapsedMs: 0,
+					hasGroundContact: false,
+					bodyContactElapsedMs: 0,
+					lastBodyContactElapsedMs: undefined,
+					linearSpeed: 0,
+					positionY: 0,
+					stableElapsedMs: 0
+				},
 				flightCorrectionVelocity: Vector3.Zero(),
 				launchDelayElapsedMs: 0,
 				launched: false,
@@ -1061,11 +1184,12 @@ export class PhysicsRenderer extends KinematicRenderer {
 				lastBodyContactElapsedMs: undefined,
 				lastBodyCollisionElapsedMs: undefined,
 				bodyCollisionStartedElapsedMs: undefined,
-				bodySupportName: undefined,
+				bodySupport: undefined,
 				wallImpactCount: 0,
 				lastWallImpactElapsedMs: undefined,
 				forcedLock: false,
-				forcedLockBodyCollision: false
+				forcedLockBodyCollision: false,
+				settledReported: false
 			}
 			body.setCollisionCallbackEnabled(true)
 			activeBody.collisionObserver = body.getCollisionObservable().add(event => {
@@ -1079,7 +1203,11 @@ export class PhysicsRenderer extends KinematicRenderer {
 				})
 			})
 			this.#bodies.push(activeBody)
+			this.#bodyByEntry.set(entry, activeBody)
+			this.#bodyByNodeName.set(entry.node.name, activeBody)
+			this.#remainingBodyCount++
 		}
+		this.#performanceRecorder?.recordBodies(this.#bodies.length)
 	}
 
 	#prepareAppendLaunches(entries: readonly VisualEntry[]): void {
@@ -1137,6 +1265,7 @@ export class PhysicsRenderer extends KinematicRenderer {
 
 	#recordCollision(activeBody: ActiveBody, event: IPhysicsCollisionEvent): void {
 		if(event.type === PhysicsEventType.COLLISION_FINISHED) return
+		this.#performanceRecorder?.recordCollision()
 		const ownName = activeBody.entry.node.name
 		const colliderName = event.collider.transformNode.name
 		const collidedName = event.collidedAgainst.transformNode.name
@@ -1159,7 +1288,8 @@ export class PhysicsRenderer extends KinematicRenderer {
 			activeBody.lastWallImpactElapsedMs = activeBody.elapsedMs
 			return
 		}
-		if(otherName !== ownName && this.#dynamicBodyNames.has(otherName)) {
+		const otherBody = this.#bodyByNodeName.get(otherName)
+		if(otherName !== ownName && otherBody) {
 			if(activeBody.state === 'finalLock' && activeBody.forcedLock) {
 				activeBody.forcedLockBodyCollision = true
 			}
@@ -1167,15 +1297,13 @@ export class PhysicsRenderer extends KinematicRenderer {
 				|| activeBody.elapsedMs - activeBody.lastBodyCollisionElapsedMs > CONTACT_GRACE_MS
 			if(bodyCollisionWasInterrupted) activeBody.bodyCollisionStartedElapsedMs = activeBody.elapsedMs
 			activeBody.lastBodyCollisionElapsedMs = activeBody.elapsedMs
-			const otherBody = this.#bodies.find(candidate => candidate.entry.node.name === otherName)
 			const normalY = Math.abs(event.normal?.y ?? 0)
 			const contactPoint = event.point
 			const contactIsBelowCenter = contactPoint !== undefined
 				&& contactPoint !== null
 				&& contactPoint.y <= activeBody.entry.node.position.y
 					- Math.min(0.06, activeBody.entry.supportHeight * 0.08)
-			const otherBodyIsBelow = otherBody !== undefined
-				&& otherBody.entry.node.position.y + 0.02 < activeBody.entry.node.position.y
+			const otherBodyIsBelow = otherBody.entry.node.position.y + 0.02 < activeBody.entry.node.position.y
 			if(normalY < 0.45 || !contactIsBelowCenter || !otherBodyIsBelow) return
 			const contactWasInterrupted = activeBody.lastBodyContactElapsedMs === undefined
 				|| activeBody.elapsedMs - activeBody.lastBodyContactElapsedMs > CONTACT_GRACE_MS
@@ -1190,7 +1318,7 @@ export class PhysicsRenderer extends KinematicRenderer {
 				activeBody.bodySupportImpactCount++
 				activeBody.firstBodySupportImpactElapsedMs ??= activeBody.elapsedMs
 			}
-			activeBody.bodySupportName = otherName
+			activeBody.bodySupport = otherBody
 			activeBody.lastBodyContactElapsedMs = activeBody.elapsedMs
 		}
 	}
@@ -1310,7 +1438,10 @@ export class PhysicsRenderer extends KinematicRenderer {
 				if(positionChanged || targetChanged) {
 					activeBody.lockSourcePosition = entry.node.position.clone()
 					activeBody.lockTargetPosition = targetPosition
-					activeBody.lockSourceQuaternion = currentQuaternion(entry)
+					activeBody.lockSourceQuaternion = currentQuaternionToRef(
+						entry,
+						activeBody.currentQuaternionScratch
+					).clone()
 					activeBody.lockDurationMs = remainingDurationMs
 					activeBody.lockElapsedMs = 0
 				}
@@ -1348,7 +1479,10 @@ export class PhysicsRenderer extends KinematicRenderer {
 			try { body.shape?.dispose() } catch {}
 			body.dispose()
 		}
-		this.#dynamicBodyNames.clear()
+		this.#bodyByEntry.clear()
+		this.#bodyByNodeName.clear()
+		this.#remainingBodyCount = 0
+		this.#performanceRecorder = undefined
 	}
 
 	override clear(): void {

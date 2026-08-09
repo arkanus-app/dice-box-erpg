@@ -1,0 +1,233 @@
+{
+  "name": "Assimilação compatible — supplied symbols",
+  "systemName": "assimilation",
+  "author": "ERPG contributors — project-supplied SVG glyphs",
+  "version": 3,
+  "material": {
+    "type": "color",
+    "diffuseTexture": {
+      "light": "faces-light.svg",
+      "dark": "faces-dark.svg"
+    },
+    "diffuseLevel": 1
+  },
+  "diceAvailable": [
+    "d6",
+    "d10",
+    "d12"
+  ],
+  "faceAtlas": {
+    "layoutId": "erpg-default-v1",
+    "width": 1024,
+    "height": 1024,
+    "model": "../default/default.json"
+  },
+  "faceMetadata": {
+    "schemaVersion": 1,
+    "mappingId": "assimilation-faces-v1",
+    "symbols": {
+      "success": {
+        "label": "Sucesso"
+      },
+      "adaptation": {
+        "label": "Adaptação"
+      },
+      "pressure": {
+        "label": "Pressão"
+      }
+    },
+    "dice": {
+      "d6": {
+        "1": {
+          "label": "Vazio",
+          "symbols": []
+        },
+        "2": {
+          "label": "Vazio",
+          "symbols": []
+        },
+        "3": {
+          "label": "Pressão",
+          "symbols": [
+            "pressure"
+          ]
+        },
+        "4": {
+          "label": "Pressão",
+          "symbols": [
+            "pressure"
+          ]
+        },
+        "5": {
+          "label": "Adaptação + Pressão",
+          "symbols": [
+            "adaptation",
+            "pressure"
+          ]
+        },
+        "6": {
+          "label": "Sucesso",
+          "symbols": [
+            "success"
+          ]
+        }
+      },
+      "d10": {
+        "1": {
+          "label": "Vazio",
+          "symbols": []
+        },
+        "2": {
+          "label": "Vazio",
+          "symbols": []
+        },
+        "3": {
+          "label": "Pressão",
+          "symbols": [
+            "pressure"
+          ]
+        },
+        "4": {
+          "label": "Pressão",
+          "symbols": [
+            "pressure"
+          ]
+        },
+        "5": {
+          "label": "Adaptação + Pressão",
+          "symbols": [
+            "adaptation",
+            "pressure"
+          ]
+        },
+        "6": {
+          "label": "Sucesso",
+          "symbols": [
+            "success"
+          ]
+        },
+        "7": {
+          "label": "2 × Sucesso",
+          "symbols": [
+            "success",
+            "success"
+          ]
+        },
+        "8": {
+          "label": "Sucesso + Adaptação",
+          "symbols": [
+            "success",
+            "adaptation"
+          ]
+        },
+        "9": {
+          "label": "Sucesso + Adaptação + Pressão",
+          "symbols": [
+            "success",
+            "adaptation",
+            "pressure"
+          ]
+        },
+        "10": {
+          "label": "2 × Sucesso + Pressão",
+          "symbols": [
+            "success",
+            "success",
+            "pressure"
+          ]
+        }
+      },
+      "d12": {
+        "1": {
+          "label": "Vazio",
+          "symbols": []
+        },
+        "2": {
+          "label": "Vazio",
+          "symbols": []
+        },
+        "3": {
+          "label": "Pressão",
+          "symbols": [
+            "pressure"
+          ]
+        },
+        "4": {
+          "label": "Pressão",
+          "symbols": [
+            "pressure"
+          ]
+        },
+        "5": {
+          "label": "Adaptação + Pressão",
+          "symbols": [
+            "adaptation",
+            "pressure"
+          ]
+        },
+        "6": {
+          "label": "Sucesso",
+          "symbols": [
+            "success"
+          ]
+        },
+        "7": {
+          "label": "2 × Sucesso",
+          "symbols": [
+            "success",
+            "success"
+          ]
+        },
+        "8": {
+          "label": "Sucesso + Adaptação",
+          "symbols": [
+            "success",
+            "adaptation"
+          ]
+        },
+        "9": {
+          "label": "Sucesso + Adaptação + Pressão",
+          "symbols": [
+            "success",
+            "adaptation",
+            "pressure"
+          ]
+        },
+        "10": {
+          "label": "2 × Sucesso + Pressão",
+          "symbols": [
+            "success",
+            "success",
+            "pressure"
+          ]
+        },
+        "11": {
+          "label": "Sucesso + 2 × Adaptação + Pressão",
+          "symbols": [
+            "success",
+            "adaptation",
+            "adaptation",
+            "pressure"
+          ]
+        },
+        "12": {
+          "label": "2 × Pressão",
+          "symbols": [
+            "pressure",
+            "pressure"
+          ]
+        }
+      }
+    }
+  },
+  "artwork": {
+    "kind": "project-supplied-vector-glyphs",
+    "license": "Project-supplied (rights not asserted by this generator)",
+    "glyphSources": {
+      "success": "scripts/theme-artwork/assimilation-success-ladybug.svg",
+      "adaptation": "scripts/theme-artwork/assimilation-adaptation-deer.svg",
+      "pressure": "scripts/theme-artwork/assimilation-pressure-owl.svg"
+    },
+    "note": "SVG glyphs supplied by the project owner; confirm redistribution rights before publishing."
+  }
+}

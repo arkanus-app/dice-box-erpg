@@ -4,15 +4,21 @@ Camada TypeScript de apresentação 3D para resultados de dados já resolvidos.
 
 O `@erpg/dicecore` interpreta a fórmula e decide os resultados; o `@erpg/dice3dview` recebe esses valores prontos e apenas os apresenta. A biblioteca não interpreta notação, não sorteia valores e não usa a face física como fonte do resultado.
 
-Versão atual: **2.2.3**.
+Versão atual: **2.6.0**.
+
+> A versão `2.6.0` está versionada neste repositório; a publicação no npm
+> é um processo separado.
 
 ## Documentação
 
 - [Referência completa da API](docs/API.md)
 - [Criação e hospedagem de temas](docs/THEMES.md)
+- [Dados simbólicos: Vampiro V5, Assimilação e Fate](docs/SYMBOLIC_DICE.md)
 - [Migração da v1 para a v2](docs/MIGRATION_V2.md)
 - [Devlog da v2](DEVLOG_V2.md)
 - [Changelog](CHANGELOG.md)
+- [Métricas de bundle e carregamento](docs/BUNDLE_METRICS.md)
+- [Desempenho do hot path físico](docs/PHYSICS_PERFORMANCE.md)
 - [Origem e diferenças do fork](FORK.md)
 
 ## O que a v2 oferece
@@ -21,14 +27,19 @@ Versão atual: **2.2.3**.
 - pipeline exclusivamente visual, com o resultado externo como única autoridade;
 - `d2` nativo como moeda procedural configurável por tema;
 - `d4`, `d6`, `d8`, `d10`, `d12`, `d20` e `d100`;
+- temas simbólicos e adaptador estrutural para Vampiro V5, Assimilação e Fate/Fudge;
+- adaptador para apresentar dados genéricos e de múltiplos sistemas no mesmo lançamento;
 - modo cinemático leve como padrão, sem Havok no grafo inicial;
 - modo físico lazy com colisões desde a liberação, variação seedada de energia/direção, preflight orientado ao resultado, stacking e aterrissagem guiada na face solicitada;
 - palco responsivo, com piso e quatro barreiras invisíveis finas ajustados ao tamanho real do canvas;
 - nos dois modos, arremesso de grupo por uma borda comum escolhida entre as quatro, com o corpo inteiro começando fora da projeção, entrada sequencial e posições finais dispersas; no cinemático, a trajetória também é determinística por `seed`;
 - cancelamento tipado, cache de temas/modelos/materiais e pools de meshes;
 - timeline semântica opcional para explosões, rerolls, unique, compound, penetrate, keep/drop e classificações;
-- um entrypoint ESM com chunks lazy, CSS público e tipos TypeScript;
-- orçamento automatizado de até 8 MiB para toda a distribuição.
+- entrypoint legado autocontido, entrypoint `external` para bundlers e entrypoint `adapters` sem renderer;
+- chunks lazy separados para física, profiling, sombras e efeitos da timeline,
+  com métricas versionadas por grafo;
+- uma única cópia do Havok WASM no pacote, sem repetição base64 no JavaScript
+  legado.
 
 ## Instalação
 
@@ -41,7 +52,7 @@ npm install @erpg/dice3dview
 Para consumir diretamente uma tag do repositório:
 
 ```bash
-npm install github:arkanus-app/dice-box-erpg#v2.2.3
+npm install github:arkanus-app/dice-box-erpg#v2.6.0
 ```
 
 Em `package.json`:
@@ -49,10 +60,23 @@ Em `package.json`:
 ```json
 {
   "dependencies": {
-    "@erpg/dice3dview": "^2.2.3"
+    "@erpg/dice3dview": "^2.6.0"
   }
 }
 ```
+
+Aplicações empacotadas devem importar o renderer pelo subpath `external`, que
+deixa Babylon e Havok para o bundler do consumidor, e os conversores puros pelo
+subpath `adapters`:
+
+```ts
+import { DiceResultViewer } from '@erpg/dice3dview/external'
+import { createMixedDisplayRequest } from '@erpg/dice3dview/adapters'
+```
+
+O entrypoint raiz `@erpg/dice3dview` permanece autocontido para compatibilidade
+e uso direto por CDN. `@erpg/dice3dview/external` não é um artefato standalone
+de CDN: seus imports bare precisam ser resolvidos por um bundler npm.
 
 ## Assets obrigatórios
 
@@ -69,7 +93,11 @@ public/assets/dice-box/
 ├── havok/HavokPhysics.wasm
 └── themes/
     ├── default/
-    └── default-v2/
+    ├── default-v2/
+    ├── vampire-v5-normal/
+    ├── vampire-v5-hunger/
+    ├── assimilation/
+    └── fate/
 ```
 
 Também importe o CSS estável do canvas:
@@ -96,7 +124,7 @@ Se os arquivos forem hospedados em outro endereço, configure `assetPath`, `orig
 ```
 
 ```ts
-import { DiceResultViewer, isDisplayCancelledError } from '@erpg/dice3dview'
+import { DiceResultViewer, isDisplayCancelledError } from '@erpg/dice3dview/external'
 import '@erpg/dice3dview/style.css'
 
 const viewer = new DiceResultViewer({
@@ -130,7 +158,7 @@ try {
 
 ## Integração com `@erpg/dicecore`
 
-O adaptador fica deliberadamente na aplicação. Isso mantém parsing, regras, explosões, rerolls e descartes fora do renderer:
+Para rolagens genéricas, o adaptador continua deliberadamente na aplicação. Isso mantém parsing, regras, explosões, rerolls e descartes fora do renderer:
 
 ```ts
 import { rollRpgDice } from '@erpg/dicecore'
@@ -164,6 +192,35 @@ if(dice.length > 0) {
 ```
 
 O `seed` nunca altera `value`. No modo cinemático ele torna trajetória, posição e rotação reproduzíveis; no modo físico ele determina condições visuais iniciais, mas colisões e timing podem produzir posições finais diferentes.
+
+### Rolagens mistas
+
+`@erpg/dicecore` 3.4.0 separa fórmulas e sistemas por `;`. O resultado
+achatado entra diretamente no adaptador misto:
+
+```ts
+import { rollMixedDice } from '@erpg/dicecore'
+import { createMixedDisplayRequest } from '@erpg/dice3dview'
+
+const mixed = rollMixedDice(
+  '2d20+5; v5(7,3,4); fate(4); assim(2,1,1,1); daggerheart(modifier=2,difficulty=15)',
+  { seed: 'sessao-42' }
+)
+
+await viewer.display(createMixedDisplayRequest({
+  id: 'misto-42',
+  seed: 'misto-42',
+  dice: mixed.dice,
+  mode: 'physics'
+}))
+```
+
+O adaptador preserva a ordem e `physicalValue`, aplica automaticamente os
+temas de `profileId`, converte d3 genérico para a geometria d6 e omite por
+padrão formatos genéricos sem representação física, como `dF`. Use
+`unsupportedDice: 'error'` para rejeitá-los em vez de omitir. Para Fate 3D,
+use `fate()` na notação mista: ele preserva a face d6, enquanto o `dF`
+genérico expõe apenas −1, 0 ou +1.
 
 ### Timeline semântica
 
@@ -276,6 +333,7 @@ A moeda usa cilindro e duas faces gerados em runtime, sem adicionar uma nova mal
   "coin": {
     "front": { "value": 1, "texture": "coin-heads.webp" },
     "back": { "value": 2, "texture": "coin-tails.webp" },
+    "colorize": false,
     "edgeColor": "#c89b3c",
     "diameter": 1,
     "thickness": 0.12
@@ -284,6 +342,11 @@ A moeda usa cilindro e duas faces gerados em runtime, sem adicionar uma nova mal
 ```
 
 Temas podem usar números, cara/coroa, brasões ou qualquer outra arte. Os valores internos continuam sendo `1` e `2`. Se o bloco `coin` não existir, o tema recebe a moeda numérica padrão.
+
+A moeda numérica padrão usa SVGs transparentes contendo somente `1` e `2`. Com
+`colorize: true`, o renderer aplica `themeColor` ao corpo e ao aro da moeda;
+assim, o d2 acompanha a mesma skin de cor dos demais dados. Temas com arte
+completa devem usar `colorize: false` e podem continuar definindo `edgeColor`.
 
 O mapeamento geométrico é fixo: a frente com normal local `+Y` usa `Identity` e representa o valor `1`; o verso com normal local `−Y` usa rotação `π` e representa o valor `2`. A validação visual confirmou `1d2[2]` exibindo a textura do verso/valor 2.
 
@@ -310,6 +373,10 @@ viewer.dispose()
 
 Falhas de entrada continuam rejeitando normalmente. Falhas gráficas, de tema ou do runtime físico durante a apresentação são tratadas como best-effort: são registradas no console e a biblioteca ainda devolve uma cópia normalizada e congelada dos resultados resolvidos.
 
+Esse comportamento best-effort vale para `display()`. `displayTimeline()`
+propaga falhas gráficas, de asset e físicas, pois devolver sucesso depois de uma
+execução parcial deixaria o journal visual em um estado enganoso.
+
 ## Desempenho da v2
 
 Comparando os artefatos Git da v1.0.6 com a v2.0.1:
@@ -320,7 +387,20 @@ Comparando os artefatos Git da v1.0.6 com a v2.0.1:
 | pacote compactado | 4.396.834 B | 2.307.233 B | −47,5% |
 | pacote descompactado | 16.098.720 B | 7.823.123 B | −51,4% |
 
-O build impede que a distribuição ultrapasse 8 MiB e verifica que Havok não apareça no grafo cinemático inicial. A 2.0.2 adicionou o export estável do CSS e a documentação completa; a 2.0.3 tornou piso, barreiras, lançamentos e pousos responsivos ao canvas; a 2.0.4 passou a planejar a face durante todo o voo, recuperou o kick imediato da v1 dentro de limites estáveis, adicionou uma cauda seedada de energia/direção, packing sem sobreposição e colisões dado-dado desde a liberação, preserva respostas reais do Havok e congela o repouso físico sem atravessar pilhas. Os testes de trajetória medem a rotação acumulada do corpo, a viagem acumulada da normal da face, o afastamento da face resolvida no instante inicial e o resultado final após o contato.
+O build mede separadamente grafo inicial, física, profiling, sombras, timeline,
+Havok JS, WASM, assets, pacote npm e os entrypoints `external` e `adapters`. Não há um
+limite agregado arbitrário: o baseline versionado permite definir futuros
+limites com evidência. O check estrutural também garante que Havok, sombras e
+highlight não apareçam no caminho inicial que não os utiliza. Consulte
+[Métricas de bundle e carregamento](docs/BUNDLE_METRICS.md).
+
+O renderer físico também possui benchmark móvel próprio. Índices diretos,
+scratch state por corpo e resolução adaptativa reduziram em `12d6` os passos de
+física em 18,72% e o tempo do controlador em 18,17%, preservando a duração e os
+critérios visuais. Consulte
+[Desempenho do hot path físico](docs/PHYSICS_PERFORMANCE.md).
+
+A 2.0.2 adicionou o export estável do CSS e a documentação completa; a 2.0.3 tornou piso, barreiras, lançamentos e pousos responsivos ao canvas; a 2.0.4 passou a planejar a face durante todo o voo, recuperou o kick imediato da v1 dentro de limites estáveis, adicionou uma cauda seedada de energia/direção, packing sem sobreposição e colisões dado-dado desde a liberação, preserva respostas reais do Havok e congela o repouso físico sem atravessar pilhas. Os testes de trajetória medem a rotação acumulada do corpo, a viagem acumulada da normal da face, o afastamento da face resolvida no instante inicial e o resultado final após o contato.
 
 ## Desenvolvimento local
 
@@ -332,6 +412,28 @@ npm run build
 ```
 
 O demo local está em `demo/` e permite alternar entre os dois renderers.
+
+### Exemplo integrado com o dicecore
+
+O arquivo [`example/index.html`](example/index.html) importa os builds locais de
+`@erpg/dicecore` e `@erpg/dice3dview`. A própria página recebe uma fórmula,
+resolve a rolagem, mostra o total e apresenta os dados em 3D nos modos cinemático
+ou físico.
+
+Com este repositório e `rpg-dice-roller` lado a lado, gere os dois builds e abra
+o exemplo:
+
+```bash
+cd ../rpg-dice-roller
+npm run build
+cd ../dice-box-erpg
+npm run build
+npm run example
+```
+
+O servidor abre `http://localhost:5173/example/index.html`. O exemplo precisa
+ser servido por HTTP; módulos ESM, WebAssembly e assets 3D não funcionam
+corretamente ao abrir o HTML diretamente com `file://`.
 
 ## Estado e próximos passos
 

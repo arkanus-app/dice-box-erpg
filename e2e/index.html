@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>dice3dview browser smoke</title>
+    <link rel="stylesheet" href="../dist/dice3dview.css" />
+    <style>
+      html, body, #stage { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+      #stage { position: fixed; inset: 0; }
+    </style>
+  </head>
+  <body>
+    <div id="stage"></div>
+    <script type="module">
+      const importStarted = performance.now()
+      const dice3dview = await import('../dist/dice3dview.es.js')
+      const importMs = performance.now() - importStarted
+      const { DiceResultViewer, isDisplayCancelledError } = dice3dview
+      const physicsPerformanceEntry = 'dice3dview:physics-hot-path'
+
+      const createViewer = options => new DiceResultViewer({
+        container: '#stage',
+        assetPath: '/dist/assets/dice-box/',
+        duration: 100,
+        settleTimeout: 2400,
+        scale: 3.2,
+        ...options
+      })
+
+      const assertFaces = (actual, expected) => {
+        const faces = actual.dice.map(die => die.value)
+        if(JSON.stringify(faces) !== JSON.stringify(expected)) {
+          throw new Error(`Face mismatch: ${JSON.stringify(faces)} !== ${JSON.stringify(expected)}`)
+        }
+      }
+
+      const runDisplay = async ({ mode = 'kinematic', enableShadows = false, sides, values }) => {
+		performance.clearMeasures(physicsPerformanceEntry)
+        const viewer = createViewer({ mode, enableShadows })
+        const initStarted = performance.now()
+        await viewer.init()
+        const initMs = performance.now() - initStarted
+        const displayStarted = performance.now()
+        const result = await viewer.display({
+          id: `${mode}-${sides}-${values.length}`,
+          mode,
+          dice: values.map((value, index) => ({ id: `die-${index}`, sides, value }))
+        })
+        const displayMs = performance.now() - displayStarted
+        assertFaces(result, values)
+        if(!viewer.canvas.isConnected) throw new Error('Viewer canvas was not attached.')
+        viewer.dispose()
+        if(viewer.canvas.isConnected) throw new Error('dispose() did not remove the canvas.')
+        const physicsPerformance = performance.getEntriesByName(physicsPerformanceEntry).at(-1)?.detail
+        return { initMs, displayMs, physicsPerformance }
+      }
+
+      const runTimeline = async () => {
+        const viewer = createViewer({ enableShadows: false })
+        await viewer.init()
+        const result = await viewer.displayTimeline({
+          id: 'timeline-d6',
+          dice: [{ id: 'timeline-die', sides: 6 }],
+          events: [{
+            sequence: 1,
+            type: 'roll',
+            subject: 'die',
+            dieId: 'timeline-die',
+            parentDieId: null,
+            rollIndex: 1,
+            sourceNodeId: 'browser-smoke',
+            value: 6
+          }]
+        })
+        assertFaces(result, [6])
+        if(result.eventCount !== 1) throw new Error('Timeline event count mismatch.')
+        viewer.dispose()
+      }
+
+      const runCancellation = async () => {
+        const viewer = createViewer({ duration: 800 })
+        await viewer.init()
+        const pending = viewer.display({
+          id: 'cancel',
+          dice: Array.from({ length: 12 }, (_, index) => ({
+            id: `cancel-${index}`,
+            sides: 6,
+            value: index % 6 + 1
+          }))
+        })
+        setTimeout(() => viewer.clear(), 20)
+        try {
+          await pending
+          throw new Error('Cancelled display unexpectedly resolved.')
+        } catch(error) {
+          if(!isDisplayCancelledError(error)) throw error
+        } finally {
+          viewer.dispose()
+        }
+      }
+
+      const resourceMetrics = () => {
+        const resources = performance.getEntriesByType('resource')
+        return {
+          requests: resources.length,
+          transferBytes: resources.reduce((total, entry) => total + entry.transferSize, 0),
+          encodedBytes: resources.reduce((total, entry) => total + entry.encodedBodySize, 0),
+          decodedBytes: resources.reduce((total, entry) => total + entry.decodedBodySize, 0)
+        }
+      }
+
+      window.diceSmoke = {
+        importMs,
+		setPhysicsProfiling(enabled) {
+		  globalThis.__DICE3DVIEW_PHYSICS_PROFILE__ = enabled
+		},
+        runDisplay,
+        runTimeline,
+        runCancellation,
+        resourceMetrics
+      }
+    </script>
+  </body>
+</html>

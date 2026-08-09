@@ -70,7 +70,7 @@ export interface PlannedFlightGuidanceResult extends FaceGuidanceResult {
 
 interface GuidanceStartInput {
 	readonly elapsedMs: number
-	readonly firstGroundImpactElapsedMs?: number
+	readonly firstGroundImpactElapsedMs?: number | undefined
 	readonly groundImpactCount: number
 	readonly positionY: number
 	readonly timeoutRemainingMs: number
@@ -83,7 +83,7 @@ interface FinalLockInput {
 	readonly groundContactElapsedMs: number
 	readonly hasGroundContact: boolean
 	readonly bodyContactElapsedMs?: number
-	readonly lastBodyContactElapsedMs?: number
+	readonly lastBodyContactElapsedMs?: number | undefined
 	readonly linearSpeed: number
 	readonly positionY: number
 	readonly stableElapsedMs: number

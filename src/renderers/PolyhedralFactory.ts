@@ -52,6 +52,15 @@ export interface PolyhedralInstance {
 	readonly targetQuaternion: Quaternion
 }
 
+export const getPolyhedralModelCacheKey = (config: Pick<ResolvedThemeConfig, 'meshFilePath'>): string =>
+	config.meshFilePath
+
+const getOrientationCacheKey = (
+	config: Pick<ResolvedThemeConfig, 'meshFilePath'>,
+	type: string,
+	faceValue: number
+): string => `${getPolyhedralModelCacheKey(config)}|${type}|${faceValue}`
+
 interface CachedOrientation {
 	readonly supportHeight: number
 	readonly targetQuaternion: Quaternion
@@ -137,11 +146,12 @@ export class PolyhedralFactory {
 	}
 
 	load(config: ResolvedThemeConfig): Promise<LoadedModel> {
-		const cached = this.#models.get(config.meshName)
+		const modelKey = getPolyhedralModelCacheKey(config)
+		const cached = this.#models.get(modelKey)
 		if(cached) return cached
 		const pending = this.#load(config)
-		this.#models.set(config.meshName, pending)
-		pending.catch(() => this.#models.delete(config.meshName))
+		this.#models.set(modelKey, pending)
+		pending.catch(() => this.#models.delete(modelKey))
 		return pending
 	}
 
@@ -160,7 +170,7 @@ export class PolyhedralFactory {
 		const collider = model.colliderMeshes.get(type)
 		const faceMap = model.faceMaps[type]
 		if(!source || !collider || !faceMap) throw new Error(`${type} is unavailable in theme '${config.theme}'.`)
-		const poolKey = `${config.meshName}|${type}`
+		const poolKey = `${getPolyhedralModelCacheKey(config)}|${type}`
 		const mesh = this.#pool.get(poolKey)?.pop() ?? source.clone(`${config.theme}-${type}-${id}`, null, false)
 		if(!mesh) throw new Error(`Unable to instantiate ${type}.`)
 		mesh.name = `${config.theme}-${type}-${id}`
@@ -174,7 +184,7 @@ export class PolyhedralFactory {
 		mesh.scaling.setAll(scale)
 		mesh.rotationQuaternion = Quaternion.Identity()
 		mesh.material = this.#getMaterial(config, die.themeColor, die.discarded)
-		const orientationKey = `${config.meshName}|${type}|${faceValue}`
+		const orientationKey = getOrientationCacheKey(config, type, faceValue)
 		let orientation = this.#orientations.get(orientationKey)
 		if(!orientation) {
 			const targetQuaternion = getTargetQuaternion(collider, faceMap, faceValue, sides === 4)
@@ -203,7 +213,7 @@ export class PolyhedralFactory {
 		const collider = model.colliderMeshes.get(type)
 		const faceMap = model.faceMaps[type]
 		if(!collider || !faceMap) throw new Error(`${type} is unavailable in theme '${config.theme}'.`)
-		const orientationKey = `${config.meshName}|${type}|${faceValue}`
+		const orientationKey = getOrientationCacheKey(config, type, faceValue)
 		let orientation = this.#orientations.get(orientationKey)
 		if(!orientation) {
 			const targetQuaternion = getTargetQuaternion(collider, faceMap, faceValue, sides === 4)

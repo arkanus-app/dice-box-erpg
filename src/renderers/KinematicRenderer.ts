@@ -1,7 +1,5 @@
 import { Quaternion, Vector3 } from '@babylonjs/core/Maths/math.vector'
 import { Color3 } from '@babylonjs/core/Maths/math.color'
-import '@babylonjs/core/Layers/effectLayerSceneComponent'
-import { HighlightLayer } from '@babylonjs/core/Layers/highlightLayer'
 import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture'
 import { Texture } from '@babylonjs/core/Materials/Textures/texture'
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial'
@@ -22,9 +20,8 @@ import {
 } from '../timeline'
 import { DisplayCancelledError } from '../errors'
 import { createSeededRandom } from '../random'
-import { CoinFactory } from './coin'
+import { CoinFactory, getCoinAccentColor, getCoinTargetQuaternion } from './coin'
 import { PolyhedralFactory } from './PolyhedralFactory'
-import { getCoinTargetQuaternion } from './coin'
 import { DISPLAY_CAMERA_FOV, DISPLAY_CAMERA_HEIGHT, SceneEnvironment } from './sceneEnvironment'
 import {
 	clampHorizontalPosition,
@@ -428,7 +425,7 @@ export class KinematicRenderer implements DisplayRenderer {
 		const height = Math.max(1, context.canvas.clientHeight || context.canvas.parentElement?.clientHeight || 150)
 		context.canvas.width = width
 		context.canvas.height = height
-		this.environment = new SceneEnvironment(context.canvas, context.options)
+		this.environment = await SceneEnvironment.create(context.canvas, context.options)
 		this.engine = this.environment.engine
 		this.scene = this.environment.scene
 		this.polyhedra = new PolyhedralFactory(this.scene)
@@ -470,7 +467,7 @@ export class KinematicRenderer implements DisplayRenderer {
 		for(const die of request.dice) {
 			const theme = configs.get(die.theme)!
 			if(die.sides === 2) {
-				entries.push(this.createCoinEntry(theme, die.id, die.value, die.discarded, bodyIndex++, bodyCount, random, launchEdge, launchDynamics))
+				entries.push(this.createCoinEntry(theme, die, bodyIndex++, bodyCount, random, launchEdge, launchDynamics))
 				continue
 			}
 			if(die.sides === 100) {
@@ -634,7 +631,7 @@ export class KinematicRenderer implements DisplayRenderer {
 		const pulseColorByEntry = new Map<VisualEntry, string>()
 		for(const handle of parentHandles.values()) {
 			const color = handle.die.sides === 2
-				? handle.theme.coin.edgeColor || handle.die.themeColor
+				? getCoinAccentColor(handle.theme.coin, handle.die.themeColor)
 				: handle.die.themeColor
 			for(const entry of handle.entries) pulseColorByEntry.set(entry, color)
 		}
@@ -727,7 +724,7 @@ export class KinematicRenderer implements DisplayRenderer {
 		const launchDynamics = createPresentationLaunchDynamics(seed, this.options!.aggressiveThrowChance)
 		const entries: VisualEntry[] = []
 		if(die.sides === 2) {
-			entries.push(this.createCoinEntry(theme, die.id, die.value, die.discarded, startIndex, bodyCount, random, launchEdge, launchDynamics))
+			entries.push(this.createCoinEntry(theme, die, startIndex, bodyCount, random, launchEdge, launchDynamics))
 		} else if(die.sides === 100) {
 			const tens = Math.floor((die.value - 1) / 10) * 10
 			const ones = die.value - tens
@@ -889,7 +886,7 @@ export class KinematicRenderer implements DisplayRenderer {
 		})
 	}
 
-	protected pulseTimelineEntries(
+	protected async pulseTimelineEntries(
 		entries: readonly VisualEntry[],
 		effectName: TimelineEffectName,
 		durationMs: number,
@@ -897,8 +894,9 @@ export class KinematicRenderer implements DisplayRenderer {
 		signal: AbortSignal,
 		colorForEntry?: (entry: VisualEntry) => string | undefined
 	): Promise<void> {
-		if(durationMs <= 0) return Promise.resolve()
+		if(durationMs <= 0) return
 		const effect = this.options!.timeline.effects[effectName]
+		const { HighlightLayer } = await import('./timelineHighlightRuntime')
 		const layer = new HighlightLayer(`timeline-${effectName}-${Date.now()}`, this.scene!, { blurTextureSizeRatio: 0.25 })
 		for(const entry of entries) for(const mesh of this.getTimelineMeshes(entry)) {
 			if(!(mesh instanceof Mesh)) continue
@@ -964,16 +962,14 @@ export class KinematicRenderer implements DisplayRenderer {
 
 	protected createCoinEntry(
 		theme: ResolvedThemeConfig,
-		id: string,
-		value: number,
-		discarded: boolean,
+		die: NormalizedResolvedDie,
 		index: number,
 		count: number,
 		random: ReturnType<typeof createSeededRandom>,
 		launchEdge: LaunchEdge,
 		launchDynamics: PresentationLaunchDynamics
 	): VisualEntry {
-		const coin = this.coinFactory!.create(theme, id, value, this.options!.scale, discarded)
+		const coin = this.coinFactory!.create(theme, die, this.options!.scale)
 		this.activeNodes.push(coin.root)
 		for(const mesh of coin.meshes) this.environment?.addShadowCaster(mesh)
 		return this.createTrajectory(
@@ -1192,7 +1188,7 @@ export class KinematicRenderer implements DisplayRenderer {
 
 	async updateOptions(options: Readonly<RequiredViewerOptions>): Promise<void> {
 		this.options = options
-		this.environment?.update(options)
+		await this.environment?.update(options)
 	}
 
 	resize(width: number, height: number): void {

@@ -9,7 +9,7 @@ import {
 	normalizeDisplayTimelineRequest,
 	planDiceTimeline
 } from './timeline'
-import { createViewerOptions, mergeTimelineOptions, validateViewerOptions } from './timelineOptions'
+import { createUpdatedViewerOptions, createViewerOptions, validateViewerOptions } from './timelineOptions'
 import type {
 	DisplayMode,
 	DisplayRenderer,
@@ -43,8 +43,10 @@ export class DiceResultViewer {
 	async init(): Promise<this> {
 		this.#assertUsable()
 		if(this.#initialized) return this
-		await this.#ensureRenderer(this.#options.mode)
-		await Promise.all([this.#options.theme, ...this.#options.preloadThemes].map(theme => this.#themes.load(theme)))
+		await Promise.all([
+			this.#ensureRenderer(this.#options.mode),
+			...[this.#options.theme, ...this.#options.preloadThemes].map(theme => this.#themes.load(theme))
+		])
 		this.#resizeHandler = (): void => this.resize()
 		window.addEventListener('resize', this.#resizeHandler, { passive: true })
 		if(typeof ResizeObserver !== 'undefined') {
@@ -147,18 +149,7 @@ export class DiceResultViewer {
 
 	async updateOptions(options: ViewerOptions): Promise<void> {
 		this.#assertUsable()
-		let mergedOptions: ViewerOptions = {
-			...this.#options,
-			...options,
-			timeline: mergeTimelineOptions(this.#options.timeline, options.timeline)
-		}
-		if(options.aggressiveThrowChance !== undefined) {
-			mergedOptions = { ...mergedOptions, wallBounceChance: options.aggressiveThrowChance }
-		} else if(options.wallBounceChance !== undefined) {
-			mergedOptions = { ...mergedOptions, aggressiveThrowChance: options.wallBounceChance }
-		}
-		const nextOptions = createViewerOptions(mergedOptions)
-		validateViewerOptions(nextOptions)
+		const nextOptions = createUpdatedViewerOptions(this.#options, options)
 		this.#options = nextOptions
 		this.#themes.updateOptions(this.#options)
 		await this.#renderer?.updateOptions(this.#options)

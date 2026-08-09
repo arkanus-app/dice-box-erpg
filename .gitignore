@@ -4,10 +4,15 @@ dist/*
 !dist/dice3dview.es.js
 !dist/dice3dview.css
 !dist/index.d.ts
+!dist/manifest.json
 !dist/assets/
 !dist/assets/**
 !dist/chunks/
 !dist/chunks/**
+!dist/external/
+!dist/external/**
+!dist/adapters/
+!dist/adapters/**
 dist-ssr
 *.local
 newModelFiles

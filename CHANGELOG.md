@@ -4,6 +4,113 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 ## [Não publicado]
 
+## [2.6.0] - 2026-08-08
+
+### Adicionado
+
+- subpaths `@erpg/dice3dview/external`, com a API v2 e dependências gráficas
+  externas, e `@erpg/dice3dview/adapters`, sem renderer;
+- manifesto de chunks e métricas separadas para grafo inicial, física, sombras,
+  timeline, profiling, WASM, assets, pacote e integrações consumidoras;
+- perfis `daggerheart-hope-d12` e `daggerheart-fear-d12` para os dois d12 de
+  Duality Dice, com d12 fisicos e cores distintas substituiveis por perfil.
+
+### Alterado
+
+- o hot path físico usa índices diretos entre entries, nodes e corpos, reutiliza
+  estado vetorial por corpo e evita buscas, ordenações e coleções temporárias
+  por frame;
+- substeps físicos passam de 180 Hz para 120 Hz após apoio real e para 90 Hz
+  quando resta um corpo, reduzindo o trabalho de `12d6` sem alterar os timings
+  visuais; o benchmark móvel fica versionado para futuras regressões;
+- Babylon atualizado para `@babylonjs/core` 9.18.0; o frontend usa o entrypoint
+  `external` e mantém o bundle raiz como fallback CDN;
+- o build legado preserva o WASM como asset estável único, removendo sua cópia
+  base64 do chunk Havok, e o profiler físico virou um chunk opt-in;
+- o frontend gera `HavokPhysics-*.wasm.br` no build web e o serve por negociação
+  de conteúdo no Worker, com validação e fallback para o WASM original;
+- inicialização do renderer e preloads de temas agora ocorre concorrentemente;
+- `ShadowGenerator` e `HighlightLayer` passam a ser carregados somente quando
+  sombras ou um efeito da timeline realmente os exigem;
+- a moeda numérica padrão agora usa SVGs transparentes contendo somente `1` e
+  `2`, e aplica `themeColor` ao corpo e ao aro para acompanhar a skin equipada;
+- temas de moeda com arte completa podem preservar textura e `edgeColor` usando
+  `colorize: false`;
+- os atlas normal e de Fome de Vampiro V5 agora usam os quatro SVGs fornecidos
+  pelo projeto para Sucesso, Crítico, Falha de Fome e Crítico de Fome;
+- `npm run themes:generate:vampire` recompõe deterministicamente as faces 1,
+  6–9 e 10 sem alterar o valor físico dos d10.
+
+### Corrigido
+
+- caches de modelos, pools e orientações agora usam o `meshFilePath` completo,
+  evitando colisão entre temas externos com nomes de arquivo iguais;
+- opções numéricas e estruturas de temas, materiais e moedas recebem validação
+  consistente; `updateOptions()` rejeitado preserva a configuração anterior.
+
+### Documentado
+
+- `display()` mantém falhas gráficas como best-effort; `displayTimeline()`
+  propaga essas falhas para não reportar uma timeline parcialmente executada.
+
+## [2.5.0] - 2026-07-31
+
+### Adicionado
+
+- `createMixedDisplayRequest()` e `toMixedResolvedDice()` para apresentar
+  dados genéricos, Vampiro V5, Fate e Assimilação no mesmo lançamento;
+- suporte estrutural direto a `rollMixedDice().dice`, incluindo
+  `physicalValue`, `profileId`, descarte e ordem original;
+- conversão documentada de d3 genérico para d6 e política configurável
+  `unsupportedDice: 'omit' | 'error'`.
+
+### Segurança e compatibilidade
+
+- o viewer continua sem interpretar notação nem recalcular resultados;
+- perfis de sistema desconhecidos geram erro e nunca caem silenciosamente no
+  tema genérico;
+- o `dF` genérico sem face física é omitido por padrão; `fate()` continua
+  usando o perfil d6 apropriado.
+
+## [2.4.0] - 2026-07-31
+
+### Adicionado
+
+- perfil `fate-df` compatível com o resultado estrutural de `rollFateDice()`;
+- tema Fate d6 com duas faces “−”, duas vazias e duas “+”;
+- metadados acessíveis para −1, 0 e +1, demonstração 4dF e instruções de personalização.
+
+### Segurança e compatibilidade
+
+- a face física 1–6 permanece autoritativa para orientação 3D; o total Fate continua sendo calculado exclusivamente pelo core;
+- o tema usa sinais geométricos originais e não inclui logotipos ou ilustrações editoriais.
+
+### Validado
+
+- cobertura do perfil, das seis faces, do atlas claro/escuro e da integração estrutural com `@erpg/dicecore`.
+
+## [2.3.0] - 2026-07-31
+
+### Adicionado
+
+- temas simbólicos originais e não oficiais para dados normais/de Fome de Vampiro V5 e d6/d10/d12 de Assimilação;
+- perfis estruturais compatíveis com os resultados de sistema do `@erpg/dicecore`;
+- `createSystemDisplayRequest()`, seleção visual por `keptIds` e cores substituíveis por perfil;
+- metadados tipados de faces e atlas para acessibilidade, documentação e validação;
+- gerador que deriva as ilhas UV do modelo/collider e verifica se os assets versionados estão atualizados.
+
+### Segurança e compatibilidade
+
+- os novos temas não copiam arte oficial e não reutilizam o normal map que contém números em relevo;
+- valores numéricos externos continuam sendo a única autoridade da apresentação;
+- `colliderFaceMap`, meshes, colliders e orientação física permanecem inalterados.
+
+### Validado
+
+- cobertura dos cinco perfis, lados, valores, cores, seleção e IDs duplicados;
+- atlas claro/escuro inspecionado para todas as faces simbólicas;
+- geração determinística incluída no preflight do build.
+
 ## [2.2.3] - 2026-07-13
 
 ### Corrigido
@@ -327,7 +434,9 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 - tema `default-v2` consolidado no baseline `81c2ca9` em 30/05/2026.
 
-[Não publicado]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.2.3...HEAD
+[Não publicado]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.6.0...HEAD
+[2.6.0]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.2.3...v2.6.0
+[2.5.0]: https://github.com/arkanus-app/dice-box-erpg/commit/7c1462e
 [2.2.3]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.2.2...v2.2.3
 [2.2.2]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.2.1...v2.2.2
 [2.2.1]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.2.0...v2.2.1

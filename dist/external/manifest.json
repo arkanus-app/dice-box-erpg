@@ -1,0 +1,42 @@
+{
+  "_index-5be182d3.js": {
+    "dynamicImports": [
+      "src/renderers/timelineHighlightRuntime.ts",
+      "src/renderers/PhysicsRenderer.ts"
+    ],
+    "file": "chunks/index-5be182d3.js"
+  },
+  "src/index.ts": {
+    "file": "dice3dview.es.js",
+    "imports": [
+      "_index-5be182d3.js"
+    ],
+    "isEntry": true,
+    "src": "src/index.ts"
+  },
+  "src/physicsPerformance.ts": {
+    "file": "chunks/physicsPerformance-9d14f224.js",
+    "isDynamicEntry": true,
+    "src": "src/physicsPerformance.ts"
+  },
+  "src/renderers/PhysicsRenderer.ts": {
+    "dynamicImports": [
+      "src/physicsPerformance.ts"
+    ],
+    "file": "chunks/PhysicsRenderer-a30cb6f7.js",
+    "imports": [
+      "_index-5be182d3.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "src/renderers/PhysicsRenderer.ts"
+  },
+  "src/renderers/timelineHighlightRuntime.ts": {
+    "file": "chunks/timelineHighlightRuntime-80d343e1.js",
+    "isDynamicEntry": true,
+    "src": "src/renderers/timelineHighlightRuntime.ts"
+  },
+  "style.css": {
+    "file": "dice3dview.css",
+    "src": "style.css"
+  }
+}

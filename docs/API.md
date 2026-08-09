@@ -2,7 +2,7 @@
 
 [← Voltar ao README](../README.md)
 
-Esta referência descreve a API pública de `@erpg/dice3dview` 2.2.3. A biblioteca é destinada ao navegador: a criação exige DOM; a inicialização do renderer exige WebGL.
+Esta referência descreve a API pública de `@erpg/dice3dview` 2.6.0. A biblioteca é destinada ao navegador: a criação exige DOM; a inicialização do renderer exige WebGL.
 
 ## Exports públicos
 
@@ -10,6 +10,8 @@ Esta referência descreve a API pública de `@erpg/dice3dview` 2.2.3. A bibliote
 export default DiceResultViewer
 
 export {
+  createMixedDisplayRequest,
+  createSystemDisplayRequest,
   DiceResultViewer,
   DEFAULT_TIMELINE_OPTIONS,
   DISPLAY_CANCELLED_CODE,
@@ -28,6 +30,9 @@ export type {
   DisplayTimelineRequest,
   DisplayTimelineResult,
   DiceTimelineEvent,
+  MixedDicePresentationOptions,
+  MixedDiePresentationInput,
+  MixedDisplayRequestInput,
   ResolvedDie,
   ResolvedThemeConfig,
   ThemeConfig,
@@ -48,6 +53,12 @@ O CSS é um subpath público separado:
 ```ts
 import '@erpg/dice3dview/style.css'
 ```
+
+Para aplicações npm com bundler, use `@erpg/dice3dview/external` para a mesma
+API pública do entrypoint raiz sem incorporar Babylon/Havok. Os adaptadores
+puros também estão disponíveis em `@erpg/dice3dview/adapters`, que não importa
+o renderer nem suas dependências gráficas. O entrypoint raiz permanece o build
+autocontido para compatibilidade e CDN.
 
 ## `DiceResultViewer`
 
@@ -70,7 +81,9 @@ class DiceResultViewer {
 
 Cria e anexa imediatamente um canvas ao `container`. Embora `container` seja opcional no tipo por compatibilidade, ele precisa identificar um elemento existente.
 
-Erros imediatos incluem ambiente sem `document`, container inexistente, `maxDice` inválido e modo inválido.
+Erros imediatos incluem ambiente sem `document`, container inexistente, modo
+inválido, valores numéricos não finitos ou incoerentes e estruturas mínimas de
+tema, material e moeda inválidas.
 
 ### `init()`
 
@@ -106,6 +119,10 @@ const result = await viewer.display({
 
 `durationMs` inclui inicialização lazy, carregamento de temas e animação.
 
+Depois que a entrada foi validada, falhas gráficas, de asset ou físicas são
+best-effort em `display()`: são registradas e o resultado externo normalizado
+continua sendo devolvido. A biblioteca nunca recalcula ou substitui uma face.
+
 ### `displayTimeline(request)`
 
 Apresenta um journal semântico já resolvido. Cada definição possui apenas identidade, lados e tema; as faces vêm dos eventos `roll`/`reroll`. O método valida todo o journal antes de limpar a cena: IDs, sequências positivas estritamente crescentes, rolls iniciais, referências, linhagem, ciclos e transições.
@@ -126,6 +143,10 @@ const result = await viewer.displayTimeline({
 ```
 
 O retorno acrescenta `eventCount`, `phaseCount` e `degraded` ao contrato de `DisplayResult`. `dice` contém faces físicas válidas e estado final de descarte; totais `compound` e ajustes `penetrate` aparecem como badges, nunca como faces inexistentes.
+
+Ao contrário de `display()`, `displayTimeline()` propaga falhas gráficas, de
+asset e físicas. Uma timeline parcialmente executada não é reportada como
+sucesso.
 
 Configure `onTimelineProgress` no viewer para sincronizar a interface com a
 estabilização visual, sem estimar tempos no consumidor:
@@ -198,6 +219,28 @@ interface DisplayResult {
   readonly durationMs: number
 }
 ```
+
+### `createMixedDisplayRequest(input)`
+
+Aceita diretamente a lista achatada de `rollMixedDice().dice`:
+
+```ts
+const mixed = rollMixedDice(
+  '2d20+5; v5(7,3,4); fate(4); assim(2,1,1,1)'
+)
+
+await viewer.display(createMixedDisplayRequest({
+  id: 'mixed-42',
+  dice: mixed.dice,
+  unsupportedDice: 'omit'
+}))
+```
+
+Para dados com `profileId`, o adaptador aplica o tema simbólico e valida os
+lados do perfil. Para dados genéricos, usa `physicalValue`, depois `rawValue`
+e por último `value`. d3 usa a geometria d6; lados sem geometria, inclusive o
+`dF` genérico, são omitidos por padrão. `unsupportedDice: 'error'` transforma
+essa omissão em erro. IDs duplicados no lote são rejeitados.
 
 ### Normalização e validação
 
@@ -415,7 +458,8 @@ Existem três categorias:
 
 1. **Entrada inválida:** rejeita antes da apresentação.
 2. **Cancelamento:** rejeita com `DisplayCancelledError`.
-3. **Falha gráfica, de asset ou física durante a apresentação:** registra o erro e devolve o resultado normalizado.
+3. **Falha gráfica, de asset ou física em `display()`:** registra o erro e devolve o resultado normalizado.
+4. **Falha durante `displayTimeline()`:** propaga o erro para impedir sucesso parcial.
 
 Em nenhum caso a biblioteca sorteia um valor substituto. O resultado do chamador continua autoritativo.
 
@@ -451,7 +495,7 @@ O módulo pode ser referenciado por tipos em código universal, mas a instância
 
 ```ts
 if(typeof window !== 'undefined') {
-  const { DiceResultViewer } = await import('@erpg/dice3dview')
+  const { DiceResultViewer } = await import('@erpg/dice3dview/external')
   const viewer = new DiceResultViewer({ container: '#dice-stage' })
   await viewer.init()
 }

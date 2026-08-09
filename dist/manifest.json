@@ -1,0 +1,689 @@
+{
+  "_babylonFileParser.function-d43bc945.js": {
+    "file": "chunks/babylonFileParser.function-d43bc945.js"
+  },
+  "_blurPostProcess.pure-005fd63c.js": {
+    "dynamicImports": [
+      "node_modules/@babylonjs/core/Misc/dumpTools.js",
+      "node_modules/@babylonjs/core/ShadersWGSL/kernelBlur.fragment.js",
+      "node_modules/@babylonjs/core/ShadersWGSL/kernelBlur.vertex.js",
+      "node_modules/@babylonjs/core/Shaders/kernelBlur.fragment.js",
+      "node_modules/@babylonjs/core/Shaders/kernelBlur.vertex.js"
+    ],
+    "file": "chunks/blurPostProcess.pure-005fd63c.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_postProcess.pure-bf549f59.js"
+    ]
+  },
+  "_clipPlaneFragment-276bba01.js": {
+    "file": "chunks/clipPlaneFragment-276bba01.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ]
+  },
+  "_clipPlaneFragment-d28f74f5.js": {
+    "file": "chunks/clipPlaneFragment-d28f74f5.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ]
+  },
+  "_clipPlaneVertex-564f63aa.js": {
+    "file": "chunks/clipPlaneVertex-564f63aa.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ]
+  },
+  "_clipPlaneVertex-81f33842.js": {
+    "file": "chunks/clipPlaneVertex-81f33842.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ]
+  },
+  "_cubemapToSphericalPolynomial-744eba96.js": {
+    "file": "chunks/cubemapToSphericalPolynomial-744eba96.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ]
+  },
+  "_dds.pure-075505e5.js": {
+    "file": "chunks/dds.pure-075505e5.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_cubemapToSphericalPolynomial-744eba96.js"
+    ]
+  },
+  "_havok-e246cb5e.js": {
+    "file": "chunks/havok-e246cb5e.js"
+  },
+  "_helperFunctions-d48976dd.js": {
+    "file": "chunks/helperFunctions-d48976dd.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ]
+  },
+  "_helperFunctions-e372c494.js": {
+    "file": "chunks/helperFunctions-e372c494.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ]
+  },
+  "_index-11ca32cf.js": {
+    "dynamicImports": [
+      "node_modules/@babylonjs/core/ShadersWGSL/default.vertex.js",
+      "node_modules/@babylonjs/core/ShadersWGSL/default.fragment.js",
+      "node_modules/@babylonjs/core/Shaders/default.vertex.js",
+      "node_modules/@babylonjs/core/Shaders/default.fragment.js",
+      "node_modules/@babylonjs/core/Meshes/mesh.vertexData.functions.js",
+      "node_modules/@babylonjs/core/Misc/dds.js",
+      "node_modules/@babylonjs/core/Materials/Textures/Loaders/iesTextureLoader.js",
+      "node_modules/@babylonjs/core/Materials/Textures/Loaders/ddsTextureLoader.js",
+      "node_modules/@babylonjs/core/Materials/Textures/Loaders/basisTextureLoader.js",
+      "node_modules/@babylonjs/core/Materials/Textures/Loaders/envTextureLoader.js",
+      "node_modules/@babylonjs/core/Materials/Textures/Loaders/hdrTextureLoader.js",
+      "node_modules/@babylonjs/core/Materials/Textures/Loaders/ktxTextureLoader.js",
+      "node_modules/@babylonjs/core/Materials/Textures/Loaders/ktxTextureLoader.js",
+      "node_modules/@babylonjs/core/Materials/Textures/Loaders/tgaTextureLoader.js",
+      "node_modules/@babylonjs/core/Materials/Textures/Loaders/exrTextureLoader.js",
+      "node_modules/@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent.js",
+      "node_modules/@babylonjs/core/Lights/Shadows/shadowGenerator.js",
+      "src/renderers/timelineHighlightRuntime.ts",
+      "src/renderers/PhysicsRenderer.ts"
+    ],
+    "file": "chunks/index-11ca32cf.js"
+  },
+  "_instancesDeclaration-e1bd2918.js": {
+    "file": "chunks/instancesDeclaration-e1bd2918.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ]
+  },
+  "_instancesDeclaration-fce63953.js": {
+    "file": "chunks/instancesDeclaration-fce63953.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ]
+  },
+  "_kernelBlurVaryingDeclaration-aa417f19.js": {
+    "file": "chunks/kernelBlurVaryingDeclaration-aa417f19.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ]
+  },
+  "_kernelBlurVaryingDeclaration-b97a732a.js": {
+    "file": "chunks/kernelBlurVaryingDeclaration-b97a732a.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ]
+  },
+  "_logDepthDeclaration-56faca72.js": {
+    "file": "chunks/logDepthDeclaration-56faca72.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_meshUboDeclaration-b9ddce93.js"
+    ]
+  },
+  "_logDepthDeclaration-ce2a3e7c.js": {
+    "file": "chunks/logDepthDeclaration-ce2a3e7c.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_meshUboDeclaration-88016d5c.js"
+    ]
+  },
+  "_meshUboDeclaration-88016d5c.js": {
+    "file": "chunks/meshUboDeclaration-88016d5c.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ]
+  },
+  "_meshUboDeclaration-b9ddce93.js": {
+    "file": "chunks/meshUboDeclaration-b9ddce93.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ]
+  },
+  "_packingFunctions-0cd5b868.js": {
+    "file": "chunks/packingFunctions-0cd5b868.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ]
+  },
+  "_packingFunctions-f019c25b.js": {
+    "file": "chunks/packingFunctions-f019c25b.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ]
+  },
+  "_postProcess.pure-bf549f59.js": {
+    "dynamicImports": [
+      "node_modules/@babylonjs/core/ShadersWGSL/postprocess.vertex.js",
+      "node_modules/@babylonjs/core/Shaders/postprocess.vertex.js",
+      "node_modules/@babylonjs/core/ShadersWGSL/postprocess.vertex.js",
+      "node_modules/@babylonjs/core/Shaders/postprocess.vertex.js"
+    ],
+    "file": "chunks/postProcess.pure-bf549f59.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ]
+  },
+  "_shadowGeneratorSceneComponent.pure-da34ed75.js": {
+    "file": "chunks/shadowGeneratorSceneComponent.pure-da34ed75.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_babylonFileParser.function-d43bc945.js"
+    ]
+  },
+  "node_modules/@babylonjs/core/Engines/thinEngine.js": {
+    "file": "chunks/thinEngine-d9e66de7.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Engines/thinEngine.js"
+  },
+  "node_modules/@babylonjs/core/Lights/Shadows/shadowGenerator.js": {
+    "dynamicImports": [
+      "node_modules/@babylonjs/core/ShadersWGSL/shadowMap.fragment.js",
+      "node_modules/@babylonjs/core/ShadersWGSL/shadowMap.vertex.js",
+      "node_modules/@babylonjs/core/ShadersWGSL/depthBoxBlur.fragment.js",
+      "node_modules/@babylonjs/core/ShadersWGSL/ShadersInclude/shadowMapFragmentSoftTransparentShadow.js",
+      "node_modules/@babylonjs/core/Shaders/shadowMap.fragment.js",
+      "node_modules/@babylonjs/core/Shaders/shadowMap.vertex.js",
+      "node_modules/@babylonjs/core/Shaders/depthBoxBlur.fragment.js",
+      "node_modules/@babylonjs/core/Shaders/ShadersInclude/shadowMapFragmentSoftTransparentShadow.js"
+    ],
+    "file": "chunks/shadowGenerator-ac6d8c1b.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_blurPostProcess.pure-005fd63c.js",
+      "_postProcess.pure-bf549f59.js",
+      "_shadowGeneratorSceneComponent.pure-da34ed75.js",
+      "_babylonFileParser.function-d43bc945.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Lights/Shadows/shadowGenerator.js"
+  },
+  "node_modules/@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent.js": {
+    "file": "chunks/shadowGeneratorSceneComponent-44d7b7a5.js",
+    "imports": [
+      "_shadowGeneratorSceneComponent.pure-da34ed75.js",
+      "_index-11ca32cf.js",
+      "_babylonFileParser.function-d43bc945.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent.js"
+  },
+  "node_modules/@babylonjs/core/Materials/Textures/Loaders/basisTextureLoader.js": {
+    "file": "chunks/basisTextureLoader-59d8fa20.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Materials/Textures/Loaders/basisTextureLoader.js"
+  },
+  "node_modules/@babylonjs/core/Materials/Textures/Loaders/ddsTextureLoader.js": {
+    "file": "chunks/ddsTextureLoader-bd5ba7ed.js",
+    "imports": [
+      "_dds.pure-075505e5.js",
+      "_index-11ca32cf.js",
+      "_cubemapToSphericalPolynomial-744eba96.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Materials/Textures/Loaders/ddsTextureLoader.js"
+  },
+  "node_modules/@babylonjs/core/Materials/Textures/Loaders/envTextureLoader.js": {
+    "dynamicImports": [
+      "node_modules/@babylonjs/core/ShadersWGSL/rgbdDecode.fragment.js",
+      "node_modules/@babylonjs/core/Shaders/rgbdDecode.fragment.js"
+    ],
+    "file": "chunks/envTextureLoader-4c7266ab.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_postProcess.pure-bf549f59.js",
+      "_cubemapToSphericalPolynomial-744eba96.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Materials/Textures/Loaders/envTextureLoader.js"
+  },
+  "node_modules/@babylonjs/core/Materials/Textures/Loaders/exrTextureLoader.js": {
+    "file": "chunks/exrTextureLoader-a89f0cab.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Materials/Textures/Loaders/exrTextureLoader.js"
+  },
+  "node_modules/@babylonjs/core/Materials/Textures/Loaders/hdrTextureLoader.js": {
+    "file": "chunks/hdrTextureLoader-354056cf.js",
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Materials/Textures/Loaders/hdrTextureLoader.js"
+  },
+  "node_modules/@babylonjs/core/Materials/Textures/Loaders/iesTextureLoader.js": {
+    "file": "chunks/iesTextureLoader-4d9dc687.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Materials/Textures/Loaders/iesTextureLoader.js"
+  },
+  "node_modules/@babylonjs/core/Materials/Textures/Loaders/ktxTextureLoader.js": {
+    "file": "chunks/ktxTextureLoader-8a2a144c.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Materials/Textures/Loaders/ktxTextureLoader.js"
+  },
+  "node_modules/@babylonjs/core/Materials/Textures/Loaders/tgaTextureLoader.js": {
+    "file": "chunks/tgaTextureLoader-36ef260e.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Materials/Textures/Loaders/tgaTextureLoader.js"
+  },
+  "node_modules/@babylonjs/core/Meshes/mesh.vertexData.functions.js": {
+    "file": "chunks/mesh.vertexData.functions-230312c4.js",
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Meshes/mesh.vertexData.functions.js"
+  },
+  "node_modules/@babylonjs/core/Misc/dds.js": {
+    "file": "chunks/dds-71f2b3cd.js",
+    "imports": [
+      "_dds.pure-075505e5.js",
+      "_index-11ca32cf.js",
+      "_cubemapToSphericalPolynomial-744eba96.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Misc/dds.js"
+  },
+  "node_modules/@babylonjs/core/Misc/dumpTools.js": {
+    "dynamicImports": [
+      "node_modules/@babylonjs/core/Engines/thinEngine.js",
+      "node_modules/@babylonjs/core/Shaders/pass.fragment.js"
+    ],
+    "file": "chunks/dumpTools-3cc63b86.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_postProcess.pure-bf549f59.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Misc/dumpTools.js"
+  },
+  "node_modules/@babylonjs/core/Shaders/ShadersInclude/shadowMapFragmentSoftTransparentShadow.js": {
+    "file": "chunks/shadowMapFragmentSoftTransparentShadow-94bfdc42.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Shaders/ShadersInclude/shadowMapFragmentSoftTransparentShadow.js"
+  },
+  "node_modules/@babylonjs/core/Shaders/default.fragment.js": {
+    "file": "chunks/default.fragment-50b7c726.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_meshUboDeclaration-88016d5c.js",
+      "_logDepthDeclaration-ce2a3e7c.js",
+      "_helperFunctions-d48976dd.js",
+      "_clipPlaneFragment-276bba01.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Shaders/default.fragment.js"
+  },
+  "node_modules/@babylonjs/core/Shaders/default.vertex.js": {
+    "file": "chunks/default.vertex-3ac4fdb0.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_meshUboDeclaration-88016d5c.js",
+      "_logDepthDeclaration-ce2a3e7c.js",
+      "_helperFunctions-d48976dd.js",
+      "_clipPlaneVertex-81f33842.js",
+      "_instancesDeclaration-fce63953.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Shaders/default.vertex.js"
+  },
+  "node_modules/@babylonjs/core/Shaders/depthBoxBlur.fragment.js": {
+    "file": "chunks/depthBoxBlur.fragment-236dd146.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Shaders/depthBoxBlur.fragment.js"
+  },
+  "node_modules/@babylonjs/core/Shaders/glowBlurPostProcess.fragment.js": {
+    "file": "chunks/glowBlurPostProcess.fragment-28eb760a.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Shaders/glowBlurPostProcess.fragment.js"
+  },
+  "node_modules/@babylonjs/core/Shaders/glowMapGeneration.fragment.js": {
+    "file": "chunks/glowMapGeneration.fragment-0a373b90.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_helperFunctions-d48976dd.js",
+      "_clipPlaneFragment-276bba01.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Shaders/glowMapGeneration.fragment.js"
+  },
+  "node_modules/@babylonjs/core/Shaders/glowMapGeneration.vertex.js": {
+    "file": "chunks/glowMapGeneration.vertex-4ab54063.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_clipPlaneVertex-81f33842.js",
+      "_instancesDeclaration-fce63953.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Shaders/glowMapGeneration.vertex.js"
+  },
+  "node_modules/@babylonjs/core/Shaders/glowMapMerge.fragment.js": {
+    "file": "chunks/glowMapMerge.fragment-fb2bdee0.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Shaders/glowMapMerge.fragment.js"
+  },
+  "node_modules/@babylonjs/core/Shaders/glowMapMerge.vertex.js": {
+    "file": "chunks/glowMapMerge.vertex-d840f0e9.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Shaders/glowMapMerge.vertex.js"
+  },
+  "node_modules/@babylonjs/core/Shaders/kernelBlur.fragment.js": {
+    "file": "chunks/kernelBlur.fragment-103a3ea4.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_kernelBlurVaryingDeclaration-aa417f19.js",
+      "_packingFunctions-0cd5b868.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Shaders/kernelBlur.fragment.js"
+  },
+  "node_modules/@babylonjs/core/Shaders/kernelBlur.vertex.js": {
+    "file": "chunks/kernelBlur.vertex-4f0f3e17.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_kernelBlurVaryingDeclaration-aa417f19.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Shaders/kernelBlur.vertex.js"
+  },
+  "node_modules/@babylonjs/core/Shaders/pass.fragment.js": {
+    "file": "chunks/pass.fragment-0e46c1ba.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Shaders/pass.fragment.js"
+  },
+  "node_modules/@babylonjs/core/Shaders/passCube.fragment.js": {
+    "file": "chunks/passCube.fragment-4b5dd62a.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Shaders/passCube.fragment.js"
+  },
+  "node_modules/@babylonjs/core/Shaders/postprocess.vertex.js": {
+    "file": "chunks/postprocess.vertex-57909a00.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Shaders/postprocess.vertex.js"
+  },
+  "node_modules/@babylonjs/core/Shaders/rgbdDecode.fragment.js": {
+    "file": "chunks/rgbdDecode.fragment-d6e46f39.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_helperFunctions-d48976dd.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Shaders/rgbdDecode.fragment.js"
+  },
+  "node_modules/@babylonjs/core/Shaders/shadowMap.fragment.js": {
+    "file": "chunks/shadowMap.fragment-5866d0d0.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_packingFunctions-0cd5b868.js",
+      "_clipPlaneFragment-276bba01.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Shaders/shadowMap.fragment.js"
+  },
+  "node_modules/@babylonjs/core/Shaders/shadowMap.vertex.js": {
+    "file": "chunks/shadowMap.vertex-b606702f.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_clipPlaneVertex-81f33842.js",
+      "_helperFunctions-d48976dd.js",
+      "_meshUboDeclaration-88016d5c.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/Shaders/shadowMap.vertex.js"
+  },
+  "node_modules/@babylonjs/core/ShadersWGSL/ShadersInclude/shadowMapFragmentSoftTransparentShadow.js": {
+    "file": "chunks/shadowMapFragmentSoftTransparentShadow-ac54c744.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/ShadersWGSL/ShadersInclude/shadowMapFragmentSoftTransparentShadow.js"
+  },
+  "node_modules/@babylonjs/core/ShadersWGSL/default.fragment.js": {
+    "file": "chunks/default.fragment-c1e8fb44.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_meshUboDeclaration-b9ddce93.js",
+      "_logDepthDeclaration-56faca72.js",
+      "_helperFunctions-e372c494.js",
+      "_clipPlaneFragment-d28f74f5.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/ShadersWGSL/default.fragment.js"
+  },
+  "node_modules/@babylonjs/core/ShadersWGSL/default.vertex.js": {
+    "file": "chunks/default.vertex-6a4d1375.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_meshUboDeclaration-b9ddce93.js",
+      "_logDepthDeclaration-56faca72.js",
+      "_helperFunctions-e372c494.js",
+      "_clipPlaneVertex-564f63aa.js",
+      "_instancesDeclaration-e1bd2918.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/ShadersWGSL/default.vertex.js"
+  },
+  "node_modules/@babylonjs/core/ShadersWGSL/depthBoxBlur.fragment.js": {
+    "file": "chunks/depthBoxBlur.fragment-2e57062c.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/ShadersWGSL/depthBoxBlur.fragment.js"
+  },
+  "node_modules/@babylonjs/core/ShadersWGSL/glowBlurPostProcess.fragment.js": {
+    "file": "chunks/glowBlurPostProcess.fragment-c5e949d6.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/ShadersWGSL/glowBlurPostProcess.fragment.js"
+  },
+  "node_modules/@babylonjs/core/ShadersWGSL/glowMapGeneration.fragment.js": {
+    "file": "chunks/glowMapGeneration.fragment-786b9a0e.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_helperFunctions-e372c494.js",
+      "_clipPlaneFragment-d28f74f5.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/ShadersWGSL/glowMapGeneration.fragment.js"
+  },
+  "node_modules/@babylonjs/core/ShadersWGSL/glowMapGeneration.vertex.js": {
+    "file": "chunks/glowMapGeneration.vertex-50141570.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_clipPlaneVertex-564f63aa.js",
+      "_instancesDeclaration-e1bd2918.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/ShadersWGSL/glowMapGeneration.vertex.js"
+  },
+  "node_modules/@babylonjs/core/ShadersWGSL/glowMapMerge.fragment.js": {
+    "file": "chunks/glowMapMerge.fragment-63ff5077.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/ShadersWGSL/glowMapMerge.fragment.js"
+  },
+  "node_modules/@babylonjs/core/ShadersWGSL/glowMapMerge.vertex.js": {
+    "file": "chunks/glowMapMerge.vertex-4fefa2d9.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/ShadersWGSL/glowMapMerge.vertex.js"
+  },
+  "node_modules/@babylonjs/core/ShadersWGSL/kernelBlur.fragment.js": {
+    "file": "chunks/kernelBlur.fragment-ab6bbc9e.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_kernelBlurVaryingDeclaration-b97a732a.js",
+      "_packingFunctions-f019c25b.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/ShadersWGSL/kernelBlur.fragment.js"
+  },
+  "node_modules/@babylonjs/core/ShadersWGSL/kernelBlur.vertex.js": {
+    "file": "chunks/kernelBlur.vertex-e6bc69e5.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_kernelBlurVaryingDeclaration-b97a732a.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/ShadersWGSL/kernelBlur.vertex.js"
+  },
+  "node_modules/@babylonjs/core/ShadersWGSL/pass.fragment.js": {
+    "file": "chunks/pass.fragment-075cb7dd.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/ShadersWGSL/pass.fragment.js"
+  },
+  "node_modules/@babylonjs/core/ShadersWGSL/passCube.fragment.js": {
+    "file": "chunks/passCube.fragment-d328ea22.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/ShadersWGSL/passCube.fragment.js"
+  },
+  "node_modules/@babylonjs/core/ShadersWGSL/postprocess.vertex.js": {
+    "file": "chunks/postprocess.vertex-906bd9da.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/ShadersWGSL/postprocess.vertex.js"
+  },
+  "node_modules/@babylonjs/core/ShadersWGSL/rgbdDecode.fragment.js": {
+    "file": "chunks/rgbdDecode.fragment-a7759ca2.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_helperFunctions-e372c494.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/ShadersWGSL/rgbdDecode.fragment.js"
+  },
+  "node_modules/@babylonjs/core/ShadersWGSL/shadowMap.fragment.js": {
+    "file": "chunks/shadowMap.fragment-dab0d0e7.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_packingFunctions-f019c25b.js",
+      "_clipPlaneFragment-d28f74f5.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/ShadersWGSL/shadowMap.fragment.js"
+  },
+  "node_modules/@babylonjs/core/ShadersWGSL/shadowMap.vertex.js": {
+    "file": "chunks/shadowMap.vertex-e2baf5b0.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_clipPlaneVertex-564f63aa.js",
+      "_helperFunctions-e372c494.js",
+      "_meshUboDeclaration-b9ddce93.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "node_modules/@babylonjs/core/ShadersWGSL/shadowMap.vertex.js"
+  },
+  "src/index.ts": {
+    "file": "dice3dview.es.js",
+    "imports": [
+      "_index-11ca32cf.js"
+    ],
+    "isEntry": true,
+    "src": "src/index.ts"
+  },
+  "src/physicsPerformance.ts": {
+    "file": "chunks/physicsPerformance-9d14f224.js",
+    "isDynamicEntry": true,
+    "src": "src/physicsPerformance.ts"
+  },
+  "src/renderers/PhysicsRenderer.ts": {
+    "dynamicImports": [
+      "src/physicsPerformance.ts"
+    ],
+    "file": "chunks/PhysicsRenderer-3df32195.js",
+    "imports": [
+      "_havok-e246cb5e.js",
+      "_index-11ca32cf.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "src/renderers/PhysicsRenderer.ts"
+  },
+  "src/renderers/timelineHighlightRuntime.ts": {
+    "dynamicImports": [
+      "node_modules/@babylonjs/core/ShadersWGSL/pass.fragment.js",
+      "node_modules/@babylonjs/core/Shaders/pass.fragment.js",
+      "node_modules/@babylonjs/core/ShadersWGSL/passCube.fragment.js",
+      "node_modules/@babylonjs/core/Shaders/passCube.fragment.js",
+      "node_modules/@babylonjs/core/ShadersWGSL/glowBlurPostProcess.fragment.js",
+      "node_modules/@babylonjs/core/Shaders/glowBlurPostProcess.fragment.js",
+      "node_modules/@babylonjs/core/ShadersWGSL/glowMapGeneration.vertex.js",
+      "node_modules/@babylonjs/core/ShadersWGSL/glowMapGeneration.fragment.js",
+      "node_modules/@babylonjs/core/Shaders/glowMapGeneration.vertex.js",
+      "node_modules/@babylonjs/core/Shaders/glowMapGeneration.fragment.js",
+      "node_modules/@babylonjs/core/ShadersWGSL/glowMapMerge.fragment.js",
+      "node_modules/@babylonjs/core/ShadersWGSL/glowMapMerge.vertex.js",
+      "node_modules/@babylonjs/core/ShadersWGSL/glowBlurPostProcess.fragment.js",
+      "node_modules/@babylonjs/core/Shaders/glowMapMerge.fragment.js",
+      "node_modules/@babylonjs/core/Shaders/glowMapMerge.vertex.js",
+      "node_modules/@babylonjs/core/Shaders/glowBlurPostProcess.fragment.js",
+      "node_modules/@babylonjs/core/ShadersWGSL/glowBlurPostProcess.fragment.js",
+      "node_modules/@babylonjs/core/Shaders/glowBlurPostProcess.fragment.js"
+    ],
+    "file": "chunks/timelineHighlightRuntime-b74b9781.js",
+    "imports": [
+      "_index-11ca32cf.js",
+      "_babylonFileParser.function-d43bc945.js",
+      "_blurPostProcess.pure-005fd63c.js",
+      "_postProcess.pure-bf549f59.js"
+    ],
+    "isDynamicEntry": true,
+    "src": "src/renderers/timelineHighlightRuntime.ts"
+  },
+  "style.css": {
+    "file": "dice3dview.css",
+    "src": "style.css"
+  }
+}
