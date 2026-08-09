@@ -1,0 +1,7 @@
+{
+  "src/adapters.ts": {
+    "file": "index.js",
+    "isEntry": true,
+    "src": "src/adapters.ts"
+  }
+}

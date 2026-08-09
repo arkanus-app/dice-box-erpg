@@ -1,4 +1,11 @@
-import type { CoinTheme, RequiredViewerOptions, ResolvedThemeConfig, ThemeConfig } from './types'
+import type {
+	CoinFaceTheme,
+	CoinTheme,
+	RequiredViewerOptions,
+	ResolvedThemeConfig,
+	ThemeConfig,
+	ThemeMaterialConfig
+} from './types'
 
 const DEFAULT_COIN_THEME: CoinTheme = Object.freeze({
 	front: Object.freeze({ value: 1, texture: 'coin-1.svg' }),
@@ -9,13 +16,74 @@ const DEFAULT_COIN_THEME: CoinTheme = Object.freeze({
 	thickness: 0.12
 })
 
-const assertThemeConfig = (value: unknown, theme: string): ThemeConfig => {
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+	value !== null && typeof value === 'object' && !Array.isArray(value)
+
+const assertOptionalFiniteNonNegative = (value: unknown, path: string): void => {
+	if(value !== undefined && (typeof value !== 'number' || !Number.isFinite(value) || value < 0)) {
+		throw new Error(`${path} must be a finite non-negative number.`)
+	}
+}
+
+const assertFace = (value: unknown, expectedValue: 1 | 2, path: string): CoinFaceTheme => {
+	if(!isRecord(value) || value.value !== expectedValue || typeof value.texture !== 'string') {
+		throw new Error(`${path} must define value ${expectedValue} and a texture string.`)
+	}
+	return value as unknown as CoinFaceTheme
+}
+
+const assertMaterial = (value: unknown, theme: string): ThemeMaterialConfig => {
+	if(!isRecord(value) || (value.type !== 'color' && value.type !== 'standard')) {
+		throw new Error(`Theme '${theme}' material.type must be 'color' or 'standard'.`)
+	}
+	const diffuse = value.diffuseTexture
+	if(diffuse !== undefined && typeof diffuse !== 'string' && (
+		!isRecord(diffuse)
+		|| typeof diffuse.light !== 'string'
+		|| typeof diffuse.dark !== 'string'
+	)) {
+		throw new Error(`Theme '${theme}' material.diffuseTexture must be a string or light/dark map.`)
+	}
+	for(const field of ['bumpTexture', 'specularTexture'] as const) {
+		if(value[field] !== undefined && typeof value[field] !== 'string') {
+			throw new Error(`Theme '${theme}' material.${field} must be a string.`)
+		}
+	}
+	for(const field of ['diffuseLevel', 'bumpLevel', 'specularPower'] as const) {
+		assertOptionalFiniteNonNegative(value[field], `Theme '${theme}' material.${field}`)
+	}
+	return value as unknown as ThemeMaterialConfig
+}
+
+export const assertThemeConfig = (value: unknown, theme: string): ThemeConfig => {
 	if(!value || typeof value !== 'object') {
 		throw new Error(`Theme '${theme}' returned an invalid configuration.`)
 	}
 	const config = value as Partial<ThemeConfig>
-	if(!config.material || !Array.isArray(config.diceAvailable)) {
+	assertMaterial(config.material, theme)
+	if(!Array.isArray(config.diceAvailable)
+		|| config.diceAvailable.some(die => typeof die !== 'string' || die.trim().length === 0)) {
 		throw new Error(`Theme '${theme}' must define material and diceAvailable.`)
+	}
+	if(config.meshFile !== undefined && (typeof config.meshFile !== 'string' || config.meshFile.trim().length === 0)) {
+		throw new Error(`Theme '${theme}' meshFile must be a non-empty string.`)
+	}
+	if(config.coin !== undefined) {
+		if(!isRecord(config.coin)) throw new Error(`Theme '${theme}' coin must be an object.`)
+		assertFace(config.coin.front, 1, `Theme '${theme}' coin.front`)
+		assertFace(config.coin.back, 2, `Theme '${theme}' coin.back`)
+		if(config.coin.colorize !== undefined && typeof config.coin.colorize !== 'boolean') {
+			throw new Error(`Theme '${theme}' coin.colorize must be a boolean.`)
+		}
+		if(config.coin.edgeColor !== undefined && typeof config.coin.edgeColor !== 'string') {
+			throw new Error(`Theme '${theme}' coin.edgeColor must be a string.`)
+		}
+		for(const field of ['diameter', 'thickness'] as const) {
+			const dimension = config.coin[field]
+			if(dimension !== undefined && (typeof dimension !== 'number' || !Number.isFinite(dimension) || dimension <= 0)) {
+				throw new Error(`Theme '${theme}' coin.${field} must be a positive finite number.`)
+			}
+		}
 	}
 	return config as ThemeConfig
 }

@@ -4,13 +4,34 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 ## [Não publicado]
 
+## [2.6.0] - 2026-08-08
+
 ### Adicionado
 
+- subpaths `@erpg/dice3dview/external`, com a API v2 e dependências gráficas
+  externas, e `@erpg/dice3dview/adapters`, sem renderer;
+- manifesto de chunks e métricas separadas para grafo inicial, física, sombras,
+  timeline, profiling, WASM, assets, pacote e integrações consumidoras;
 - perfis `daggerheart-hope-d12` e `daggerheart-fear-d12` para os dois d12 de
   Duality Dice, com d12 fisicos e cores distintas substituiveis por perfil.
 
 ### Alterado
 
+- o hot path físico usa índices diretos entre entries, nodes e corpos, reutiliza
+  estado vetorial por corpo e evita buscas, ordenações e coleções temporárias
+  por frame;
+- substeps físicos passam de 180 Hz para 120 Hz após apoio real e para 90 Hz
+  quando resta um corpo, reduzindo o trabalho de `12d6` sem alterar os timings
+  visuais; o benchmark móvel fica versionado para futuras regressões;
+- Babylon atualizado para `@babylonjs/core` 9.18.0; o frontend usa o entrypoint
+  `external` e mantém o bundle raiz como fallback CDN;
+- o build legado preserva o WASM como asset estável único, removendo sua cópia
+  base64 do chunk Havok, e o profiler físico virou um chunk opt-in;
+- o frontend gera `HavokPhysics-*.wasm.br` no build web e o serve por negociação
+  de conteúdo no Worker, com validação e fallback para o WASM original;
+- inicialização do renderer e preloads de temas agora ocorre concorrentemente;
+- `ShadowGenerator` e `HighlightLayer` passam a ser carregados somente quando
+  sombras ou um efeito da timeline realmente os exigem;
 - a moeda numérica padrão agora usa SVGs transparentes contendo somente `1` e
   `2`, e aplica `themeColor` ao corpo e ao aro para acompanhar a skin equipada;
 - temas de moeda com arte completa podem preservar textura e `edgeColor` usando
@@ -19,6 +40,18 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
   pelo projeto para Sucesso, Crítico, Falha de Fome e Crítico de Fome;
 - `npm run themes:generate:vampire` recompõe deterministicamente as faces 1,
   6–9 e 10 sem alterar o valor físico dos d10.
+
+### Corrigido
+
+- caches de modelos, pools e orientações agora usam o `meshFilePath` completo,
+  evitando colisão entre temas externos com nomes de arquivo iguais;
+- opções numéricas e estruturas de temas, materiais e moedas recebem validação
+  consistente; `updateOptions()` rejeitado preserva a configuração anterior.
+
+### Documentado
+
+- `display()` mantém falhas gráficas como best-effort; `displayTimeline()`
+  propaga essas falhas para não reportar uma timeline parcialmente executada.
 
 ## [2.5.0] - 2026-07-31
 
@@ -401,7 +434,9 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 - tema `default-v2` consolidado no baseline `81c2ca9` em 30/05/2026.
 
-[Não publicado]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.2.3...HEAD
+[Não publicado]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.6.0...HEAD
+[2.6.0]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.2.3...v2.6.0
+[2.5.0]: https://github.com/arkanus-app/dice-box-erpg/commit/7c1462e
 [2.2.3]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.2.2...v2.2.3
 [2.2.2]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.2.1...v2.2.2
 [2.2.1]: https://github.com/arkanus-app/dice-box-erpg/compare/v2.2.0...v2.2.1

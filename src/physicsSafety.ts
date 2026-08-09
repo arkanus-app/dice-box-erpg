@@ -37,6 +37,12 @@ export interface DicePhysicsStep {
 	readonly milliseconds: number
 }
 
+export interface AdaptiveDicePhysicsSituation {
+	readonly totalBodyCount: number
+	readonly activeBodyCount: number
+	readonly requiresDenseResolution: boolean
+}
+
 /** Uses extra Havok resolution while several bodies can converge in the air.
  * Very large presentations use 120 Hz to keep the solver cost bounded. */
 export const getDicePhysicsStep = (bodyCount: number): DicePhysicsStep => {
@@ -56,6 +62,34 @@ export const getDicePhysicsStep = (bodyCount: number): DicePhysicsStep => {
 	return {
 		seconds: LARGE_DICE_PHYSICS_TIME_STEP,
 		milliseconds: LARGE_DICE_PHYSICS_SUB_TIME_STEP_MS
+	}
+}
+
+/** Keeps the dense 180 Hz step only while several dice can still converge
+ * without support. Once every unresolved die has made a real support contact,
+ * 120 Hz is sufficient for settling; a lone remaining die uses the established
+ * 90 Hz single-die step. The monotonic support signal prevents per-frame
+ * oscillation, while appended timeline dice can opt back into 180 Hz. */
+export const getAdaptiveDicePhysicsStep = (
+	situation: AdaptiveDicePhysicsSituation
+): DicePhysicsStep => {
+	const activeBodyCount = Number.isFinite(situation.activeBodyCount)
+		? Math.max(0, Math.floor(situation.activeBodyCount))
+		: 0
+	if(activeBodyCount <= 1) return getDicePhysicsStep(activeBodyCount)
+
+	const totalBodyCount = Number.isFinite(situation.totalBodyCount)
+		? Math.max(activeBodyCount, Math.floor(situation.totalBodyCount))
+		: activeBodyCount
+	if(totalBodyCount > DENSE_DICE_BODY_LIMIT || !situation.requiresDenseResolution) {
+		return {
+			seconds: LARGE_DICE_PHYSICS_TIME_STEP,
+			milliseconds: LARGE_DICE_PHYSICS_SUB_TIME_STEP_MS
+		}
+	}
+	return {
+		seconds: DENSE_DICE_PHYSICS_TIME_STEP,
+		milliseconds: DENSE_DICE_PHYSICS_SUB_TIME_STEP_MS
 	}
 }
 

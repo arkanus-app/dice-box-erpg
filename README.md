@@ -4,9 +4,10 @@ Camada TypeScript de apresentação 3D para resultados de dados já resolvidos.
 
 O `@erpg/dicecore` interpreta a fórmula e decide os resultados; o `@erpg/dice3dview` recebe esses valores prontos e apenas os apresenta. A biblioteca não interpreta notação, não sorteia valores e não usa a face física como fonte do resultado.
 
-Versão atual: **2.5.0**.
+Versão atual: **2.6.0**.
 
-> A versão `2.5.0` está preparada neste repositório; este documento não afirma que ela já foi publicada no npm ou marcada com uma tag Git.
+> A versão `2.6.0` está versionada neste repositório; a publicação no npm
+> é um processo separado.
 
 ## Documentação
 
@@ -16,6 +17,8 @@ Versão atual: **2.5.0**.
 - [Migração da v1 para a v2](docs/MIGRATION_V2.md)
 - [Devlog da v2](DEVLOG_V2.md)
 - [Changelog](CHANGELOG.md)
+- [Métricas de bundle e carregamento](docs/BUNDLE_METRICS.md)
+- [Desempenho do hot path físico](docs/PHYSICS_PERFORMANCE.md)
 - [Origem e diferenças do fork](FORK.md)
 
 ## O que a v2 oferece
@@ -32,8 +35,11 @@ Versão atual: **2.5.0**.
 - nos dois modos, arremesso de grupo por uma borda comum escolhida entre as quatro, com o corpo inteiro começando fora da projeção, entrada sequencial e posições finais dispersas; no cinemático, a trajetória também é determinística por `seed`;
 - cancelamento tipado, cache de temas/modelos/materiais e pools de meshes;
 - timeline semântica opcional para explosões, rerolls, unique, compound, penetrate, keep/drop e classificações;
-- um entrypoint ESM com chunks lazy, CSS público e tipos TypeScript;
-- orçamento automatizado de até 8 MiB para toda a distribuição.
+- entrypoint legado autocontido, entrypoint `external` para bundlers e entrypoint `adapters` sem renderer;
+- chunks lazy separados para física, profiling, sombras e efeitos da timeline,
+  com métricas versionadas por grafo;
+- uma única cópia do Havok WASM no pacote, sem repetição base64 no JavaScript
+  legado.
 
 ## Instalação
 
@@ -46,7 +52,7 @@ npm install @erpg/dice3dview
 Para consumir diretamente uma tag do repositório:
 
 ```bash
-npm install github:arkanus-app/dice-box-erpg#v2.5.0
+npm install github:arkanus-app/dice-box-erpg#v2.6.0
 ```
 
 Em `package.json`:
@@ -54,10 +60,23 @@ Em `package.json`:
 ```json
 {
   "dependencies": {
-    "@erpg/dice3dview": "^2.5.0"
+    "@erpg/dice3dview": "^2.6.0"
   }
 }
 ```
+
+Aplicações empacotadas devem importar o renderer pelo subpath `external`, que
+deixa Babylon e Havok para o bundler do consumidor, e os conversores puros pelo
+subpath `adapters`:
+
+```ts
+import { DiceResultViewer } from '@erpg/dice3dview/external'
+import { createMixedDisplayRequest } from '@erpg/dice3dview/adapters'
+```
+
+O entrypoint raiz `@erpg/dice3dview` permanece autocontido para compatibilidade
+e uso direto por CDN. `@erpg/dice3dview/external` não é um artefato standalone
+de CDN: seus imports bare precisam ser resolvidos por um bundler npm.
 
 ## Assets obrigatórios
 
@@ -105,7 +124,7 @@ Se os arquivos forem hospedados em outro endereço, configure `assetPath`, `orig
 ```
 
 ```ts
-import { DiceResultViewer, isDisplayCancelledError } from '@erpg/dice3dview'
+import { DiceResultViewer, isDisplayCancelledError } from '@erpg/dice3dview/external'
 import '@erpg/dice3dview/style.css'
 
 const viewer = new DiceResultViewer({
@@ -354,6 +373,10 @@ viewer.dispose()
 
 Falhas de entrada continuam rejeitando normalmente. Falhas gráficas, de tema ou do runtime físico durante a apresentação são tratadas como best-effort: são registradas no console e a biblioteca ainda devolve uma cópia normalizada e congelada dos resultados resolvidos.
 
+Esse comportamento best-effort vale para `display()`. `displayTimeline()`
+propaga falhas gráficas, de asset e físicas, pois devolver sucesso depois de uma
+execução parcial deixaria o journal visual em um estado enganoso.
+
 ## Desempenho da v2
 
 Comparando os artefatos Git da v1.0.6 com a v2.0.1:
@@ -364,7 +387,20 @@ Comparando os artefatos Git da v1.0.6 com a v2.0.1:
 | pacote compactado | 4.396.834 B | 2.307.233 B | −47,5% |
 | pacote descompactado | 16.098.720 B | 7.823.123 B | −51,4% |
 
-O build impede que a distribuição ultrapasse 8 MiB e verifica que Havok não apareça no grafo cinemático inicial. A 2.0.2 adicionou o export estável do CSS e a documentação completa; a 2.0.3 tornou piso, barreiras, lançamentos e pousos responsivos ao canvas; a 2.0.4 passou a planejar a face durante todo o voo, recuperou o kick imediato da v1 dentro de limites estáveis, adicionou uma cauda seedada de energia/direção, packing sem sobreposição e colisões dado-dado desde a liberação, preserva respostas reais do Havok e congela o repouso físico sem atravessar pilhas. Os testes de trajetória medem a rotação acumulada do corpo, a viagem acumulada da normal da face, o afastamento da face resolvida no instante inicial e o resultado final após o contato.
+O build mede separadamente grafo inicial, física, profiling, sombras, timeline,
+Havok JS, WASM, assets, pacote npm e os entrypoints `external` e `adapters`. Não há um
+limite agregado arbitrário: o baseline versionado permite definir futuros
+limites com evidência. O check estrutural também garante que Havok, sombras e
+highlight não apareçam no caminho inicial que não os utiliza. Consulte
+[Métricas de bundle e carregamento](docs/BUNDLE_METRICS.md).
+
+O renderer físico também possui benchmark móvel próprio. Índices diretos,
+scratch state por corpo e resolução adaptativa reduziram em `12d6` os passos de
+física em 18,72% e o tempo do controlador em 18,17%, preservando a duração e os
+critérios visuais. Consulte
+[Desempenho do hot path físico](docs/PHYSICS_PERFORMANCE.md).
+
+A 2.0.2 adicionou o export estável do CSS e a documentação completa; a 2.0.3 tornou piso, barreiras, lançamentos e pousos responsivos ao canvas; a 2.0.4 passou a planejar a face durante todo o voo, recuperou o kick imediato da v1 dentro de limites estáveis, adicionou uma cauda seedada de energia/direção, packing sem sobreposição e colisões dado-dado desde a liberação, preserva respostas reais do Havok e congela o repouso físico sem atravessar pilhas. Os testes de trajetória medem a rotação acumulada do corpo, a viagem acumulada da normal da face, o afastamento da face resolvida no instante inicial e o resultado final após o contato.
 
 ## Desenvolvimento local
 

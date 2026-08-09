@@ -1,16 +1,15 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { NullEngine } from '@babylonjs/core/Engines/nullEngine'
-import { HighlightLayer } from '@babylonjs/core/Layers/highlightLayer'
 import { Scene } from '@babylonjs/core/scene'
-import './renderers/KinematicRenderer'
 
 describe('semantic timeline renderer dependencies', () => {
-	it('registers the Babylon effect-layer scene component used by timeline cues', () => {
+	it('loads the Babylon effect-layer scene component only with timeline highlights', async () => {
 		const engine = new NullEngine({ renderWidth: 64, renderHeight: 64 })
 		const scene = new Scene(engine)
-		let layer: HighlightLayer | undefined
+		let layer: import('@babylonjs/core/Layers/highlightLayer').HighlightLayer | undefined
 		try {
+			const { HighlightLayer } = await import('./renderers/timelineHighlightRuntime')
 			assert.doesNotThrow(() => {
 				layer = new HighlightLayer('timeline-cue-test', scene)
 			})

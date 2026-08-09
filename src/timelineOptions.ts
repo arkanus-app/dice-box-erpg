@@ -76,6 +76,20 @@ const assertFiniteNonNegative = (value: number, path: string): void => {
 	if(!Number.isFinite(value) || value < 0) throw new Error(`Viewer option ${path} must be a finite non-negative number.`)
 }
 
+const assertFinitePositive = (value: number, path: string): void => {
+	if(!Number.isFinite(value) || value <= 0) throw new Error(`Viewer option ${path} must be a positive finite number.`)
+}
+
+const assertBoolean = (value: boolean, path: string): void => {
+	if(typeof value !== 'boolean') throw new Error(`Viewer option ${path} must be a boolean.`)
+}
+
+const assertString = (value: string, path: string, allowEmpty = false): void => {
+	if(typeof value !== 'string' || (!allowEmpty && value.trim().length === 0)) {
+		throw new Error(`Viewer option ${path} must be ${allowEmpty ? 'a string' : 'a non-empty string'}.`)
+	}
+}
+
 export const validateTimelineOptions = (timeline: NormalizedTimelineOptions): void => {
 	if(typeof timeline.enabled !== 'boolean') throw new Error('Viewer option timeline.enabled must be a boolean.')
 	if(!Number.isInteger(timeline.maxEvents) || timeline.maxEvents < 1) {
@@ -165,7 +179,39 @@ export const createViewerOptions = (options: ViewerOptions): RequiredViewerOptio
 	timeline: mergeTimelineOptions(DEFAULT_TIMELINE_OPTIONS, options.timeline)
 })
 
+export const createUpdatedViewerOptions = (
+	current: Readonly<RequiredViewerOptions>,
+	update: ViewerOptions
+): RequiredViewerOptions => {
+	let merged: ViewerOptions = {
+		...current,
+		...update,
+		timeline: mergeTimelineOptions(current.timeline, update.timeline)
+	}
+	if(update.aggressiveThrowChance !== undefined) {
+		merged = { ...merged, wallBounceChance: update.aggressiveThrowChance }
+	} else if(update.wallBounceChance !== undefined) {
+		merged = { ...merged, aggressiveThrowChance: update.wallBounceChance }
+	}
+	const next = createViewerOptions(merged)
+	validateViewerOptions(next)
+	return next
+}
+
 export const validateViewerOptions = (options: RequiredViewerOptions): void => {
+	assertString(options.id, 'id')
+	assertString(options.assetPath, 'assetPath', true)
+	assertString(options.origin, 'origin', true)
+	assertString(options.theme, 'theme')
+	assertString(options.themeColor, 'themeColor')
+	assertString(options.physicsWasmUrl, 'physicsWasmUrl', true)
+	for(const [index, theme] of options.preloadThemes.entries()) {
+		assertString(theme, `preloadThemes[${index}]`)
+	}
+	for(const [theme, basePath] of Object.entries(options.externalThemes)) {
+		assertString(theme, 'externalThemes key')
+		assertString(basePath, `externalThemes.${theme}`)
+	}
 	if(!Number.isInteger(options.maxDice) || options.maxDice < 1) {
 		throw new Error('Viewer option maxDice must be a positive integer.')
 	}
@@ -176,6 +222,43 @@ export const validateViewerOptions = (options: RequiredViewerOptions): void => {
 		|| options.aggressiveThrowChance < 0
 		|| options.aggressiveThrowChance > 1) {
 		throw new Error('Viewer option aggressiveThrowChance must be between 0 and 1.')
+	}
+	assertBoolean(options.enableShadows, 'enableShadows')
+	assertBoolean(options.antialias, 'antialias')
+	if(!Number.isFinite(options.shadowTransparency)
+		|| options.shadowTransparency < 0
+		|| options.shadowTransparency > 1) {
+		throw new Error('Viewer option shadowTransparency must be between 0 and 1.')
+	}
+	if(!Number.isInteger(options.shadowResolution) || options.shadowResolution < 1) {
+		throw new Error('Viewer option shadowResolution must be a positive integer.')
+	}
+	assertFiniteNonNegative(options.lightIntensity, 'lightIntensity')
+	assertFinitePositive(options.scale, 'scale')
+	assertFiniteNonNegative(options.duration, 'duration')
+	assertFiniteNonNegative(options.delay, 'delay')
+	assertFiniteNonNegative(options.gravity, 'gravity')
+	assertFinitePositive(options.mass, 'mass')
+	assertFinitePositive(options.startingHeight, 'startingHeight')
+	assertFiniteNonNegative(options.spinForce, 'spinForce')
+	assertFiniteNonNegative(options.throwForce, 'throwForce')
+	assertFiniteNonNegative(options.wallPadding, 'wallPadding')
+	assertFinitePositive(options.colliderScale, 'colliderScale')
+	assertFiniteNonNegative(options.spawnSpacing, 'spawnSpacing')
+	assertFiniteNonNegative(options.spawnHeightStep, 'spawnHeightStep')
+	assertFiniteNonNegative(options.spawnOverscan, 'spawnOverscan')
+	assertFiniteNonNegative(options.friction, 'friction')
+	assertFiniteNonNegative(options.restitution, 'restitution')
+	assertFiniteNonNegative(options.linearDamping, 'linearDamping')
+	assertFiniteNonNegative(options.angularDamping, 'angularDamping')
+	assertFinitePositive(options.settleTimeout, 'settleTimeout')
+	for(const [name, callback] of [
+		['onCollision', options.onCollision],
+		['onThemeConfigLoaded', options.onThemeConfigLoaded],
+		['onThemeLoaded', options.onThemeLoaded],
+		['onTimelineProgress', options.onTimelineProgress]
+	] as const) {
+		if(typeof callback !== 'function') throw new Error(`Viewer option ${name} must be a function.`)
 	}
 	validateTimelineOptions(options.timeline)
 }

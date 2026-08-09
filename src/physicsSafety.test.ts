@@ -8,6 +8,7 @@ import {
 	DICE_HORIZONTAL_RECOVERY_LIMIT,
 	DICE_PHYSICS_SUB_TIME_STEP_MS,
 	DICE_PHYSICS_TIME_STEP,
+	getAdaptiveDicePhysicsStep,
 	getDicePhysicsStep,
 	hasPhysicsLaunchClearance,
 	LARGE_DICE_PHYSICS_SUB_TIME_STEP_MS,
@@ -41,6 +42,41 @@ describe('adaptive physics resolution and launch clearance', () => {
 		assert.equal(1 / DICE_PHYSICS_TIME_STEP, 90)
 		assert.equal(1 / DENSE_DICE_PHYSICS_TIME_STEP, 180)
 		assert.equal(1 / LARGE_DICE_PHYSICS_TIME_STEP, 120)
+	})
+
+	it('reduces resolution only after real support or when one body remains', () => {
+		assert.deepEqual(getAdaptiveDicePhysicsStep({
+			totalBodyCount: 12,
+			activeBodyCount: 12,
+			requiresDenseResolution: true
+		}), {
+			seconds: DENSE_DICE_PHYSICS_TIME_STEP,
+			milliseconds: DENSE_DICE_PHYSICS_SUB_TIME_STEP_MS
+		})
+		assert.deepEqual(getAdaptiveDicePhysicsStep({
+			totalBodyCount: 12,
+			activeBodyCount: 12,
+			requiresDenseResolution: false
+		}), {
+			seconds: LARGE_DICE_PHYSICS_TIME_STEP,
+			milliseconds: LARGE_DICE_PHYSICS_SUB_TIME_STEP_MS
+		})
+		assert.deepEqual(getAdaptiveDicePhysicsStep({
+			totalBodyCount: 12,
+			activeBodyCount: 1,
+			requiresDenseResolution: true
+		}), {
+			seconds: DICE_PHYSICS_TIME_STEP,
+			milliseconds: DICE_PHYSICS_SUB_TIME_STEP_MS
+		})
+		assert.deepEqual(getAdaptiveDicePhysicsStep({
+			totalBodyCount: DENSE_DICE_BODY_LIMIT + 1,
+			activeBodyCount: DENSE_DICE_BODY_LIMIT + 1,
+			requiresDenseResolution: true
+		}), {
+			seconds: LARGE_DICE_PHYSICS_TIME_STEP,
+			milliseconds: LARGE_DICE_PHYSICS_SUB_TIME_STEP_MS
+		})
 	})
 
 	it('rejects intersecting launch envelopes and accepts a cleared portal', () => {

@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-08-09T00:02:03.097Z",
+  "environment": {
+    "browser": "Playwright Chromium",
+    "emulation": "Pixel 5",
+    "cpuSlowdown": 4,
+    "iterationsPerScenario": 5,
+    "babylonCore": "9.18.0"
+  },
+  "scenarios": {
+    "d20": {
+      "before": {
+        "medianMs": 2687.4,
+        "p95Ms": 2724.3
+      },
+      "directIndicesAndScratch": {
+        "medianMs": 2702.0,
+        "p95Ms": 2737.1,
+        "hotPathAverage": {
+          "frames": 147.6,
+          "physicsSteps": 232.8,
+          "guidanceCalls": 232.8,
+          "guidanceMs": 72.64,
+          "renderMs": 468.38,
+          "maxRenderMs": 10.46,
+          "collisionEvents": 408,
+          "launchClearanceQueries": 1,
+          "launchPairChecks": 0
+        }
+      },
+      "adaptiveResolution": {
+        "medianMs": 2709.6,
+        "p95Ms": 2751.6,
+        "hotPathAverage": {
+          "frames": 148.2,
+          "physicsSteps": 232,
+          "physicsSteps90Hz": 232,
+          "physicsSteps120Hz": 0,
+          "physicsSteps180Hz": 0,
+          "guidanceCalls": 232,
+          "guidanceMs": 66.72,
+          "renderMs": 456.34,
+          "maxRenderMs": 9.1,
+          "collisionEvents": 408,
+          "launchClearanceQueries": 1,
+          "launchPairChecks": 0
+        }
+      }
+    },
+    "12d6": {
+      "before": {
+        "medianMs": 5925.0,
+        "p95Ms": 6117.2
+      },
+      "directIndicesAndScratch": {
+        "medianMs": 5906.1,
+        "p95Ms": 5939.9,
+        "hotPathAverage": {
+          "frames": 292.4,
+          "physicsSteps": 1030,
+          "guidanceCalls": 12360,
+          "guidanceMs": 359.66,
+          "renderMs": 1535.96,
+          "maxRenderMs": 47.82,
+          "collisionEvents": 16295.2,
+          "launchClearanceQueries": 12,
+          "launchPairChecks": 66
+        }
+      },
+      "adaptiveResolution": {
+        "medianMs": 5908.4,
+        "p95Ms": 5930.8,
+        "hotPathAverage": {
+          "frames": 295,
+          "physicsSteps": 837.2,
+          "physicsSteps90Hz": 73.2,
+          "physicsSteps120Hz": 237.4,
+          "physicsSteps180Hz": 526.6,
+          "guidanceCalls": 10046.4,
+          "guidanceMs": 294.32,
+          "renderMs": 1409.44,
+          "maxRenderMs": 16.38,
+          "collisionEvents": 13397.6,
+          "launchClearanceQueries": 12,
+          "launchPairChecks": 66
+        },
+        "changeFromFixedStepPercent": {
+          "physicsSteps": -18.72,
+          "guidanceCalls": -18.72,
+          "guidanceMs": -18.17,
+          "renderMs": -8.24,
+          "displayMs": 0.04
+        }
+      }
+    }
+  },
+  "decisions": {
+    "spatialLaunchIndex": "deferred: 12d6 performs only 66 launch pair checks per presentation",
+    "adaptiveResolution": "accepted: reduces simulated work while preserving presentation duration and browser smoke behavior"
+  }
+}
