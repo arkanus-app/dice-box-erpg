@@ -1,0 +1,1 @@
+import{R as e,S as o}from"./shadowGeneratorSceneComponent.pure-11436f46.js";import"./KinematicRenderer-dda4102b.js";import"./index-61561f47.js";import"./babylonFileParser.function-e9670842.js";export{e as RegisterShadowGeneratorSceneComponent,o as ShadowGeneratorSceneComponent};

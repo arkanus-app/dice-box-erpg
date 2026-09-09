@@ -63,8 +63,11 @@ if(/data:application\/octet-stream;base64,[A-Za-z0-9+/]{1024}/.test(legacyHavokS
 }
 const initialEntry = legacyManifest['src/index.ts']
 const initialFiles = [initialEntry.file]
+const visitedImports = new Set()
 const visitImports = entry => {
 	for(const dependency of entry.imports ?? []) {
+		if(visitedImports.has(dependency)) continue
+		visitedImports.add(dependency)
 		const dependencyEntry = legacyManifest[dependency]
 		initialFiles.push(dependencyEntry.file)
 		visitImports(dependencyEntry)
@@ -74,8 +77,14 @@ visitImports(initialEntry)
 const initialSource = [...new Set(initialFiles)]
 	.map(file => readFileSync(path.join(dist, file), 'utf8'))
 	.join('\n')
-if(initialSource.includes('HavokPlugin') || initialSource.includes('HavokPhysics.wasm')) {
+if(initialSource.includes('HavokPlugin') || initialFiles.some(file => /(?:PhysicsRenderer|KinematicRenderer|havokRuntime|havok-)/.test(file))) {
 	throw new Error('The legacy initial graph unexpectedly contains Havok physics code.')
+}
+if(Buffer.byteLength(initialSource) > 64 * 1024) {
+	throw new Error('The lightweight import graph exceeds 64 KiB; check for eager renderer dependencies.')
+}
+if(packageJson.dependencies?.['@babylonjs/core'] || packageJson.peerDependencies?.['@babylonjs/core'] !== '^9.18.0') {
+	throw new Error('Babylon must remain a compatible peer so hosts can share a single runtime.')
 }
 if(initialFiles.some(file => file.includes('timelineHighlightRuntime') || file.includes('shadowGenerator-'))) {
 	throw new Error('Timeline highlights or shadow generation leaked into the initial static graph.')
@@ -87,5 +96,9 @@ for(const name of ['createMixedDisplayRequest', 'createSystemDisplayRequest', 't
 }
 
 const metrics = collectBundleMetrics()
+if(metrics.legacy.allJavaScript.rawBytes > 2 * 1024 * 1024
+	|| metrics.legacy.allJavaScript.gzipBytes > 480 * 1024) {
+	throw new Error('Standalone JavaScript exceeds 2 MiB raw or 480 KiB gzip. Check library minification and dependency growth.')
+}
 console.log(JSON.stringify(metrics, null, 2))
 console.log('Bundle structure passed: legacy standalone, external peer graph, adapters-only entrypoint, and lazy optional features.')

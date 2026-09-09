@@ -4,6 +4,52 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 ## [Não publicado]
 
+## [2.6.1] - 2026-09-09
+
+### Alterado
+
+- minificação completa dos chunks ES com Terser, preservando anotações para
+  tree shaking e avisos de licença; JavaScript standalone cerca de 33% menor
+  em gzip e pacote npm cerca de 14% menor;
+- renderer cinemático carregado sob demanda, mantendo a importação pública sem
+  Babylon, física, sombras ou efeitos da timeline;
+- download do Havok WASM antecipado em paralelo ao grafo do renderer físico;
+- cena e Havok inicializados em paralelo, com runtime WASM compartilhado pela
+  última URL e mundos físicos independentes por viewer;
+- imports dos componentes de sombra executados em paralelo;
+- preparação de temas compartilhada entre rolagens e timelines, com até quatro
+  cargas simultâneas e uma única passagem para identificar os modelos necessários;
+- Babylon Core declarado como peer `^9.18.0` para compartilhar o motor do host;
+- métricas de bundle distinguem importação e incremento cinemático e não somam
+  os builds `external` e `adapters` ao JavaScript do build legado.
+
+### Corrigido
+
+- chamadas concorrentes de `init()` reutilizam a inicialização em andamento;
+- desmontagem durante `init()` impede a publicação de um renderer tardio;
+- falhas na criação das sombras liberam a cena e o engine já criados;
+- falhas do WASM são removidas do cache para permitir uma nova tentativa;
+- atualizações visuais preservam o cache de temas; alterações em `externalThemes`
+  invalidam somente os mapeamentos modificados;
+- respostas antigas não misturam caminhos de assets nem removem novas requisições
+  do cache em caso de falha;
+- descarte do renderer cancela downloads de modelos, impede parsing tardio e
+  libera templates; erros de parsing liberam as meshes já criadas.
+
+### Adicionado
+
+- benchmark de inicialização em arquivos de produção, com Brotli, CPU/rede
+  controladas, amostras individuais e fixture com dependências do consumidor;
+- smoke de lifecycle e recursos nos builds standalone e externo;
+- regressão de tree shaking após minificação, comparação de tamanhos entre
+  distribuições e limite de 2 MiB brutos / 480 KiB gzip para o JS standalone;
+- benchmark de carregamento de temas e regressões de concorrência, cache e
+  propriedade dos modelos.
+
+Publicação npm pendente. Consulte os relatórios de
+[inicialização](docs/STARTUP_PERFORMANCE.md) e
+[estrutura e carregamento de temas](docs/PACKAGE_STRUCTURE.md).
+
 ## [2.6.0] - 2026-08-08
 
 ### Adicionado

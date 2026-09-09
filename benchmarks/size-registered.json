@@ -1,0 +1,126 @@
+{
+  "generatedAt": "2026-09-09T13:48:58.533Z",
+  "legacy": {
+    "initial": {
+      "files": 2,
+      "rawBytes": 36974,
+      "gzipBytes": 10656,
+      "brotliBytes": 9573
+    },
+    "kinematicIncremental": {
+      "files": 1,
+      "rawBytes": 1047773,
+      "gzipBytes": 250199,
+      "brotliBytes": 196129
+    },
+    "physicsIncremental": {
+      "files": 2,
+      "rawBytes": 114454,
+      "gzipBytes": 28905,
+      "brotliBytes": 25463
+    },
+    "profilingIncremental": {
+      "files": 1,
+      "rawBytes": 2272,
+      "gzipBytes": 989,
+      "brotliBytes": 837
+    },
+    "timelineIncremental": {
+      "files": 4,
+      "rawBytes": 108747,
+      "gzipBytes": 26455,
+      "brotliBytes": 23719
+    },
+    "shadowsIncremental": {
+      "files": 6,
+      "rawBytes": 95162,
+      "gzipBytes": 24736,
+      "brotliBytes": 22263
+    },
+    "allJavaScript": {
+      "files": 76,
+      "rawBytes": 1829828,
+      "gzipBytes": 449467,
+      "brotliBytes": 371690
+    }
+  },
+  "external": {
+    "initial": {
+      "files": 2,
+      "rawBytes": 36973,
+      "gzipBytes": 10651,
+      "brotliBytes": 9522
+    },
+    "kinematicIncremental": {
+      "files": 1,
+      "rawBytes": 39456,
+      "gzipBytes": 13175,
+      "brotliBytes": 11710
+    },
+    "physicsIncremental": {
+      "files": 2,
+      "rawBytes": 43300,
+      "gzipBytes": 12951,
+      "brotliBytes": 11580
+    },
+    "profilingIncremental": {
+      "files": 1,
+      "rawBytes": 2272,
+      "gzipBytes": 989,
+      "brotliBytes": 837
+    },
+    "timelineIncremental": {
+      "files": 1,
+      "rawBytes": 157,
+      "gzipBytes": 117,
+      "brotliBytes": 97
+    },
+    "shadowsIncremental": {
+      "files": 0,
+      "rawBytes": 0,
+      "gzipBytes": 0,
+      "brotliBytes": 0
+    },
+    "allJavaScript": {
+      "files": 7,
+      "rawBytes": 122158,
+      "gzipBytes": 37883,
+      "brotliBytes": 33746
+    }
+  },
+  "adapters": {
+    "files": 1,
+    "rawBytes": 4447,
+    "gzipBytes": 1499,
+    "brotliBytes": 1347
+  },
+  "havokJs": {
+    "files": 1,
+    "rawBytes": 33094,
+    "gzipBytes": 9189,
+    "brotliBytes": 8046
+  },
+  "wasm": {
+    "files": 1,
+    "rawBytes": 2094566,
+    "gzipBytes": 662069,
+    "brotliBytes": 501418
+  },
+  "assets": {
+    "files": 21,
+    "rawBytes": 393918,
+    "gzipBytes": 194787,
+    "brotliBytes": 180671
+  },
+  "dist": {
+    "files": 115,
+    "rawBytes": 4510396,
+    "gzipBytes": 1356476,
+    "brotliBytes": 1098188
+  },
+  "package": {
+    "files": 129,
+    "packedBytes": 1390838,
+    "unpackedBytes": 4691640
+  }
+}

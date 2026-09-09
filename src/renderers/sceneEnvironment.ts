@@ -66,8 +66,13 @@ export class SceneEnvironment {
 		options: Readonly<RequiredViewerOptions>
 	): Promise<SceneEnvironment> {
 		const environment = new SceneEnvironment(canvas, options)
-		await environment.#updateShadows(options)
-		return environment
+		try {
+			await environment.#updateShadows(options)
+			return environment
+		} catch(error) {
+			environment.dispose()
+			throw error
+		}
 	}
 
 	addShadowCaster(mesh: AbstractMesh): void {
@@ -92,8 +97,10 @@ export class SceneEnvironment {
 		}
 		if(!this.#shadowGenerator || this.#shadowResolution !== options.shadowResolution) {
 			this.#shadowGenerator?.dispose()
-			await import('@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent')
-			const { ShadowGenerator } = await import('@babylonjs/core/Lights/Shadows/shadowGenerator')
+			const [, { ShadowGenerator }] = await Promise.all([
+				import('@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent'),
+				import('@babylonjs/core/Lights/Shadows/shadowGenerator')
+			])
 			const generator = new ShadowGenerator(options.shadowResolution, this.lights.directional)
 			generator.useBlurExponentialShadowMap = true
 			generator.blurKernel = 16

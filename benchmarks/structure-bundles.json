@@ -1,0 +1,24 @@
+{
+  "baseline": {
+    "initial": {
+      "rawBytes": 46364,
+      "gzipBytes": 12151
+    },
+    "standaloneJavaScript": {
+      "rawBytes": 3114053,
+      "gzipBytes": 676030
+    },
+    "typesSHA256": "d8a2f089e18d727f4f5aa6cd26cf8e32508450142e542ed5e56faf8b117e2ab6"
+  },
+  "final": {
+    "initial": {
+      "rawBytes": 46439,
+      "gzipBytes": 12182
+    },
+    "standaloneJavaScript": {
+      "rawBytes": 3115774,
+      "gzipBytes": 676523
+    },
+    "typesSHA256": "d8a2f089e18d727f4f5aa6cd26cf8e32508450142e542ed5e56faf8b117e2ab6"
+  }
+}

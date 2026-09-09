@@ -35,12 +35,20 @@ legado precisa continuar autocontido; `external` precisa preservar imports bare
 de Babylon/Havok; `adapters` não pode referenciar renderer, Babylon ou Havok; e
 física, profiling, sombras e highlight não podem vazar para o grafo inicial. O
 check também rejeita um payload WASM base64 dentro do chunk Havok legado.
+Na 2.6.1, verifica também o peer de Babylon e limita o grafo da API sem
+renderers a 64 KiB brutos (a referência medida ocupa cerca de 46 KiB).
+
+A etapa posterior de [minificação da distribuição](SIZE_OPTIMIZATION.md)
+reduz a API inicial para cerca de 37 KiB brutos e o JS standalone completo
+para cerca de 453 KB gzip. O check limita esse total a 2 MiB brutos e 480 KiB
+gzip. As métricas do standalone e do consumidor `external` são distintas.
 
 ## Interpretação
 
-O grafo inicial é o custo de importar e iniciar o caminho cinemático sem sombras
-e sem timeline. As métricas incrementais contam apenas arquivos que ainda não
-estavam nesse grafo. Havok JS aparece separado do renderer físico e o WASM é
+Na 2.6.1, o grafo inicial mede apenas a importação da API; `kinematicIncremental`
+mede o renderer solicitado por `init()` no modo cinemático. Antes da 2.6.1,
+esse renderer já fazia parte do grafo inicial. Física, sombras e timeline
+excluem tanto a API quanto esse renderer compartilhado. Havok JS aparece separado do renderer físico e o WASM é
 medido como arquivo próprio, porque seu download acontece por URL em runtime.
 Mesmo no build legado autocontido, o pacote leva uma única cópia estável do
 WASM; ela não é repetida como base64 no JavaScript.

@@ -1,0 +1,316 @@
+{
+  "capturedAt": "2026-09-09T10:16:03.951Z",
+  "directory": "D:\\Projetos\\ERPG\\output\\dice3d-startup\\host-baseline",
+  "environment": {
+    "node": "v24.18.0",
+    "platform": "win32",
+    "chromium": "147.0.7727.15",
+    "device": "Pixel 5 emulation (desktop CPU/GPU)",
+    "cpuRate": 4,
+    "latency": 60,
+    "downloadBytesPerSecond": 1600000,
+    "compression": "br",
+    "runs": 5,
+    "coldContextPerRun": true
+  },
+  "summary": [
+    {
+      "enableShadows": false,
+      "importMs": {
+        "median": 716,
+        "p95": 730.0999999996275
+      },
+      "initMs": {
+        "median": 920.5,
+        "p95": 968.1000000005588
+      },
+      "readyMs": {
+        "median": 1657,
+        "p95": 1693.9000000003725
+      },
+      "firstPresentationMs": {
+        "median": 4504.399999999441,
+        "p95": 4616.5
+      },
+      "remountInitMs": {
+        "median": 222.90000000037253,
+        "p95": 273.90000000037253
+      }
+    },
+    {
+      "enableShadows": true,
+      "importMs": {
+        "median": 704.2999999998137,
+        "p95": 717.1000000005588
+      },
+      "initMs": {
+        "median": 1092,
+        "p95": 1106.5
+      },
+      "readyMs": {
+        "median": 1801.8999999994412,
+        "p95": 1829.7000000001863
+      },
+      "firstPresentationMs": {
+        "median": 4655,
+        "p95": 4689.4000000003725
+      },
+      "remountInitMs": {
+        "median": 252.19999999925494,
+        "p95": 289.79999999981374
+      }
+    }
+  ],
+  "samples": [
+    {
+      "run": 0,
+      "enableShadows": false,
+      "importMs": 718.4000000003725,
+      "initMs": 968.1000000005588,
+      "readyMs": 1693.9000000003725,
+      "firstPresentationMs": 4616.5,
+      "remountInitMs": 273.90000000037253,
+      "canvasSize": {
+        "width": 393,
+        "height": 727
+      },
+      "imported": {
+        "requests": 28,
+        "transferBytes": 240689
+      },
+      "initialized": {
+        "requests": 39,
+        "transferBytes": 806342
+      },
+      "total": {
+        "requests": 44,
+        "transferBytes": 913495
+      }
+    },
+    {
+      "run": 1,
+      "enableShadows": false,
+      "importMs": 716,
+      "initMs": 936.7000000001863,
+      "readyMs": 1658.4000000003725,
+      "firstPresentationMs": 4533.4000000003725,
+      "remountInitMs": 228,
+      "canvasSize": {
+        "width": 393,
+        "height": 727
+      },
+      "imported": {
+        "requests": 28,
+        "transferBytes": 240689
+      },
+      "initialized": {
+        "requests": 39,
+        "transferBytes": 806342
+      },
+      "total": {
+        "requests": 44,
+        "transferBytes": 913495
+      }
+    },
+    {
+      "run": 2,
+      "enableShadows": false,
+      "importMs": 711.8999999994412,
+      "initMs": 892.2000000001863,
+      "readyMs": 1609.0999999996275,
+      "firstPresentationMs": 4463.0999999996275,
+      "remountInitMs": 222.90000000037253,
+      "canvasSize": {
+        "width": 393,
+        "height": 727
+      },
+      "imported": {
+        "requests": 28,
+        "transferBytes": 240689
+      },
+      "initialized": {
+        "requests": 39,
+        "transferBytes": 806342
+      },
+      "total": {
+        "requests": 44,
+        "transferBytes": 913495
+      }
+    },
+    {
+      "run": 3,
+      "enableShadows": false,
+      "importMs": 695.3999999994412,
+      "initMs": 881.6000000005588,
+      "readyMs": 1582.2000000001863,
+      "firstPresentationMs": 4430.299999999814,
+      "remountInitMs": 203,
+      "canvasSize": {
+        "width": 393,
+        "height": 727
+      },
+      "imported": {
+        "requests": 28,
+        "transferBytes": 240689
+      },
+      "initialized": {
+        "requests": 39,
+        "transferBytes": 806342
+      },
+      "total": {
+        "requests": 44,
+        "transferBytes": 913495
+      }
+    },
+    {
+      "run": 4,
+      "enableShadows": false,
+      "importMs": 730.0999999996275,
+      "initMs": 920.5,
+      "readyMs": 1657,
+      "firstPresentationMs": 4504.399999999441,
+      "remountInitMs": 208.59999999962747,
+      "canvasSize": {
+        "width": 393,
+        "height": 727
+      },
+      "imported": {
+        "requests": 28,
+        "transferBytes": 240689
+      },
+      "initialized": {
+        "requests": 39,
+        "transferBytes": 806342
+      },
+      "total": {
+        "requests": 44,
+        "transferBytes": 913495
+      }
+    },
+    {
+      "run": 0,
+      "enableShadows": true,
+      "importMs": 698.0999999996275,
+      "initMs": 1096.5,
+      "readyMs": 1800,
+      "firstPresentationMs": 4689.4000000003725,
+      "remountInitMs": 264.20000000018626,
+      "canvasSize": {
+        "width": 393,
+        "height": 727
+      },
+      "imported": {
+        "requests": 28,
+        "transferBytes": 240689
+      },
+      "initialized": {
+        "requests": 50,
+        "transferBytes": 835967
+      },
+      "total": {
+        "requests": 56,
+        "transferBytes": 943677
+      }
+    },
+    {
+      "run": 1,
+      "enableShadows": true,
+      "importMs": 717.1000000005588,
+      "initMs": 1106.5,
+      "readyMs": 1829.7000000001863,
+      "firstPresentationMs": 4655,
+      "remountInitMs": 233.79999999981374,
+      "canvasSize": {
+        "width": 393,
+        "height": 727
+      },
+      "imported": {
+        "requests": 28,
+        "transferBytes": 240689
+      },
+      "initialized": {
+        "requests": 50,
+        "transferBytes": 835967
+      },
+      "total": {
+        "requests": 56,
+        "transferBytes": 943677
+      }
+    },
+    {
+      "run": 2,
+      "enableShadows": true,
+      "importMs": 646.6000000005588,
+      "initMs": 1055.300000000745,
+      "readyMs": 1706.6000000005588,
+      "firstPresentationMs": 4528.799999999814,
+      "remountInitMs": 252.19999999925494,
+      "canvasSize": {
+        "width": 393,
+        "height": 727
+      },
+      "imported": {
+        "requests": 28,
+        "transferBytes": 240689
+      },
+      "initialized": {
+        "requests": 50,
+        "transferBytes": 835967
+      },
+      "total": {
+        "requests": 56,
+        "transferBytes": 943677
+      }
+    },
+    {
+      "run": 3,
+      "enableShadows": true,
+      "importMs": 704.2999999998137,
+      "initMs": 1092,
+      "readyMs": 1801.8999999994412,
+      "firstPresentationMs": 4672,
+      "remountInitMs": 234.79999999981374,
+      "canvasSize": {
+        "width": 393,
+        "height": 727
+      },
+      "imported": {
+        "requests": 28,
+        "transferBytes": 240689
+      },
+      "initialized": {
+        "requests": 50,
+        "transferBytes": 835967
+      },
+      "total": {
+        "requests": 56,
+        "transferBytes": 943677
+      }
+    },
+    {
+      "run": 4,
+      "enableShadows": true,
+      "importMs": 706.6999999992549,
+      "initMs": 1090.6000000005588,
+      "readyMs": 1802,
+      "firstPresentationMs": 4654.799999999814,
+      "remountInitMs": 289.79999999981374,
+      "canvasSize": {
+        "width": 393,
+        "height": 727
+      },
+      "imported": {
+        "requests": 28,
+        "transferBytes": 240689
+      },
+      "initialized": {
+        "requests": 50,
+        "transferBytes": 835967
+      },
+      "total": {
+        "requests": 56,
+        "transferBytes": 943677
+      }
+    }
+  ]
+}

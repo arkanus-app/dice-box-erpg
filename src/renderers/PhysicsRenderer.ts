@@ -1,4 +1,4 @@
-import HavokPhysics from '@babylonjs/havok'
+import { loadHavokRuntime } from '../havokRuntime'
 import '@babylonjs/core/Physics/physicsEngineComponent'
 import { HavokPlugin } from '@babylonjs/core/Physics/v2/Plugins/havokPlugin'
 import { PhysicsBody } from '@babylonjs/core/Physics/v2/physicsBody'
@@ -229,11 +229,16 @@ export class PhysicsRenderer extends KinematicRenderer {
 	}>()
 
 	override async init(context: RendererContext): Promise<void> {
-		await super.init(context)
 		const wasmUrl = context.options.physicsWasmUrl
 			|| `${context.options.origin}${context.options.assetPath}havok/HavokPhysics.wasm`
-		const havok = await HavokPhysics({ locateFile: () => wasmUrl })
-		const plugin = new HavokPlugin(true, havok)
+		// Start the WASM download while WebGL and optional shadows initialize.
+		// Await both on failure too, so disposal cannot race a late scene setup.
+		const [scene, runtime] = await Promise.allSettled([
+			super.init(context), loadHavokRuntime(wasmUrl)
+		])
+		if(scene.status === 'rejected') throw scene.reason
+		if(runtime.status === 'rejected') throw runtime.reason
+		const plugin = new HavokPlugin(true, runtime.value)
 		this.#physicsPlugin = plugin
 		this.scene!.enablePhysics(new Vector3(0, -9.81 * context.options.gravity, 0), plugin)
 		const physicsEngine = this.scene!.getPhysicsEngine()

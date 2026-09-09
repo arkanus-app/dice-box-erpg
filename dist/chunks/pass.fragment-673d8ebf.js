@@ -1,0 +1,1 @@
+import{r as e}from"./KinematicRenderer-dda4102b.js";import"./index-61561f47.js";const r="passPixelShader",a="varying vec2 vUV;uniform sampler2D textureSampler;\n#define CUSTOM_FRAGMENT_DEFINITIONS\nvoid main(void) \n{gl_FragColor=texture2D(textureSampler,vUV);}";e.ShadersStore[r]||(e.ShadersStore[r]=a);const t={name:r,shader:a};export{t as passPixelShader};

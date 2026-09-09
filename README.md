@@ -4,9 +4,9 @@ Camada TypeScript de apresentação 3D para resultados de dados já resolvidos.
 
 O `@erpg/dicecore` interpreta a fórmula e decide os resultados; o `@erpg/dice3dview` recebe esses valores prontos e apenas os apresenta. A biblioteca não interpreta notação, não sorteia valores e não usa a face física como fonte do resultado.
 
-Versão atual: **2.6.0**.
+Versão atual: **2.6.1**.
 
-> A versão `2.6.0` está versionada neste repositório; a publicação no npm
+> A versão `2.6.1` está preparada neste repositório; a publicação no npm
 > é um processo separado.
 
 ## Documentação
@@ -18,6 +18,9 @@ Versão atual: **2.6.0**.
 - [Devlog da v2](DEVLOG_V2.md)
 - [Changelog](CHANGELOG.md)
 - [Métricas de bundle e carregamento](docs/BUNDLE_METRICS.md)
+- [Análise e otimizações de inicialização](docs/STARTUP_PERFORMANCE.md)
+- [Estrutura do pacote e carregamento de temas](docs/PACKAGE_STRUCTURE.md)
+- [Redução de tamanho e efeito no frontend](docs/SIZE_OPTIMIZATION.md)
 - [Desempenho do hot path físico](docs/PHYSICS_PERFORMANCE.md)
 - [Origem e diferenças do fork](FORK.md)
 
@@ -73,6 +76,17 @@ subpath `adapters`:
 import { DiceResultViewer } from '@erpg/dice3dview/external'
 import { createMixedDisplayRequest } from '@erpg/dice3dview/adapters'
 ```
+
+Babylon Core é uma peer dependency compatível com `^9.18.0`. O build do pacote
+usa 9.18.0, e a integração ERPG é validada com 9.22.0. Compartilhe a versão do
+host para evitar carregar dois motores. Em Vite, use
+`resolve: { dedupe: ['@babylonjs/core', '@babylonjs/havok'] }`.
+
+A importação da API não carrega Babylon: o renderer é solicitado em `init()`.
+No modo físico, o download do WASM começa em paralelo ao renderer. Viewers
+compartilham o runtime Havok da última URL solicitada (incluindo query string),
+mas cada viewer mantém seu próprio mundo físico, liberado por `dispose()`.
+Falhas de inicialização podem ser tentadas novamente.
 
 O entrypoint raiz `@erpg/dice3dview` permanece autocontido para compatibilidade
 e uso direto por CDN. `@erpg/dice3dview/external` não é um artefato standalone

@@ -215,13 +215,30 @@ Veja [Dados simbólicos: Vampiro V5, Assimilação e Fate](SYMBOLIC_DICE.md) par
 ## Cache e callbacks
 
 - configurações são cacheadas por nome de tema;
-- modelos são cacheados por `meshName`;
+- modelos são cacheados pela URL completa de `meshFilePath`;
 - materiais são cacheados por tema, cor e estado descartado;
 - orientações e alturas de apoio são cacheadas por modelo, tipo e valor;
 - `onThemeConfigLoaded` ocorre quando uma configuração é resolvida fora do cache;
 - `onThemeLoaded` ocorre uma vez por tema distinto usado em cada apresentação.
 
-Alterar `assetPath`, `origin` ou `externalThemes` por `updateOptions()` limpa o cache de configurações. Templates de mesh, materiais e moedas já carregados pertencem ao renderer e permanecem cacheados; para substituir a definição de um mesmo tema/mesh com segurança, descarte o viewer e crie outro.
+Atualizações visuais por `updateOptions()` preservam o cache de configurações.
+Alterar `externalThemes` invalida apenas os temas cujo mapeamento mudou; recriar o
+objeto com os mesmos caminhos não exige novos downloads. Alterar `assetPath` ou
+`origin` limpa o cache, pois também afeta os assets de fallback dos temas externos.
+Uma requisição pendente usa os caminhos capturados no início da carga.
+
+Rolagens planas e timelines usam a mesma preparação, com até quatro temas sendo
+carregados ao mesmo tempo. Cada tema é preparado uma vez por apresentação; temas
+usados apenas por moedas não carregam o modelo de poliedros. `onThemeLoaded`
+mantém a ordem da primeira ocorrência dos temas nos dados, após a preparação ter
+sucesso. `onThemeConfigLoaded` acompanha a conclusão das requisições e pode chegar
+em outra ordem. O cancelamento interrompe o início de novas etapas e os callbacks
+da apresentação; configurações compartilhadas já em download podem terminar no cache.
+
+Templates de mesh, materiais e moedas pertencem ao renderer e permanecem
+cacheados entre apresentações. Para substituir a definição de um mesmo tema/mesh
+com segurança, descarte o viewer e crie outro. O descarte cancela downloads dos
+modelos e libera os templates, impedindo que uma resposta tardia recrie meshes.
 
 ## Checklist de um tema
 

@@ -1,0 +1,203 @@
+{
+  "directory": "D:\\Projetos\\ERPG\\output\\dice3d-structure\\cache",
+  "browser": "147.0.7727.15",
+  "environment": {
+    "runs": 5,
+    "assetLatencyMs": 60,
+    "viewport": "900x650",
+    "duration": 0,
+    "themes": 6
+  },
+  "summary": {
+    "display": {
+      "first": {
+        "preparedMs": 439,
+        "totalMs": 773.5999999996275,
+        "configLoads": 5,
+        "themeCallbacks": 6
+      },
+      "afterOptionsUpdate": {
+        "preparedMs": 1,
+        "totalMs": 275.30000000074506,
+        "configLoads": 0,
+        "themeCallbacks": 6
+      }
+    },
+    "displayTimeline": {
+      "first": {
+        "preparedMs": 464.7000000011176,
+        "totalMs": 774.7000000011176,
+        "configLoads": 5,
+        "themeCallbacks": 6
+      },
+      "afterOptionsUpdate": {
+        "preparedMs": 0.900000000372529,
+        "totalMs": 266.69999999925494,
+        "configLoads": 0,
+        "themeCallbacks": 6
+      }
+    }
+  },
+  "samples": [
+    {
+      "presentation": "display",
+      "run": 0,
+      "first": {
+        "preparedMs": 432.19999999925494,
+        "totalMs": 1056.5,
+        "configLoads": 5,
+        "themeCallbacks": 6
+      },
+      "afterOptionsUpdate": {
+        "preparedMs": 1.5,
+        "totalMs": 281,
+        "configLoads": 0,
+        "themeCallbacks": 6
+      }
+    },
+    {
+      "presentation": "display",
+      "run": 1,
+      "first": {
+        "preparedMs": 432.90000000037253,
+        "totalMs": 755.0999999996275,
+        "configLoads": 5,
+        "themeCallbacks": 6
+      },
+      "afterOptionsUpdate": {
+        "preparedMs": 0.900000000372529,
+        "totalMs": 274.40000000037253,
+        "configLoads": 0,
+        "themeCallbacks": 6
+      }
+    },
+    {
+      "presentation": "display",
+      "run": 2,
+      "first": {
+        "preparedMs": 439,
+        "totalMs": 736.2999999988824,
+        "configLoads": 5,
+        "themeCallbacks": 6
+      },
+      "afterOptionsUpdate": {
+        "preparedMs": 0.900000000372529,
+        "totalMs": 275.30000000074506,
+        "configLoads": 0,
+        "themeCallbacks": 6
+      }
+    },
+    {
+      "presentation": "display",
+      "run": 3,
+      "first": {
+        "preparedMs": 448.90000000037253,
+        "totalMs": 827.4000000003725,
+        "configLoads": 5,
+        "themeCallbacks": 6
+      },
+      "afterOptionsUpdate": {
+        "preparedMs": 1.299999998882413,
+        "totalMs": 276,
+        "configLoads": 0,
+        "themeCallbacks": 6
+      }
+    },
+    {
+      "presentation": "display",
+      "run": 4,
+      "first": {
+        "preparedMs": 462.2999999988824,
+        "totalMs": 773.5999999996275,
+        "configLoads": 5,
+        "themeCallbacks": 6
+      },
+      "afterOptionsUpdate": {
+        "preparedMs": 1,
+        "totalMs": 273.90000000037253,
+        "configLoads": 0,
+        "themeCallbacks": 6
+      }
+    },
+    {
+      "presentation": "displayTimeline",
+      "run": 0,
+      "first": {
+        "preparedMs": 416.69999999925494,
+        "totalMs": 718.8000000007451,
+        "configLoads": 5,
+        "themeCallbacks": 6
+      },
+      "afterOptionsUpdate": {
+        "preparedMs": 0.900000000372529,
+        "totalMs": 266.40000000037253,
+        "configLoads": 0,
+        "themeCallbacks": 6
+      }
+    },
+    {
+      "presentation": "displayTimeline",
+      "run": 1,
+      "first": {
+        "preparedMs": 451.30000000074506,
+        "totalMs": 759.4000000003725,
+        "configLoads": 5,
+        "themeCallbacks": 6
+      },
+      "afterOptionsUpdate": {
+        "preparedMs": 0.8000000007450581,
+        "totalMs": 266.69999999925494,
+        "configLoads": 0,
+        "themeCallbacks": 6
+      }
+    },
+    {
+      "presentation": "displayTimeline",
+      "run": 2,
+      "first": {
+        "preparedMs": 479,
+        "totalMs": 790,
+        "configLoads": 5,
+        "themeCallbacks": 6
+      },
+      "afterOptionsUpdate": {
+        "preparedMs": 1,
+        "totalMs": 266.3999999985099,
+        "configLoads": 0,
+        "themeCallbacks": 6
+      }
+    },
+    {
+      "presentation": "displayTimeline",
+      "run": 3,
+      "first": {
+        "preparedMs": 466.69999999925494,
+        "totalMs": 799.6999999992549,
+        "configLoads": 5,
+        "themeCallbacks": 6
+      },
+      "afterOptionsUpdate": {
+        "preparedMs": 0.900000000372529,
+        "totalMs": 273.09999999962747,
+        "configLoads": 0,
+        "themeCallbacks": 6
+      }
+    },
+    {
+      "presentation": "displayTimeline",
+      "run": 4,
+      "first": {
+        "preparedMs": 464.7000000011176,
+        "totalMs": 774.7000000011176,
+        "configLoads": 5,
+        "themeCallbacks": 6
+      },
+      "afterOptionsUpdate": {
+        "preparedMs": 0.900000000372529,
+        "totalMs": 277.09999999962747,
+        "configLoads": 0,
+        "themeCallbacks": 6
+      }
+    }
+  ]
+}

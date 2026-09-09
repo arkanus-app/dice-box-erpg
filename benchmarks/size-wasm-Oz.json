@@ -1,0 +1,14 @@
+{
+  "optimizer": "binaryen@132.0.0 -Oz --enable-simd --enable-bulk-memory --enable-sign-ext --enable-nontrapping-float-to-int --enable-mutable-globals",
+  "before": {
+    "rawBytes": 2094566,
+    "gzipBytes": 662069,
+    "brotliBytes": 501418
+  },
+  "after": {
+    "rawBytes": 2090034,
+    "gzipBytes": 653319,
+    "brotliBytes": 494553
+  },
+  "importsAndExportsMatch": true
+}

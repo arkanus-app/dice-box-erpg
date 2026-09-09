@@ -1,21 +1,37 @@
 {
-  "_index-5be182d3.js": {
+  "_KinematicRenderer-e89ff0a2.js": {
     "dynamicImports": [
-      "src/renderers/timelineHighlightRuntime.ts",
-      "src/renderers/PhysicsRenderer.ts"
+      "src/renderers/timelineHighlightRuntime.ts"
     ],
-    "file": "chunks/index-5be182d3.js"
+    "file": "chunks/KinematicRenderer-e89ff0a2.js",
+    "imports": [
+      "_index-9b535ebe.js"
+    ],
+    "isDynamicEntry": true
+  },
+  "_index-9b535ebe.js": {
+    "dynamicImports": [
+      "src/havokRuntime.ts",
+      "src/renderers/PhysicsRenderer.ts",
+      "_KinematicRenderer-e89ff0a2.js"
+    ],
+    "file": "chunks/index-9b535ebe.js"
+  },
+  "src/havokRuntime.ts": {
+    "file": "chunks/havokRuntime-d2f62a9c.js",
+    "isDynamicEntry": true,
+    "src": "src/havokRuntime.ts"
   },
   "src/index.ts": {
     "file": "dice3dview.es.js",
     "imports": [
-      "_index-5be182d3.js"
+      "_index-9b535ebe.js"
     ],
     "isEntry": true,
     "src": "src/index.ts"
   },
   "src/physicsPerformance.ts": {
-    "file": "chunks/physicsPerformance-9d14f224.js",
+    "file": "chunks/physicsPerformance-3b518924.js",
     "isDynamicEntry": true,
     "src": "src/physicsPerformance.ts"
   },
@@ -23,15 +39,17 @@
     "dynamicImports": [
       "src/physicsPerformance.ts"
     ],
-    "file": "chunks/PhysicsRenderer-a30cb6f7.js",
+    "file": "chunks/PhysicsRenderer-62b61846.js",
     "imports": [
-      "_index-5be182d3.js"
+      "src/havokRuntime.ts",
+      "_index-9b535ebe.js",
+      "_KinematicRenderer-e89ff0a2.js"
     ],
     "isDynamicEntry": true,
     "src": "src/renderers/PhysicsRenderer.ts"
   },
   "src/renderers/timelineHighlightRuntime.ts": {
-    "file": "chunks/timelineHighlightRuntime-80d343e1.js",
+    "file": "chunks/timelineHighlightRuntime-4c356679.js",
     "isDynamicEntry": true,
     "src": "src/renderers/timelineHighlightRuntime.ts"
   },

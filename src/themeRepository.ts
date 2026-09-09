@@ -97,27 +97,34 @@ export class ThemeRepository {
 	}
 
 	updateOptions(options: Readonly<RequiredViewerOptions>): void {
-		const pathsChanged = options.assetPath !== this.#options.assetPath
-			|| options.origin !== this.#options.origin
-			|| options.externalThemes !== this.#options.externalThemes
+		if(options.assetPath !== this.#options.assetPath || options.origin !== this.#options.origin) {
+			// External themes can also use the default model and coin assets.
+			this.#cache.clear()
+		} else {
+			for(const theme of this.#cache.keys()) {
+				if(options.externalThemes[theme] !== this.#options.externalThemes[theme]) this.#cache.delete(theme)
+			}
+		}
 		this.#options = options
-		if(pathsChanged) this.#cache.clear()
 	}
 
 	load(theme: string): Promise<ResolvedThemeConfig> {
 		const cached = this.#cache.get(theme)
 		if(cached) return cached
-		const pending = this.#fetch(theme)
+		const pending = this.#fetch(theme, this.#options)
 		this.#cache.set(theme, pending)
-		pending.catch(() => this.#cache.delete(theme))
+		pending.catch(() => {
+			if(this.#cache.get(theme) === pending) this.#cache.delete(theme)
+		})
 		return pending
 	}
 
-	async #fetch(theme: string): Promise<ResolvedThemeConfig> {
-		const externalPath = this.#options.externalThemes[theme]
+	async #fetch(theme: string, options: Readonly<RequiredViewerOptions>): Promise<ResolvedThemeConfig> {
+		// A pending fetch must not mix its original URL with newly updated paths.
+		const externalPath = options.externalThemes[theme]
 		const basePath = externalPath
 			? externalPath.replace(/\/$/, '')
-			: `${this.#options.origin}${this.#options.assetPath}themes/${theme}`.replace(/\/$/, '')
+			: `${options.origin}${options.assetPath}themes/${theme}`.replace(/\/$/, '')
 		const response = await fetch(`${basePath}/theme.config.json`)
 		if(!response.ok) {
 			throw new Error(`Unable to fetch config for theme '${theme}' (${response.status} ${response.statusText}).`)
@@ -125,7 +132,7 @@ export class ThemeRepository {
 		const raw = assertThemeConfig(await response.json(), theme)
 		const meshFile = typeof raw.meshFile === 'string' ? raw.meshFile : 'default.json'
 		const meshName = meshFile.replace(/\.[^.]+$/, '')
-		const fallbackCoinBase = `${this.#options.origin}${this.#options.assetPath}themes/default`.replace(/\/$/, '')
+		const fallbackCoinBase = `${options.origin}${options.assetPath}themes/default`.replace(/\/$/, '')
 		const coin = raw.coin ?? {
 			...DEFAULT_COIN_THEME,
 			front: { ...DEFAULT_COIN_THEME.front, texture: `${fallbackCoinBase}/${DEFAULT_COIN_THEME.front.texture}` },
@@ -138,7 +145,7 @@ export class ThemeRepository {
 			meshName,
 			meshFilePath: typeof raw.meshFile === 'string'
 				? `${basePath}/${meshFile}`
-				: `${this.#options.origin}${this.#options.assetPath}themes/default/default.json`,
+				: `${options.origin}${options.assetPath}themes/default/default.json`,
 			coin: Object.freeze({
 				...coin,
 				front: Object.freeze({ ...coin.front }),

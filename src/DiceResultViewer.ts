@@ -1,7 +1,6 @@
 import { createDisplayCanvas } from './canvas'
 import { normalizeDisplayRequest, getDisplayBodyCount } from './displayRequest'
 import { DisplayCancelledError, isDisplayCancelledError, rethrowPresentationError } from './errors'
-import KinematicRenderer from './renderers/KinematicRenderer'
 import { ThemeRepository } from './themeRepository'
 import {
 	createTimelineProgressTracker,
@@ -32,6 +31,8 @@ export class DiceResultViewer {
 	#resizeObserver: ResizeObserver | undefined
 	#initialized = false
 	#disposed = false
+	#initializing: Promise<this> | undefined
+	#rendererPending: Promise<DisplayRenderer> | undefined
 
 	constructor(options: ViewerOptions = {}) {
 		this.#options = createViewerOptions(options)
@@ -43,10 +44,17 @@ export class DiceResultViewer {
 	async init(): Promise<this> {
 		this.#assertUsable()
 		if(this.#initialized) return this
+		if(this.#initializing) return this.#initializing
+		this.#initializing = this.#initialize().finally(() => { this.#initializing = undefined })
+		return this.#initializing
+	}
+
+	async #initialize(): Promise<this> {
 		await Promise.all([
 			this.#ensureRenderer(this.#options.mode),
 			...[this.#options.theme, ...this.#options.preloadThemes].map(theme => this.#themes.load(theme))
 		])
+		this.#assertUsable()
 		this.#resizeHandler = (): void => this.resize()
 		window.addEventListener('resize', this.#resizeHandler, { passive: true })
 		if(typeof ResizeObserver !== 'undefined') {
@@ -174,19 +182,42 @@ export class DiceResultViewer {
 	}
 
 	async #ensureRenderer(mode: DisplayMode): Promise<DisplayRenderer> {
+		while(this.#rendererPending) await this.#rendererPending
+		this.#assertUsable()
 		if(this.#renderer && this.#rendererMode === mode) return this.#renderer
+		const pending = this.#createRenderer(mode)
+		this.#rendererPending = pending
+		try {
+			return await pending
+		} finally {
+			if(this.#rendererPending === pending) this.#rendererPending = undefined
+		}
+	}
+
+	async #createRenderer(mode: DisplayMode): Promise<DisplayRenderer> {
 		this.#renderer?.dispose()
+		this.#renderer = undefined
+		this.#rendererMode = undefined
+		if(mode === 'physics') {
+			const wasmUrl = this.#options.physicsWasmUrl
+				|| `${this.#options.origin}${this.#options.assetPath}havok/HavokPhysics.wasm`
+			// Discover the small WASM loader before the large Babylon graph arrives.
+			// Renderer.init owns error reporting and can retry a failed preload.
+			void import('./havokRuntime').then(runtime => runtime.loadHavokRuntime(wasmUrl)).catch(() => {})
+		}
 		const renderer = mode === 'physics'
 			? new (await import('./renderers/PhysicsRenderer')).PhysicsRenderer()
-			: new KinematicRenderer()
-		this.#renderer = renderer
-		this.#rendererMode = mode
+			: new (await import('./renderers/KinematicRenderer')).KinematicRenderer()
 		try {
+			this.#assertUsable()
 			await renderer.init({
 				canvas: this.canvas,
 				options: this.#options,
 				loadTheme: theme => this.#themes.load(theme)
 			})
+			this.#assertUsable()
+			this.#renderer = renderer
+			this.#rendererMode = mode
 			return renderer
 		} catch(error) {
 			renderer.dispose()

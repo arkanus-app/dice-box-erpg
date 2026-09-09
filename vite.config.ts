@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { defineConfig, type Plugin, type UserConfig } from 'vite'
 import dts from 'vite-plugin-dts'
+import { minifyLibrary } from './build/minifyLibrary'
 
 const root = path.dirname(fileURLToPath(import.meta.url))
 const havokWasmPath = path.resolve(root, 'node_modules/@babylonjs/havok/lib/esm/HavokPhysics.wasm')
@@ -35,7 +36,7 @@ export default defineConfig(({ mode }): UserConfig => {
 	const outDir = adaptersBuild ? 'dist/adapters' : externalBuild ? 'dist/external' : 'dist'
 	const entry = path.resolve(root, adaptersBuild ? 'src/adapters.ts' : 'src/index.ts')
 	const entryFileName = adaptersBuild ? 'index.js' : 'dice3dview.es.js'
-	const plugins: Plugin[] = []
+	const plugins: Plugin[] = [minifyLibrary()]
 	if(!externalBuild && !adaptersBuild) plugins.push(externalizeBundledHavokWasm())
 	if(!externalBuild) plugins.push(dts(adaptersBuild ? {
 		include: ['src/adapters.ts', 'src/systemThemes.ts', 'src/types.ts'],

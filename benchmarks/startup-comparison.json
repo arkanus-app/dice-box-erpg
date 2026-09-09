@@ -1,0 +1,98 @@
+{
+  "baselinePath": "benchmarks/startup-baseline.json",
+  "candidatePath": "benchmarks/startup-optimized.json",
+  "environment": {
+    "node": "v24.18.0",
+    "platform": "win32",
+    "chromium": "147.0.7727.15",
+    "device": "Pixel 5 emulation (desktop CPU/GPU)",
+    "cpuRate": 4,
+    "latency": 60,
+    "downloadBytesPerSecond": 1600000,
+    "compression": "br",
+    "runs": 5,
+    "coldContextPerRun": true
+  },
+  "canvasSize": {
+    "width": 393,
+    "height": 727
+  },
+  "scenarios": [
+    {
+      "enableShadows": false,
+      "importMs": {
+        "baselineMedian": 716,
+        "candidateMedian": 275.4,
+        "reductionPercent": 61.54,
+        "baselineP95": 730.1,
+        "candidateP95": 276.9
+      },
+      "initMs": {
+        "baselineMedian": 920.5,
+        "candidateMedian": 954.8,
+        "reductionPercent": -3.73,
+        "baselineP95": 968.1,
+        "candidateP95": 986
+      },
+      "readyMs": {
+        "baselineMedian": 1657,
+        "candidateMedian": 1235.2,
+        "reductionPercent": 25.46,
+        "baselineP95": 1693.9,
+        "candidateP95": 1261.3
+      },
+      "firstPresentationMs": {
+        "baselineMedian": 4504.4,
+        "candidateMedian": 4090.1,
+        "reductionPercent": 9.2,
+        "baselineP95": 4616.5,
+        "candidateP95": 4117.6
+      },
+      "remountInitMs": {
+        "baselineMedian": 222.9,
+        "candidateMedian": 96.9,
+        "reductionPercent": 56.53,
+        "baselineP95": 273.9,
+        "candidateP95": 122.5
+      }
+    },
+    {
+      "enableShadows": true,
+      "importMs": {
+        "baselineMedian": 704.3,
+        "candidateMedian": 278.4,
+        "reductionPercent": 60.47,
+        "baselineP95": 717.1,
+        "candidateP95": 283.4
+      },
+      "initMs": {
+        "baselineMedian": 1092,
+        "candidateMedian": 1026.9,
+        "reductionPercent": 5.96,
+        "baselineP95": 1106.5,
+        "candidateP95": 1183
+      },
+      "readyMs": {
+        "baselineMedian": 1801.9,
+        "candidateMedian": 1315.1,
+        "reductionPercent": 27.02,
+        "baselineP95": 1829.7,
+        "candidateP95": 1463.2
+      },
+      "firstPresentationMs": {
+        "baselineMedian": 4655,
+        "candidateMedian": 4218.4,
+        "reductionPercent": 9.38,
+        "baselineP95": 4689.4,
+        "candidateP95": 4442.9
+      },
+      "remountInitMs": {
+        "baselineMedian": 252.2,
+        "candidateMedian": 156.4,
+        "reductionPercent": 37.99,
+        "baselineP95": 289.8,
+        "candidateP95": 169.2
+      }
+    }
+  ]
+}

@@ -22,6 +22,7 @@ import { DisplayCancelledError } from '../errors'
 import { createSeededRandom } from '../random'
 import { CoinFactory, getCoinAccentColor, getCoinTargetQuaternion } from './coin'
 import { PolyhedralFactory } from './PolyhedralFactory'
+import { prepareThemes } from './prepareThemes'
 import { DISPLAY_CAMERA_FOV, DISPLAY_CAMERA_HEIGHT, SceneEnvironment } from './sceneEnvironment'
 import {
 	clampHorizontalPosition,
@@ -438,15 +439,7 @@ export class KinematicRenderer implements DisplayRenderer {
 		this.assertReady()
 		this.clear()
 		if(signal.aborted) throw new DisplayCancelledError()
-		const configs = new Map<string, ResolvedThemeConfig>()
-		for(const theme of new Set(request.dice.map(die => die.theme))) {
-			const config = await this.context!.loadTheme(theme)
-			configs.set(theme, config)
-			if(request.dice.some(die => die.theme === theme && die.sides !== 2)) {
-				await this.ensurePolyhedralTheme(config)
-			}
-			this.options!.onThemeLoaded(config)
-		}
+		const configs = await this.prepareThemes(request.dice, signal)
 		if(signal.aborted) throw new DisplayCancelledError()
 		const random = createSeededRandom(request.seed)
 		// One presentation is one throw: every body enters through the same
@@ -486,16 +479,7 @@ export class KinematicRenderer implements DisplayRenderer {
 		this.assertReady()
 		this.clear()
 		if(signal.aborted) throw new DisplayCancelledError()
-		const configs = new Map<string, ResolvedThemeConfig>()
-		for(const definition of plan.definitions.values()) {
-			if(configs.has(definition.theme)) continue
-			const config = await this.context!.loadTheme(definition.theme)
-			configs.set(definition.theme, config)
-			if([...plan.definitions.values()].some(die => die.theme === definition.theme && die.sides !== 2)) {
-				await this.ensurePolyhedralTheme(config)
-			}
-			this.options!.onThemeLoaded(config)
-		}
+		const configs = await this.prepareThemes(plan.definitions.values(), signal)
 		if(signal.aborted) throw new DisplayCancelledError()
 		const handles = new Map<string, TimelineVisualHandle>()
 		const progress = createTimelineProgressTracker(plan)
@@ -954,6 +938,17 @@ export class KinematicRenderer implements DisplayRenderer {
 			signal.addEventListener('abort', abort, { once: true })
 			engine.runRenderLoop(render)
 		})
+	}
+
+	protected prepareThemes(
+		dice: Iterable<Pick<NormalizedResolvedDie, 'theme' | 'sides'>>,
+		signal: AbortSignal
+	): Promise<ReadonlyMap<string, ResolvedThemeConfig>> {
+		return prepareThemes(dice, {
+			loadTheme: theme => this.context!.loadTheme(theme),
+			loadModel: config => this.ensurePolyhedralTheme(config),
+			onThemeLoaded: config => this.options!.onThemeLoaded(config)
+		}, signal)
 	}
 
 	protected async ensurePolyhedralTheme(config: ResolvedThemeConfig): Promise<void> {

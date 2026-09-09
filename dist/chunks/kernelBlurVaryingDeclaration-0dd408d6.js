@@ -1,0 +1,1 @@
+import{r as e}from"./KinematicRenderer-dda4102b.js";const r="kernelBlurVaryingDeclaration",a="varying vec2 sampleCoord{X};";e.IncludesShadersStore[r]||(e.IncludesShadersStore[r]=a);const n={name:r,shader:a};export{n as k};

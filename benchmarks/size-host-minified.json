@@ -1,0 +1,61 @@
+{
+  "beforeDirectory": "D:\\Projetos\\ERPG\\output\\dice3d-size\\host-baseline",
+  "afterDirectory": "D:\\Projetos\\ERPG\\output\\dice3d-size\\host-minified",
+  "before": {
+    "initial": {
+      "files": 3,
+      "rawBytes": 38273,
+      "gzipBytes": 11715,
+      "brotliBytes": 10504
+    },
+    "allJavaScript": {
+      "files": 99,
+      "rawBytes": 1828778,
+      "gzipBytes": 461929,
+      "brotliBytes": 394108
+    },
+    "wasm": {
+      "files": 1,
+      "rawBytes": 2094566,
+      "gzipBytes": 662069,
+      "brotliBytes": 501418
+    }
+  },
+  "after": {
+    "initial": {
+      "files": 3,
+      "rawBytes": 38210,
+      "gzipBytes": 11716,
+      "brotliBytes": 10456
+    },
+    "allJavaScript": {
+      "files": 99,
+      "rawBytes": 1828289,
+      "gzipBytes": 461729,
+      "brotliBytes": 393980
+    },
+    "wasm": {
+      "files": 1,
+      "rawBytes": 2094566,
+      "gzipBytes": 662069,
+      "brotliBytes": 501418
+    }
+  },
+  "reductionPercent": {
+    "initial": {
+      "rawBytes": 0.16460690303869985,
+      "gzipBytes": -0.008536064874098415,
+      "brotliBytes": 0.4569687738004591
+    },
+    "allJavaScript": {
+      "rawBytes": 0.026739166809752746,
+      "gzipBytes": 0.043296697111461224,
+      "brotliBytes": 0.03247840693414439
+    },
+    "wasm": {
+      "rawBytes": 0,
+      "gzipBytes": 0,
+      "brotliBytes": 0
+    }
+  }
+}

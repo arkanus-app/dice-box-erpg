@@ -53,6 +53,12 @@ const graphMetrics = (directory, excludedPhysicsFiles = new Set()) => {
 	const manifest = readManifest(directory)
 	const initial = staticClosure(manifest, directory, ['src/index.ts'])
 	const physics = staticClosure(manifest, directory, ['src/renderers/PhysicsRenderer.ts'])
+	const kinematicKey = Object.keys(manifest).find(key => key === 'src/renderers/KinematicRenderer.ts'
+		|| /\/KinematicRenderer-[^/]+\.js$/.test(manifest[key].file))
+	const kinematic = kinematicKey
+		? staticClosure(manifest, directory, [kinematicKey])
+		: initial
+	const rendererBase = new Set([...initial, ...kinematic])
 	const profiling = Object.hasOwn(manifest, 'src/physicsPerformance.ts')
 		? staticClosure(manifest, directory, ['src/physicsPerformance.ts'])
 		: new Set()
@@ -67,14 +73,16 @@ const graphMetrics = (directory, excludedPhysicsFiles = new Set()) => {
 		: new Set()
 	return {
 		initial: compressedMetrics([...initial]),
-		physicsIncremental: compressedMetrics(subtract(physics, new Set([...initial, ...excludedPhysicsFiles]))),
+		kinematicIncremental: compressedMetrics(subtract(kinematic, initial)),
+		physicsIncremental: compressedMetrics(subtract(physics, new Set([...rendererBase, ...excludedPhysicsFiles]))),
 		profilingIncremental: compressedMetrics(subtract(
 			profiling,
 			new Set([...initial, ...physics, ...excludedPhysicsFiles])
 		)),
-		timelineIncremental: compressedMetrics(subtract(timeline, initial)),
-		shadowsIncremental: compressedMetrics(subtract(shadows, initial)),
-		allJavaScript: compressedMetrics(visit(directory).filter(file => file.endsWith('.js'))),
+		timelineIncremental: compressedMetrics(subtract(timeline, rendererBase)),
+		shadowsIncremental: compressedMetrics(subtract(shadows, rendererBase)),
+		allJavaScript: compressedMetrics(visit(directory).filter(file => file.endsWith('.js')
+			&& (directory !== dist || !/^(external|adapters)[\\/]/.test(path.relative(dist, file))))),
 		_initialFiles: initial
 	}
 }

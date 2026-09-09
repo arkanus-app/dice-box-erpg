@@ -139,6 +139,9 @@ export class PolyhedralFactory {
 	readonly #materials = new Map<string, StandardMaterial>()
 	readonly #orientations = new Map<string, CachedOrientation>()
 	readonly #pool = new Map<string, Mesh[]>()
+	readonly #templates = new Set<Mesh>()
+	readonly #loading = new AbortController()
+	#disposed = false
 
 	constructor(scene: Scene) {
 		registerDiceMaterialShaders()
@@ -146,12 +149,15 @@ export class PolyhedralFactory {
 	}
 
 	load(config: ResolvedThemeConfig): Promise<LoadedModel> {
+		if(this.#disposed || this.#scene.isDisposed) return Promise.reject(new Error('Polyhedral factory has been disposed.'))
 		const modelKey = getPolyhedralModelCacheKey(config)
 		const cached = this.#models.get(modelKey)
 		if(cached) return cached
 		const pending = this.#load(config)
 		this.#models.set(modelKey, pending)
-		pending.catch(() => this.#models.delete(modelKey))
+		pending.catch(() => {
+			if(this.#models.get(modelKey) === pending) this.#models.delete(modelKey)
+		})
 		return pending
 	}
 
@@ -165,6 +171,7 @@ export class PolyhedralFactory {
 		colliderScale: number
 	): Promise<PolyhedralInstance> {
 		const model = await this.load(config)
+		this.#assertActive()
 		const type = `d${sides}`
 		const source = model.visualMeshes.get(type)
 		const collider = model.colliderMeshes.get(type)
@@ -209,6 +216,7 @@ export class PolyhedralFactory {
 		faceValue: number
 	): Promise<CachedOrientation> {
 		const model = await this.load(config)
+		this.#assertActive()
 		const type = `d${sides}`
 		const collider = model.colliderMeshes.get(type)
 		const faceMap = model.faceMaps[type]
@@ -231,7 +239,7 @@ export class PolyhedralFactory {
 
 	release(mesh: Mesh): void {
 		const key = typeof mesh.metadata?.poolKey === 'string' ? mesh.metadata.poolKey : undefined
-		if(!key) {
+		if(!key || this.#disposed) {
 			mesh.dispose(false, false)
 			return
 		}
@@ -245,25 +253,34 @@ export class PolyhedralFactory {
 	}
 
 	async #load(config: ResolvedThemeConfig): Promise<LoadedModel> {
-		const response = await fetch(config.meshFilePath)
+		const response = await fetch(config.meshFilePath, { signal: this.#loading.signal })
 		if(!response.ok) throw new Error(`Unable to fetch dice model '${config.meshFilePath}'.`)
 		const source = await response.json() as BabylonModelSource
+		this.#assertActive()
 		if(!source.colliderFaceMap) throw new Error(`Dice model '${config.meshFilePath}' has no colliderFaceMap.`)
 		const visualMeshes = new Map<string, Mesh>()
 		const colliderMeshes = new Map<string, Mesh>()
-		for(const meshSource of source.meshes) {
-			const parsedSource = { ...meshSource }
-			delete parsedSource.physicsImpostor
-			const mesh = Mesh.Parse(parsedSource, this.#scene, '')
-			const originalName = mesh.name
-			mesh.name = `${config.meshName}_${originalName}`
-			mesh.setEnabled(false)
-			mesh.isPickable = false
-			mesh.freezeNormals()
-			mesh.computeWorldMatrix(true)
-			if(originalName.endsWith('_collider')) colliderMeshes.set(originalName.replace('_collider', ''), mesh)
-			else visualMeshes.set(originalName, mesh)
+		const parsedMeshes: Mesh[] = []
+		try {
+			for(const meshSource of source.meshes) {
+				const parsedSource = { ...meshSource }
+				delete parsedSource.physicsImpostor
+				const mesh = Mesh.Parse(parsedSource, this.#scene, '')
+				parsedMeshes.push(mesh)
+				const originalName = mesh.name
+				mesh.name = `${config.meshName}_${originalName}`
+				mesh.setEnabled(false)
+				mesh.isPickable = false
+				mesh.freezeNormals()
+				mesh.computeWorldMatrix(true)
+				if(originalName.endsWith('_collider')) colliderMeshes.set(originalName.replace('_collider', ''), mesh)
+				else visualMeshes.set(originalName, mesh)
+			}
+		} catch(error) {
+			for(const mesh of parsedMeshes) mesh.dispose(false, false)
+			throw error
 		}
+		for(const mesh of parsedMeshes) this.#templates.add(mesh)
 		if(!visualMeshes.has('d100') && visualMeshes.has('d10')) visualMeshes.set('d100', visualMeshes.get('d10')!)
 		if(!colliderMeshes.has('d100') && colliderMeshes.has('d10')) colliderMeshes.set('d100', colliderMeshes.get('d10')!)
 		return { visualMeshes, colliderMeshes, faceMaps: source.colliderFaceMap }
@@ -302,13 +319,22 @@ export class PolyhedralFactory {
 	}
 
 	dispose(): void {
+		if(this.#disposed) return
+		this.#disposed = true
+		this.#loading.abort()
 		for(const pool of this.#pool.values()) {
 			for(const mesh of pool) mesh.dispose(false, false)
 		}
 		this.#pool.clear()
+		for(const mesh of this.#templates) mesh.dispose(false, false)
+		this.#templates.clear()
 		for(const material of this.#materials.values()) material.dispose(true, true)
 		this.#materials.clear()
 		this.#orientations.clear()
 		this.#models.clear()
+	}
+
+	#assertActive(): void {
+		if(this.#disposed || this.#scene.isDisposed) throw new Error('Polyhedral factory has been disposed.')
 	}
 }
