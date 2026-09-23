@@ -194,10 +194,12 @@ const viewer = new DiceResultViewer({
 })
 ```
 
-O callback recebe `initial` quando a apresentação dos dados-raiz começa, `phase`
-durante a progressão semântica e `complete` ao final. Uma explosão emite seu
-snapshot e libera o dado-filho assim que o dado-pai estabiliza, mesmo que outros
-dados da mesma fase ainda estejam em movimento. Cada snapshot informa `id`,
+O callback recebe `initial` quando os dados-raiz param, `phase` durante a
+progressão semântica e `complete` ao final. Uma explosão libera o dado-filho
+assim que o dado-pai estabiliza, mesmo que outros dados da mesma fase ainda
+estejam em movimento, e emite seu snapshot quando o filho para. Em explosões no
+próprio arremesso, o filho que pousar antes de todos os dados-raiz é reportado
+logo depois de `initial`, na ordem em que pousou. Cada snapshot informa `id`,
 `phaseIndex` zero-based (ou `null`), `phaseCount`, `phaseId`, `effect`,
 `revealedDieIds`, os dados visíveis `{ id, value, discarded }` e
 `completedEventSequences` cumulativo. Em uma apresentação degradada/plana,

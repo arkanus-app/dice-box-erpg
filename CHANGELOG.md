@@ -4,6 +4,13 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 ## [Não publicado]
 
+### Corrigido
+
+- `onTimelineProgress`: em lances com explosões no próprio arremesso, `initial`
+  era emitido antes de os dados saírem, entregando os valores dos dados-raiz
+  ainda no ar. Agora sai quando os dados-raiz param, como nos demais lances, e
+  os filhos que pousarem antes disso são reportados logo em seguida, na ordem.
+
 ## [3.0.0-alpha.0] - 2026-09-23
 
 Upgrade major: mesma API pública, sem Babylon.js e sem Havok. Veja o

@@ -16,7 +16,7 @@ import {
 	type TimelineEffectName,
 	type TimelineProgressTracker
 } from '../timeline'
-import { createPhysicsExplosionScheduler } from '../physicsTimelineScheduler'
+import { createPhysicsExplosionScheduler, type PhysicsExplosionScheduleItem } from '../physicsTimelineScheduler'
 import { DisplayCancelledError } from '../errors'
 import {
 	DISPLAY_CAMERA_FOV,
@@ -713,7 +713,21 @@ export class SceneRenderer implements DisplayRenderer {
 		const scheduler = createPhysicsExplosionScheduler(items)
 		const settled = new Set<number>()
 		const settledDice = new Set<string>()
-		dispatchTimelineProgress(options.onTimelineProgress, progress.initial())
+		// `initial` reports the root dice once they rest, as in a throw without
+		// explosions. A child that lands first (its parent rested early) waits in
+		// line, so the consumer still sees the roots before every explosion.
+		const rootDieIds = new Set(initialEntries.map(entry => entry.dieId))
+		const pendingActions: PhysicsExplosionScheduleItem[] = []
+		let rootsAtRest = false
+		const reportAction = (item: PhysicsExplosionScheduleItem): void => {
+			dispatchTimelineProgress(options.onTimelineProgress, progress.completePhaseAction(item.phaseIndex, item.actionIndex))
+		}
+		const reportRootsAtRest = (): void => {
+			if(rootsAtRest) return
+			rootsAtRest = true
+			dispatchTimelineProgress(options.onTimelineProgress, progress.initial())
+			for(const item of pendingActions.splice(0)) reportAction(item)
+		}
 		await this.#play(track, allEntries, signal, {
 			onSettle: body => {
 				settled.add(body)
@@ -724,14 +738,18 @@ export class SceneRenderer implements DisplayRenderer {
 				settledDice.add(dieId)
 				const transition = scheduler.settle(dieId)
 				if(transition.completed) {
-					dispatchTimelineProgress(options.onTimelineProgress, progress.completePhaseAction(transition.completed.phaseIndex, transition.completed.actionIndex))
+					if(rootsAtRest) reportAction(transition.completed)
+					else pendingActions.push(transition.completed)
 				}
+				if([...rootDieIds].every(id => settledDice.has(id))) reportRootsAtRest()
 			},
 			onExplode: parent => {
 				const entry = allEntries[parent]
 				if(entry) this.#burst(entry)
 			}
 		})
+		// The playback always ends with every die at rest; this only guards the order.
+		reportRootsAtRest()
 		return explosionPhaseCount
 	}
 
