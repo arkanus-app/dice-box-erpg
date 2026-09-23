@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>dice3dview — v2 × v3</title>
+    <style>
+      :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, "Segoe UI", sans-serif; }
+      body { margin: 0; padding: 16px; background: #090b13; color: #eceef6; }
+      h1 { font-size: 18px; margin: 0 0 8px; }
+      p { color: #9aa3bd; font-size: 13px; margin: 4px 0 12px; }
+      button { font: inherit; padding: 8px 14px; color: #eceef6; background: #3549b8; border: 1px solid #5b6fe0; border-radius: 8px; cursor: pointer; }
+      #frame { width: 900px; height: 520px; border: 1px solid #333; margin: 12px 0; }
+      table { border-collapse: collapse; font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; }
+      th, td { border: 1px solid #2a2f45; padding: 4px 8px; text-align: right; }
+      th:first-child, td:first-child { text-align: left; }
+      #status { color: #86efac; }
+      textarea { width: 900px; height: 160px; background: #0c0f1c; color: #eceef6; border: 1px solid #333; }
+    </style>
+  </head>
+  <body>
+    <h1>dice3dview — v2 × v3 no mesmo navegador</h1>
+    <p>Mesmos cenários, mesmos valores, mesmo tamanho de palco. Cada biblioteca roda num iframe novo, uma depois da outra. Gere o build (<code>npm run build</code>) e a cópia da v2 (<code>node scripts/prepare-v2-benchmark.mjs</code>) antes.</p>
+    <button id="run">Rodar comparação</button> <span id="status"></span>
+    <div id="frame"></div>
+    <div id="table"></div>
+    <textarea id="json" readonly></textarea>
+    <script type="module">
+      const RUNS = [
+        { lib: 'v3', mode: 'physics', label: 'v3 (física própria)' },
+        { lib: 'v2', mode: 'physics', label: 'v2 física (Babylon + Havok)' },
+        { lib: 'v2', mode: 'kinematic', label: 'v2 cinemático (Babylon)' }
+      ]
+      const repeats = Number(new URLSearchParams(location.search).get('repeats') ?? 3)
+      const status = document.querySelector('#status')
+
+      const runOne = run => new Promise(resolve => {
+        const frame = document.createElement('iframe')
+        frame.style.cssText = 'width:100%;height:100%;border:0'
+        const listener = event => {
+          if(event.source !== frame.contentWindow || event.data?.type !== 'dice3dview-benchmark') return
+          window.removeEventListener('message', listener)
+          frame.remove()
+          resolve({ ...run, ...event.data.report })
+        }
+        window.addEventListener('message', listener)
+        frame.src = `./runner.html?lib=${run.lib}&mode=${run.mode}&repeats=${repeats}`
+        document.querySelector('#frame').replaceChildren(frame)
+      })
+
+      const render = results => {
+        const scenarios = Object.keys(results.find(result => result.scenarios)?.scenarios ?? {})
+        const row = (label, pick) => `<tr><td>${label}</td>${results.map(result => `<td>${result.error ? 'erro' : pick(result) ?? '—'}</td>`).join('')}</tr>`
+        const rows = [
+          row('import (ms)', result => result.importMs),
+          row('init() (ms)', result => result.initMs),
+          row('1ª rolagem, d20 a frio (ms)', result => result.firstDisplayMs),
+          row('bytes carregados, sem compressão (KB)', result => result.transferKb),
+          row('heap JS ao final (MB)', result => result.heapMb),
+          ...scenarios.flatMap(name => [
+            row(`${name}: duração (ms)`, result => result.scenarios?.[name]?.wallMs),
+            row(`${name}: quadro médio / p95 / pior (ms)`, result => { const s = result.scenarios?.[name]; return s && `${s.meanFrameMs} / ${s.p95FrameMs} / ${s.worstFrameMs}` }),
+            row(`${name}: quadros > 25 ms`, result => result.scenarios?.[name]?.droppedFrames),
+            row(`${name}: tarefas longas (n / ms)`, result => { const s = result.scenarios?.[name]; return s && `${s.longTasks} / ${s.longTaskMs}` })
+          ])
+        ]
+        document.querySelector('#table').innerHTML = `<table><tr><th></th>${results.map(result => `<th>${result.label}</th>`).join('')}</tr>${rows.join('')}</table>`
+        document.querySelector('#json').value = JSON.stringify({ capturedAt: new Date().toISOString(), userAgent: navigator.userAgent, repeats, results }, null, 2)
+      }
+
+      document.querySelector('#run').addEventListener('click', async () => {
+        const results = []
+        for(const run of RUNS) {
+          status.textContent = `rodando ${run.label}…`
+          results.push(await runOne(run))
+          render(results)
+        }
+        status.textContent = 'pronto'
+        window.__benchResults = results
+      })
+    </script>
+  </body>
+</html>

@@ -1,8 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { Vector3 } from '@babylonjs/core/Maths/math.vector'
+import { Point3 as Vector3, estimateBallisticFlightSeconds } from './engine/launch'
 import { createSeededRandom } from './random'
-import { estimateBallisticFlightSeconds } from './physicsGuidance'
 import {
 	createScatteredLanding,
 	createSideLaunch,
@@ -13,7 +12,7 @@ import {
 	hasEnteredLaunchPortal,
 	selectPresentationLaunchEdge,
 	type TrajectoryLayoutInput
-} from './renderers/KinematicRenderer'
+} from './engine/launch'
 import { DISPLAY_CAMERA_FOV, DISPLAY_CAMERA_HEIGHT } from './renderers/sceneEnvironment'
 import {
 	computeDisplayViewportBounds,

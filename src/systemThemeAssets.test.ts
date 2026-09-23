@@ -15,6 +15,27 @@ const symbols = (config: ThemeConfig, sides: number, value: number): readonly st
 	config.faceMetadata?.dice[`d${sides}`]?.[String(value)]?.symbols ?? []
 
 describe('bundled symbolic theme assets', () => {
+	it('aligns every glyph with its face and publishes its orientation', () => {
+		for(const theme of ['vampire-v5-normal', 'vampire-v5-hunger', 'assimilation', 'fate']) {
+			const config = loadTheme(theme)
+			const orientation = JSON.parse(readFileSync(new URL(`${theme}/glyph-orientation.json`, themesRoot), 'utf8')) as Record<string, Record<string, number[]>>
+			for(const [die, faces] of Object.entries(config.faceMetadata?.dice ?? {})) {
+				for(const [value, face] of Object.entries(faces)) {
+					if(!face.symbols.length) continue
+					const direction = orientation[die]?.[value]
+					assert.ok(direction, `${theme} ${die}=${value} has no glyph orientation`)
+					assert.ok(Math.abs(Math.hypot(...direction) - 1) < 1e-3, `${theme} ${die}=${value} orientation is not a unit vector`)
+				}
+			}
+			for(const name of ['faces-light.svg', 'faces-dark.svg']) {
+				const svg = readFileSync(new URL(`${theme}/${name}`, themesRoot), 'utf8')
+				// Unaligned generator output only had translate + scale.
+				assert.doesNotMatch(svg, /transform="translate\([-\d.]+ [-\d.]+\) scale\(/, `${theme}/${name} has unaligned glyphs`)
+				assert.match(svg, /rotate\(/)
+			}
+		}
+	})
+
 	it('ships light and dark face atlases without retaining the numbered bump map', () => {
 		for(const theme of ['vampire-v5-normal', 'vampire-v5-hunger', 'assimilation', 'fate']) {
 			const config = loadTheme(theme)
@@ -23,7 +44,8 @@ describe('bundled symbolic theme assets', () => {
 				layoutId: 'erpg-default-v1',
 				width: 1024,
 				height: 1024,
-				model: '../default/default.json'
+				model: '../default/default.json',
+				orientation: 'glyph-orientation.json'
 			})
 			assert.equal(config.material.type, 'color')
 			assert.deepEqual(config.material.diffuseTexture, {

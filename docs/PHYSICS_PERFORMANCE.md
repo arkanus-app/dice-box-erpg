@@ -1,58 +1,74 @@
-# Desempenho do hot path físico
+# Desempenho da física
 
 [← Voltar ao README](../README.md)
 
-O benchmark físico usa Chromium com perfil Pixel 5 e desaceleração de CPU em
-4×. Ele mede `d20` e `12d6` após um aquecimento, com cinco execuções por cenário:
+Na v3 a trajetória inteira é calculada antes da reprodução. O custo que importa
+é o tempo de CPU desse cálculo: depois dele, cada quadro apenas interpola poses
+gravadas. O renderizador executa o cálculo em fatias de 8 ms, então mesmo lances
+grandes não bloqueiam a página.
 
 ```bash
-npm run build:bundles
-npm run benchmark:physics
+npm run benchmark:physics             # 30 execuções por cenário
+npm run benchmark:physics -- 20 --write
 ```
 
-Os resultados versionados estão em
-[`physics-hot-path-baseline.json`](../benchmarks/physics-hot-path-baseline.json).
-Além da duração observada por quem usa a biblioteca, a medição opt-in registra
-frames, passos de Havok por resolução, chamadas e tempo do controlador, tempo de
-render, colisões e custo da admissão de lançamentos.
+O script usa o mesmo pipeline do renderizador (plano de lançamento da v2,
+simulação, re-amostragem) com o modelo padrão e grava
+[`physics-baseline.json`](../benchmarks/physics-baseline.json). O baseline da v2,
+medido com Havok em Chromium com perfil Pixel 5, foi preservado em
+[`physics-hot-path-baseline-v2.json`](../benchmarks/physics-hot-path-baseline-v2.json).
 
-Para inspecionar uma integração local, habilite a instrumentação antes de
-apresentar os dados:
+## Resultado da 3.0.0-alpha.0
 
-```ts
-globalThis.__DICE3DVIEW_PHYSICS_PROFILE__ = true
-```
+Node 24, Windows x64, sem limitação de CPU, 20 execuções por cenário:
 
-Cada apresentação publica uma entrada `PerformanceMeasure` chamada
-`dice3dview:physics-hot-path`; o snapshot está em `entry.detail`. Quando a flag
-não está ativa, o chunk de profiling nem sequer é importado: o recorder não é
-criado e esse caminho não mede relógio nem mantém contadores por frame.
+| Cenário | CPU mediana | CPU p95 | Apresentação (mediana) | Impactos entre dados | Tentativas |
+|---|---:|---:|---:|---:|---:|
+| d20 | 1,3 ms | 9,9 ms | 2,1 s | 0 | 1,00 |
+| 4d6 | 3,5 ms | 17,0 ms | 1,9 s | 4,4 | 1,00 |
+| d4–d20 | 7,3 ms | 28,3 ms | 2,2 s | 8,2 | 1,10 |
+| 8d10 | 10,8 ms | 27,3 ms | 2,3 s | 12,9 | 1,05 |
+| 12d6 | 13,1 ms | 32,1 ms | 2,1 s | 27,4 | 1,10 |
+| 24d6 | 31,6 ms | 67,9 ms | 3,0 s | 82,2 | 1,15 |
+| 60d6 | 94,1 ms | 179,8 ms | 6,9 s | 359,6 | 1,00 |
+| 120d6 | 506,8 ms | 663,3 ms | 11,9 s | 1.307,8 | 1,00 |
 
-## Alterações desta rodada
+A comparação com a v2 (download, compilação e física) está em
+[Benchmarks: v2 × v3](BENCHMARKS.md).
 
-- índices diretos ligam `VisualEntry` e nome do node ao corpo ativo, removendo
-  buscas lineares de reroll, suporte e colisão;
-- quaternions, vetores de lock e objetos de entrada são reutilizados por corpo;
-- seleção de timeout e conclusão usam uma passagem e contador, sem
-  `filter()`, `sort()`, `some()`, `every()` ou `Set` temporários por frame;
-- a resolução começa em 180 Hz para 2–24 dados ainda convergindo sem apoio,
-  muda para 120 Hz após apoio físico real e usa 90 Hz quando sobra um único
-  corpo; dados anexados por timeline reativam 180 Hz até o primeiro apoio.
+Estes números ainda não foram medidos em aparelhos; como referência, CPUs
+móveis costumam ser de 3× a 5× mais lentas. Até cerca de 24 dados o cálculo
+cabe em poucos quadros; acima disso ele é fatiado e o arremesso começa assim
+que termina. A duração da apresentação de lances grandes vem das
+waves de entrada da coreografia da v2 (6 a 8 dados por wave).
 
-Em `12d6`, comparando a resolução fixa após os ajustes estruturais com a política
-adaptativa, os passos e chamadas de orientação caíram 18,72%, o tempo do
-controlador caiu 18,17% e o tempo medido dentro de render caiu 8,24%. A mediana
-da apresentação variou apenas 0,04%, porque os timings visuais e critérios de
-acomodação foram deliberadamente preservados.
+## O que torna o cálculo barato
 
-## Decisões orientadas pelo benchmark
+- o laço não aloca: estado escalar por corpo, buffers de geometria
+  pré-alocados e contatos em pool;
+- broadphase por varredura ordenada em x: só pares que podem se tocar no passo
+  chegam ao teste de eixos separadores;
+- repouso medido por deslocamento numa janela de tempo, imune ao tremor típico
+  de pilhas, e amortecimento de repouso para corpos lentos em contato;
+- a simulação termina quando todos os corpos dormem, sem tempo fixo: o
+  `settleTimeout` é um orçamento, não um corte. Passado o orçamento, um dado
+  ainda em movimento perde energia aos poucos (como um feltro mais áspero) até
+  repousar, e cada filho de explosão ganha o próprio orçamento a partir do
+  nascimento, então cadeias longas de explosões terminam inteiras;
+- mesas com mais de 16 corpos aceitam alguns dados apoiados em outros em vez de
+  recalcular; acima de 40, o passo é mais grosso e dados parados passam a
+  sustentar os seguintes sem voltar a ser simulados;
+- rerolagens e explosões tardias simulam apenas os dados em movimento: os
+  demais são obstáculos fixos.
 
-O índice espacial de admissão não foi adicionado. Uma apresentação completa de
-`12d6` executou somente 12 consultas e 66 comparações de pares; manter uma grade,
-árvore ou hash espacial custaria mais estado e invalidações do que o trabalho
-que substituiria no cenário auditado. A decisão deve ser revista com um cenário
-de volume maior antes de implementar essa estrutura.
+## Qualidade verificada pelos testes
 
-As próximas otimizações devem mirar alocações internas dos cálculos vetoriais
-somente com um perfil de memória que demonstre pressão de GC. O benchmark atual
-mostra que reduzir passos do solver produz um ganho mais claro e verificável.
+`npm test` inclui, entre outros:
+
+- face pedida para cima em 104 lançamentos de d4 a d100;
+- penetração transitória entre dados abaixo de 25% do raio em 12d6;
+- quadros idênticos para a mesma `seed` e cálculo fatiado idêntico ao síncrono;
+- filhos de explosão liberados somente depois que o pai estabiliza;
+- 48d6 mostrando todos os valores;
+- rerolagem física (`hop`, `spin`, `edge`) sem mover os outros dados, partindo
+  da pose de repouso, e explosão tardia a partir de um pai em repouso.

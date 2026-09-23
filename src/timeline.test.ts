@@ -3,10 +3,8 @@ import { describe, it } from 'node:test'
 import {
 	createTimelineProgressTracker,
 	dispatchTimelineProgress,
-	getTimelineTransformBadge,
 	normalizeDisplayTimelineRequest,
-	planDiceTimeline,
-	type TimelineTransformAction
+	planDiceTimeline
 } from './timeline'
 import {
 	createViewerOptions,
@@ -15,7 +13,6 @@ import {
 	validateViewerOptions
 } from './timelineOptions'
 import type { DiceTimelineEvent, DisplayTimelineRequest } from './types'
-import { planPhysicsBodyBuild } from './renderers/PhysicsRenderer'
 
 const viewerOptions = createViewerOptions({})
 
@@ -305,30 +302,11 @@ describe('timeline options and renderer decisions', () => {
 		assert.doesNotThrow(() => validateViewerOptions(viewerOptions))
 	})
 
-	it('honors compound and penetrate badge flags', () => {
-		const compound: TimelineTransformAction = {
-			kind: 'transform', effect: 'compound', dieId: 'die', from: 6, to: 11, eventSequences: []
-		}
-		const penetrate: TimelineTransformAction = {
-			kind: 'transform', effect: 'penetrate', dieId: 'die', from: 5, to: 4, eventSequences: []
-		}
-		assert.equal(getTimelineTransformBadge(compound, viewerOptions.timeline), 'Σ 11')
-		assert.equal(getTimelineTransformBadge(penetrate, viewerOptions.timeline), '−1')
+	it('still accepts the deprecated badge flags', () => {
 		const hidden = mergeTimelineOptions(viewerOptions.timeline, {
 			effects: { compound: { showBadge: false }, penetrate: { showBadge: false } }
 		})
-		assert.equal(getTimelineTransformBadge(compound, hidden), null)
-		assert.equal(getTimelineTransformBadge(penetrate, hidden), null)
+		assert.doesNotThrow(() => validateTimelineOptions(hidden))
 	})
 
-	it('keeps locked parents when physics appends explosive children', () => {
-		assert.deepEqual(planPhysicsBodyBuild(2, 1, true), {
-			disposeExisting: false,
-			totalBodyCount: 3
-		})
-		assert.deepEqual(planPhysicsBodyBuild(2, 1, false), {
-			disposeExisting: true,
-			totalBodyCount: 1
-		})
-	})
 })

@@ -59,7 +59,12 @@ describe('system dice themes', () => {
 			die('plus', 'fate-df', 6, 6)
 		])
 		assert.deepEqual(resolved.map(item => item.theme), ['fate', 'fate', 'fate'])
-		assert.deepEqual(resolved.map(item => item.themeColor), ['#315d9b', '#315d9b', '#315d9b'])
+		// Fate has no meaningful color: it follows the request, then the viewer.
+		assert.deepEqual(resolved.map(item => item.themeColor), [undefined, undefined, undefined])
+		const requested = toSystemResolvedDice([die('plus', 'fate-df', 6, 6)], { themeColor: '#ff0a7a' })
+		assert.equal(requested[0]?.themeColor, '#ff0a7a')
+		const hunger = toSystemResolvedDice([die('hunger', 'vampire-v5-hunger-d10', 10, 1)], { themeColor: '#ff0a7a' })
+		assert.equal(hunger[0]?.themeColor, '#761827', 'meaningful colors are kept')
 		assert.deepEqual(resolved.map(item => item.value), [1, 4, 6])
 	})
 

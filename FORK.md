@@ -44,4 +44,9 @@ O build verifica um orçamento total de 8 MiB e impede que Havok entre no grafo 
 
 ## Licença e atribuição
 
-O pacote mantém a licença MIT e preserva o aviso de copyright original em [LICENSE](LICENSE).
+A partir da 3.0.0 o pacote usa a [Licença de Uso Aberto e Autorizado ERPG](LICENSE):
+livre para projetos de código aberto, com autorização por escrito para os
+demais usos. As partes derivadas do `@3d-dice/dice-box` (formato de tema e
+assets dos temas padrão) continuam sob a licença MIT da 3Ddice, reproduzida em
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). As versões 1.x e 2.x
+continuam sob MIT.

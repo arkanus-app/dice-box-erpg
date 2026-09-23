@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-09-23T06:10:55.210Z",
+  "environment": {
+    "node": "24.18.0",
+    "platform": "win32-x64",
+    "runsPerScenario": 20,
+    "cpuThrottling": "none"
+  },
+  "scenarios": {
+    "d20": {
+      "physicsCpuMs": {
+        "median": 1.31,
+        "p95": 9.92
+      },
+      "simulatedSeconds": {
+        "median": 2.08,
+        "p95": 2.48
+      },
+      "diceImpactsPerThrow": 0,
+      "cleanRate": 1,
+      "attemptsPerThrow": 1
+    },
+    "4d6": {
+      "physicsCpuMs": {
+        "median": 3.48,
+        "p95": 17.03
+      },
+      "simulatedSeconds": {
+        "median": 1.87,
+        "p95": 2.11
+      },
+      "diceImpactsPerThrow": 4.4,
+      "cleanRate": 1,
+      "attemptsPerThrow": 1
+    },
+    "d4-d20 kit": {
+      "physicsCpuMs": {
+        "median": 7.26,
+        "p95": 28.27
+      },
+      "simulatedSeconds": {
+        "median": 2.16,
+        "p95": 2.95
+      },
+      "diceImpactsPerThrow": 8.2,
+      "cleanRate": 1,
+      "attemptsPerThrow": 1.1
+    },
+    "8d10": {
+      "physicsCpuMs": {
+        "median": 10.76,
+        "p95": 27.25
+      },
+      "simulatedSeconds": {
+        "median": 2.27,
+        "p95": 2.82
+      },
+      "diceImpactsPerThrow": 12.9,
+      "cleanRate": 1,
+      "attemptsPerThrow": 1.05
+    },
+    "12d6": {
+      "physicsCpuMs": {
+        "median": 13.07,
+        "p95": 32.13
+      },
+      "simulatedSeconds": {
+        "median": 2.13,
+        "p95": 4.04
+      },
+      "diceImpactsPerThrow": 27.4,
+      "cleanRate": 1,
+      "attemptsPerThrow": 1.1
+    },
+    "24d6": {
+      "physicsCpuMs": {
+        "median": 31.58,
+        "p95": 67.86
+      },
+      "simulatedSeconds": {
+        "median": 2.97,
+        "p95": 3.7
+      },
+      "diceImpactsPerThrow": 82.2,
+      "cleanRate": 0.45,
+      "attemptsPerThrow": 1.15
+    },
+    "60d6": {
+      "physicsCpuMs": {
+        "median": 94.1,
+        "p95": 179.8
+      },
+      "simulatedSeconds": {
+        "median": 6.9,
+        "p95": 8.81
+      },
+      "diceImpactsPerThrow": 359.6,
+      "cleanRate": 0,
+      "attemptsPerThrow": 1
+    },
+    "120d6": {
+      "physicsCpuMs": {
+        "median": 506.78,
+        "p95": 663.26
+      },
+      "simulatedSeconds": {
+        "median": 11.92,
+        "p95": 20.32
+      },
+      "diceImpactsPerThrow": 1307.8,
+      "cleanRate": 0,
+      "attemptsPerThrow": 1
+    }
+  }
+}

@@ -1,45 +1,85 @@
 {
-  "schemaVersion": 1,
-  "capturedAt": "2026-08-09T02:22:27.040Z",
+  "schemaVersion": 3,
+  "capturedAt": "2026-09-23T04:53:13.138Z",
   "environment": {
     "node": "24.18.0",
-    "platform": "win32-x64",
-    "babylonCore": "9.18.0"
+    "platform": "win32-x64"
   },
-  "legacy": {
-    "initial": { "files": 2, "rawBytes": 2120423, "gzipBytes": 438335, "brotliBytes": 328781 },
-    "physicsIncremental": { "files": 1, "rawBytes": 220704, "gzipBytes": 47678, "brotliBytes": 39913 },
-    "profilingIncremental": { "files": 1, "rawBytes": 3048, "gzipBytes": 1089, "brotliBytes": 930 },
-    "timelineIncremental": { "files": 4, "rawBytes": 181477, "gzipBytes": 40859, "brotliBytes": 35141 },
-    "shadowsIncremental": { "files": 6, "rawBytes": 157410, "gzipBytes": 37873, "brotliBytes": 33039 },
-    "allJavaScript": { "files": 82, "rawBytes": 3267042, "gzipBytes": 717021, "brotliBytes": 569336 }
+  "library": {
+    "files": 1,
+    "rawBytes": 162784,
+    "gzipBytes": 47709,
+    "brotliBytes": 40753
   },
-  "external": {
-    "initial": { "files": 2, "rawBytes": 93460, "gzipBytes": 25555, "brotliBytes": 22166 },
-    "physicsIncremental": { "files": 1, "rawBytes": 55719, "gzipBytes": 14841, "brotliBytes": 13143 },
-    "profilingIncremental": { "files": 1, "rawBytes": 3048, "gzipBytes": 1089, "brotliBytes": 930 },
-    "timelineIncremental": { "files": 1, "rawBytes": 170, "gzipBytes": 127, "brotliBytes": 114 },
-    "shadowsIncremental": { "files": 0, "rawBytes": 0, "gzipBytes": 0, "brotliBytes": 0 },
-    "allJavaScript": { "files": 5, "rawBytes": 152397, "gzipBytes": 41612, "brotliBytes": 36353 }
+  "particles": {
+    "files": 1,
+    "rawBytes": 13784,
+    "gzipBytes": 4055,
+    "brotliBytes": 3482
   },
-  "adapters": { "files": 1, "rawBytes": 5622, "gzipBytes": 1656, "brotliBytes": 1482 },
-  "havokJs": { "files": 1, "rawBytes": 45329, "gzipBytes": 10904, "brotliBytes": 9507 },
-  "wasm": { "files": 1, "rawBytes": 2094566, "gzipBytes": 662069, "brotliBytes": 501418 },
-  "assets": { "files": 21, "rawBytes": 393228, "gzipBytes": 194758, "brotliBytes": 180633 },
-  "dist": { "files": 113, "rawBytes": 5817787, "gzipBytes": 1584512, "brotliBytes": 1260609 },
-  "package": { "files": 125, "packedBytes": 1612802, "unpackedBytes": 5979069 },
-  "browserMobile": {
-    "emulation": "Playwright Pixel 5",
-    "cold": { "requests": 41, "transferBytes": 5163692, "encodedBytes": 5790024, "decodedBytes": 5790024, "importMs": 103.1, "initMs": 86.7, "firstDisplayMs": 320.1 },
-    "warm": { "requests": 18, "transferBytes": 5400, "encodedBytes": 2622392, "decodedBytes": 2622392, "importMs": 44.1, "initMs": 48.8, "firstDisplayMs": 286.8 }
+  "allJavaScript": {
+    "files": 2,
+    "rawBytes": 176568,
+    "gzipBytes": 51764,
+    "brotliBytes": 44235
   },
-  "frontendMobileBuild": {
-    "initial": { "files": 28, "rawBytes": 1088941, "gzipBytes": 272393 },
-    "physicsIncremental": { "files": 2, "rawBytes": 2240346, "gzipBytes": 699817 },
-    "profilingIncremental": { "files": 1, "rawBytes": 2092, "gzipBytes": 885 },
-    "timelineIncremental": { "files": 5, "rawBytes": 112510, "gzipBytes": 28109 },
-    "shadowsIncremental": { "files": 7, "rawBytes": 97586, "gzipBytes": 26120 },
-    "babylonSourceModules": 227,
-    "nestedBabylonSourceModules": 0
+  "adapters": {
+    "files": 1,
+    "rawBytes": 5586,
+    "gzipBytes": 1644,
+    "brotliBytes": 1467
+  },
+  "assets": {
+    "files": 25,
+    "rawBytes": 401020,
+    "gzipBytes": 196250,
+    "brotliBytes": 182059
+  },
+  "dist": {
+    "files": 35,
+    "rawBytes": 630701,
+    "gzipBytes": 261354,
+    "brotliBytes": 237800
+  },
+  "package": {
+    "files": 49,
+    "packedBytes": 313473,
+    "unpackedBytes": 797869
+  },
+  "comparisonWithV2": {
+    "v2KinematicInitial": {
+      "rawBytes": {
+        "v2": 2120423,
+        "v3": 162784,
+        "reduction": 13
+      },
+      "gzipBytes": {
+        "v2": 438335,
+        "v3": 47709,
+        "reduction": 9.2
+      },
+      "brotliBytes": {
+        "v2": 328781,
+        "v3": 40753,
+        "reduction": 8.1
+      }
+    },
+    "v2PhysicsMode": {
+      "rawBytes": {
+        "v2": 4481022,
+        "v3": 162784,
+        "reduction": 27.5
+      },
+      "gzipBytes": {
+        "v2": 1158986,
+        "v3": 47709,
+        "reduction": 24.3
+      },
+      "brotliBytes": {
+        "v2": 879619,
+        "v3": 40753,
+        "reduction": 21.6
+      }
+    }
   }
 }

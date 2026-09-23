@@ -9,7 +9,6 @@ import type {
 } from './types'
 
 const SUPPORTED_DICE: ReadonlySet<number> = new Set([2, 4, 6, 8, 10, 12, 20, 100])
-const SUPPORTED_MODES: ReadonlySet<string> = new Set(['kinematic', 'physics'])
 
 export const normalizeDisplaySides = (sides: unknown): DiceSides => {
 	const normalized = Number(sides)
@@ -30,12 +29,22 @@ export const normalizeDisplayValue = (value: unknown, sides: DiceSides): number 
 	return normalized
 }
 
-export const normalizeDisplayMode = (mode: unknown, fallback: DisplayMode = 'kinematic'): DisplayMode => {
-	const normalized = mode ?? fallback
-	if(typeof normalized !== 'string' || !SUPPORTED_MODES.has(normalized)) {
-		throw new Error(`Invalid display mode '${String(normalized)}'. Supported modes are 'kinematic' and 'physics'.`)
+let kinematicWarned = false
+
+/**
+ * v3 presents every result with physics. The v2 `'kinematic'` mode is still
+ * accepted (and reported once) so v2 callers keep working.
+ */
+export const normalizeDisplayMode = (mode: unknown): DisplayMode => {
+	if(mode === undefined || mode === null || mode === 'physics') return 'physics'
+	if(mode === 'kinematic') {
+		if(!kinematicWarned && typeof console !== 'undefined') {
+			kinematicWarned = true
+			console.warn("[dice3dview] mode 'kinematic' was removed in v3; presenting with physics.")
+		}
+		return 'physics'
 	}
-	return normalized as DisplayMode
+	throw new Error(`Invalid display mode '${String(mode)}'. v3 presents every result with 'physics'.`)
 }
 
 const normalizeDie = (
@@ -74,7 +83,7 @@ export const normalizeDisplayRequest = (
 	const normalized: NormalizedDisplayRequest = {
 		id: request.id,
 		seed: typeof request.seed === 'string' ? request.seed : request.id,
-		mode: normalizeDisplayMode(request.mode, defaults.mode),
+		mode: normalizeDisplayMode(request.mode ?? defaults.mode),
 		dice: Object.freeze(request.dice.map((die, index) => normalizeDie(die, index, request, defaults)))
 	}
 	return Object.freeze(normalized)

@@ -1,4 +1,9 @@
 import { DisplayMode, DisplayRequest, ResolvedDie } from './types';
+/**
+ * 3D presentation of each system die. Profiles with a `themeColor` carry a
+ * color with meaning (V5 normal vs. hunger, Daggerheart hope vs. fear); the
+ * others (Fate, Assimilação) follow the requested color, then the viewer's.
+ */
 export declare const SYSTEM_THEME_PROFILES: Readonly<{
     readonly 'vampire-v5-normal-d10': Readonly<{
         theme: "vampire-v5-normal";
@@ -12,22 +17,18 @@ export declare const SYSTEM_THEME_PROFILES: Readonly<{
     }>;
     readonly 'assimilation-d6': Readonly<{
         theme: "assimilation";
-        themeColor: "#123b4a";
         sides: 6;
     }>;
     readonly 'assimilation-d10': Readonly<{
         theme: "assimilation";
-        themeColor: "#123b4a";
         sides: 10;
     }>;
     readonly 'assimilation-d12': Readonly<{
         theme: "assimilation";
-        themeColor: "#123b4a";
         sides: 12;
     }>;
     readonly 'fate-df': Readonly<{
         theme: "fate";
-        themeColor: "#315d9b";
         sides: 6;
     }>;
     readonly 'daggerheart-hope-d12': Readonly<{
@@ -49,6 +50,8 @@ export interface SystemDiePresentationInput {
     readonly value: number;
     readonly profileId: string;
     readonly discarded?: boolean;
+    /** Explicit color for this die (wins over every profile color). */
+    readonly themeColor?: string;
 }
 export interface SystemDicePresentationOptions {
     /**
@@ -57,6 +60,11 @@ export interface SystemDicePresentationOptions {
      */
     readonly keptIds?: readonly string[];
     readonly themeColors?: Readonly<Partial<Record<SystemDiceProfileId, string>>>;
+    /**
+     * Color for profiles without a meaningful color (Fate, Assimilação). When
+     * absent, those dice take the viewer's `themeColor`.
+     */
+    readonly themeColor?: string;
 }
 export interface SystemDisplayRequestInput extends SystemDicePresentationOptions {
     readonly id: string;
@@ -83,7 +91,6 @@ export interface MixedDicePresentationOptions extends SystemDicePresentationOpti
      */
     readonly unsupportedDice?: 'omit' | 'error';
     readonly theme?: string;
-    readonly themeColor?: string;
 }
 export interface MixedDisplayRequestInput extends MixedDicePresentationOptions {
     readonly id: string;
@@ -102,19 +109,15 @@ export declare const getSystemThemeProfile: (profileId: string) => Readonly<{
     sides: 10;
 }> | Readonly<{
     theme: "assimilation";
-    themeColor: "#123b4a";
     sides: 6;
 }> | Readonly<{
     theme: "assimilation";
-    themeColor: "#123b4a";
     sides: 10;
 }> | Readonly<{
     theme: "assimilation";
-    themeColor: "#123b4a";
     sides: 12;
 }> | Readonly<{
     theme: "fate";
-    themeColor: "#315d9b";
     sides: 6;
 }> | Readonly<{
     theme: "default-v2";

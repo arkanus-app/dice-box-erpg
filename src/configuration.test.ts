@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { getPolyhedralModelCacheKey } from './renderers/PolyhedralFactory'
+import { getPolyhedralModelCacheKey } from './render/assets'
 import { assertThemeConfig } from './themeRepository'
 import {
 	createUpdatedViewerOptions,

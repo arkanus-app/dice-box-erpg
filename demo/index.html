@@ -1,31 +1,85 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DiceResultViewer v2 demo</title>
-    <style>
-      html, body, #stage { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #090b16; }
-      #controls { position: fixed; z-index: 2; top: 16px; left: 16px; display: flex; flex-wrap: wrap; gap: 8px; max-width: calc(100% - 32px); }
-      button { padding: 8px 12px; color: white; background: #24304f; border: 1px solid #60709a; border-radius: 6px; }
-    </style>
+    <title>dice3dview v3 — teste</title>
+    <link rel="stylesheet" href="./demo.css" />
   </head>
   <body>
-    <div id="controls">
-      <button id="kinematic">Kinematic</button>
-      <button id="physics">Physics</button>
-      <button id="explode">Explode</button>
-      <button id="reroll">Reroll</button>
-      <button id="compound">Compound</button>
-      <button id="penetrate">Penetrate</button>
-      <button id="selection">Keep/drop</button>
-      <button id="critical">Critical</button>
-      <button id="vampire">Vampire V5</button>
-      <button id="assimilation">Assimilação</button>
-      <button id="fate">Fate 4dF</button>
-      <button id="mixed">Mixed systems</button>
-    </div>
     <div id="stage"></div>
+    <main class="panel">
+      <div class="title-row">
+        <h1>dice3dview <small id="version"></small></h1>
+        <a class="page-link" href="./oficina.html">oficina de visuais →</a>
+      </div>
+      <form id="notation-form">
+        <input id="notation" type="text" value="4d6!" aria-label="Notação de dados" autocomplete="off" spellcheck="false" />
+        <button class="primary" type="submit">Rolar</button>
+      </form>
+      <p class="section-title">Timeline (explosão, reroll, bônus, descarte)</p>
+      <div class="chips" id="timeline-examples"></div>
+      <p class="section-title">Sistemas e mistos</p>
+      <div class="chips" id="system-examples"></div>
+      <div class="row">
+        <label>Cor <input id="color" type="color" value="#ff0a7a" /></label>
+        <label><input id="timeline" type="checkbox" checked /> timeline</label>
+      </div>
+      <details class="group" open>
+      <summary>Skin (dados e moedas)</summary>
+      <div class="row">
+        <label>Skin
+          <select id="skin">
+            <option value="">do tema</option>
+            <option value="upload">imagem do PC…</option>
+          </select>
+        </label>
+        <input id="skin-file" type="file" accept="image/*" hidden />
+        <button type="button" id="skin-upload">enviar imagem</button>
+      </div>
+      <div class="row">
+        <label>escala <input id="skin-scale" type="range" min="0.4" max="3" step="0.1" value="1" /></label>
+        <label>mistura com a cor
+          <select id="skin-blend">
+            <option value="normal">normal</option>
+            <option value="multiply">multiplicar</option>
+            <option value="overlay">sobrepor</option>
+            <option value="screen">clarear</option>
+          </select>
+        </label>
+        <label>opacidade <input id="skin-opacity" type="range" min="0" max="1" step="0.05" value="1" /></label>
+        <label>números
+          <select id="skin-labels">
+            <option value="auto">auto</option>
+            <option value="light">claros</option>
+            <option value="dark">escuros</option>
+          </select>
+        </label>
+      </div>
+      </details>
+      <details class="group" open>
+      <summary>Partículas</summary>
+      <div id="particle-editor" class="particle-editor"></div>
+      </details>
+      <details class="group" open>
+      <summary>Brilho dos dados</summary>
+      <div class="row">
+        <label><input id="glow" type="checkbox" /> ativar</label>
+        <label><input id="glow-own" type="checkbox" checked /> cor do dado</label>
+        <input id="glow-color" type="color" value="#ffd166" aria-label="Cor do brilho" />
+        <label>intensidade <input id="glow-intensity" type="range" min="0.1" max="3" step="0.1" value="1" /></label>
+      </div>
+      <div class="row">
+        <label><input id="glow-light" type="checkbox" checked /> luz no chão</label>
+        <label><input id="glow-pulse" type="checkbox" /> pulsar</label>
+      </div>
+      </details>
+      <div id="output"></div>
+      <div id="metrics"></div>
+      <p class="section-title">Eventos</p>
+      <div id="log"></div>
+      <p class="hint" id="dicecore-status"></p>
+    </main>
     <script type="module" src="./main.ts"></script>
   </body>
 </html>

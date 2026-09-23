@@ -5,6 +5,8 @@ import type {
 	TimelineOptions,
 	ViewerOptions
 } from './types'
+import { normalizeDisplayMode } from './displayRequest'
+import { validateGlowOptions, validateParticleOptions, validateSkinOptions } from './particleOptions'
 
 const noop = (): void => undefined
 
@@ -31,8 +33,9 @@ export const DEFAULT_TIMELINE_OPTIONS: NormalizedTimelineOptions = Object.freeze
 		penetrate: Object.freeze({ ...baseEffect(300, '#fbbf24'), showBadge: true }),
 		reroll: Object.freeze({ ...baseEffect(750, '#60a5fa'), style: 'hop', hopHeight: 2.2 }),
 		unique: Object.freeze({ ...baseEffect(750, '#a78bfa'), style: 'hop', hopHeight: 2.2 }),
-		keep: Object.freeze(baseEffect(200, '#86efac')),
-		drop: Object.freeze(baseEffect(200, '#94a3b8')),
+		// Long enough to watch the discarded dice lose their color.
+		keep: Object.freeze(baseEffect(450, '#86efac')),
+		drop: Object.freeze(baseEffect(450, '#94a3b8')),
 		success: Object.freeze(baseEffect(250, '#22c55e')),
 		failure: Object.freeze(baseEffect(250, '#ef4444')),
 		neutral: Object.freeze(baseEffect(250, '#94a3b8', 0.35)),
@@ -140,7 +143,7 @@ export const createViewerOptions = (options: ViewerOptions): RequiredViewerOptio
 	container: options.container ?? null,
 	assetPath: options.assetPath ?? '/assets/dice-box/',
 	origin: options.origin ?? (typeof window === 'undefined' ? '' : window.location.origin),
-	mode: options.mode ?? 'kinematic',
+	mode: normalizeDisplayMode(options.mode),
 	theme: options.theme ?? 'default',
 	preloadThemes: [...(options.preloadThemes ?? [])],
 	externalThemes: { ...(options.externalThemes ?? {}) },
@@ -172,6 +175,9 @@ export const createViewerOptions = (options: ViewerOptions): RequiredViewerOptio
 	angularDamping: options.angularDamping ?? 0.08,
 	settleTimeout: options.settleTimeout ?? 4200,
 	physicsWasmUrl: options.physicsWasmUrl ?? '',
+	skin: options.skin ?? null,
+	particles: options.particles ?? null,
+	glow: options.glow ?? null,
 	onCollision: options.onCollision ?? noop,
 	onThemeConfigLoaded: options.onThemeConfigLoaded ?? noop,
 	onThemeLoaded: options.onThemeLoaded ?? noop,
@@ -215,7 +221,7 @@ export const validateViewerOptions = (options: RequiredViewerOptions): void => {
 	if(!Number.isInteger(options.maxDice) || options.maxDice < 1) {
 		throw new Error('Viewer option maxDice must be a positive integer.')
 	}
-	if(options.mode !== 'kinematic' && options.mode !== 'physics') {
+	if(options.mode !== 'physics') {
 		throw new Error(`Unsupported display mode '${String(options.mode)}'.`)
 	}
 	if(!Number.isFinite(options.aggressiveThrowChance)
@@ -260,5 +266,8 @@ export const validateViewerOptions = (options: RequiredViewerOptions): void => {
 	] as const) {
 		if(typeof callback !== 'function') throw new Error(`Viewer option ${name} must be a function.`)
 	}
+	validateSkinOptions(options.skin)
+	validateParticleOptions(options.particles)
+	validateGlowOptions(options.glow)
 	validateTimelineOptions(options.timeline)
 }

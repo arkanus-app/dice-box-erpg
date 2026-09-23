@@ -1,4 +1,4 @@
-# Temas da v2
+# Temas
 
 [← Voltar ao README](../README.md)
 
@@ -156,9 +156,9 @@ Se meshes/collider `d100` não existirem, o loader pode reutilizar os templates 
 
 O mapa associa o índice de cada triângulo do collider ao valor da face. O renderer agrega as normais dos triângulos do valor solicitado e pré-calcula o quaternion que leva essa face à direção correta.
 
-Desde a v2.0.4, esse mesmo quaternion alimenta o preflight orientado ao resultado do modo físico. A pose inicial, a trajetória `q(t)`, o feed-forward e a altura de apoio dependem da coerência entre mesh, collider e `colliderFaceMap`. Isso não altera o formato do tema, mas torna importante validar o collider real, não apenas a textura da malha visual.
+Na v3, o collider e o `colliderFaceMap` definem o corpo físico. As normais agregadas por valor viram os planos de um casco convexo; o motor calcula o grupo de simetria desse casco (as rotações que o levam sobre si mesmo) e, depois que o dado para, aplica ao desenho a rotação que coloca a face do resultado para cima. O formato do tema não mudou, mas o collider real precisa ser coerente com a malha visual.
 
-O guidance preserva twist/yaw em torno da normal mapeada e remove tilt perturbador; portanto, o mapa deve agrupar todos os triângulos coplanares que formam cada face sob o mesmo valor. Um mapa incompleto pode produzir uma normal agregada inclinada e comprometer tanto a orientação final quanto o soft landing.
+Por isso o mapa deve agrupar todos os triângulos coplanares que formam cada face sob o mesmo valor e cobrir todas as faces. Um mapa incompleto produz uma normal agregada inclinada, deforma o casco e pode quebrar a simetria usada para mostrar o resultado.
 
 O d4 é especial: o valor é determinado pela face apoiada para baixo. Nos demais dados, a face selecionada aponta para cima.
 
@@ -196,7 +196,23 @@ de Fome e Crítico de Fome; Assimilação usa os SVGs de joaninha/Sucesso,
 cervo/Adaptação e coruja/Pressão. O tema `fate` usa o mesmo pipeline para duas
 faces “−”, duas vazias e duas “+”.
 
-Os manifests podem declarar `faceAtlas` e `faceMetadata`. Esses campos são descritivos e não alteram física ou resultado:
+Os manifests podem declarar `faceAtlas` e `faceMetadata`. Esses campos não alteram física nem resultado.
+
+`faceAtlas.orientation` (v3) aponta para um JSON com a direção "para cima" de cada glifo, por tipo de dado e valor, no referencial do collider. Quando existe, a v3 escolhe entre as rotações de simetria equivalentes a que deixa o glifo mais legível; sem ele, o dado mantém o giro natural do arremesso, como um dado real. `npm run themes:align` alinha os glifos dos atlas SVG simbólicos às faces e gera esse arquivo (`glyph-orientation.json`).
+
+```json
+{
+  "faceAtlas": {
+    "layoutId": "erpg-default-v1",
+    "width": 1024,
+    "height": 1024,
+    "model": "../default/default.json",
+    "orientation": "glyph-orientation.json"
+  }
+}
+```
+
+`faceMetadata` descreve os símbolos:
 
 ```ts
 interface ThemeFaceMetadata {
@@ -212,12 +228,16 @@ interface ThemeFaceMetadata {
 
 Veja [Dados simbólicos: Vampiro V5, Assimilação e Fate](SYMBOLIC_DICE.md) para o mapeamento, o gerador UV e o procedimento de troca de glifos.
 
+## Skins sobre um tema
+
+A opção `skin` do viewer (veja a [API](API.md#skin-e-partículas)) aplica uma textura ao corpo dos dados sem mudar o tema. Ela vale para materiais `color`: o alfa do atlas continua definindo números e símbolos, que ficam acima da skin; a cor da camada de baixo é o `themeColor`. O tema escolhe entre as variantes `light` e `dark` do atlas pela luminância resultante (ou por `skin.labels`). Temas `standard`, cujo atlas já traz toda a arte da face, ignoram a skin.
+
 ## Cache e callbacks
 
 - configurações são cacheadas por nome de tema;
-- modelos são cacheados por `meshName`;
+- modelos são cacheados pelo caminho completo do arquivo (`meshFilePath`);
 - materiais são cacheados por tema, cor e estado descartado;
-- orientações e alturas de apoio são cacheadas por modelo, tipo e valor;
+- cascos físicos são cacheados por modelo, tipo e escala; orientações de glifos, por arquivo;
 - `onThemeConfigLoaded` ocorre quando uma configuração é resolvida fora do cache;
 - `onThemeLoaded` ocorre uma vez por tema distinto usado em cada apresentação.
 
@@ -232,4 +252,4 @@ Alterar `assetPath`, `origin` ou `externalThemes` por `updateOptions()` limpa o 
 5. Valores do `colliderFaceMap` cobrem todos os triângulos de todas as faces esperadas.
 6. Frente e verso da moeda mantêm os valores `1` e `2`.
 7. Assets externos permitem CORS.
-8. O tema foi testado nos modos `kinematic` e `physics`, incluindo chegada e repouso na face solicitada.
+8. O tema foi testado na página de teste (`npm run dev`, em `/demo/`), incluindo chegada e repouso na face solicitada em todos os poliedros.

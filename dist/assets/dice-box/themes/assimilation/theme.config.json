@@ -20,7 +20,8 @@
     "layoutId": "erpg-default-v1",
     "width": 1024,
     "height": 1024,
-    "model": "../default/default.json"
+    "model": "../default/default.json",
+    "orientation": "glyph-orientation.json"
   },
   "faceMetadata": {
     "schemaVersion": 1,

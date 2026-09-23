@@ -1,7 +1,7 @@
 import { createDisplayCanvas } from './canvas'
 import { normalizeDisplayRequest, getDisplayBodyCount } from './displayRequest'
 import { DisplayCancelledError, isDisplayCancelledError, rethrowPresentationError } from './errors'
-import KinematicRenderer from './renderers/KinematicRenderer'
+import SceneRenderer from './renderers/SceneRenderer'
 import { ThemeRepository } from './themeRepository'
 import {
 	createTimelineProgressTracker,
@@ -10,23 +10,26 @@ import {
 	planDiceTimeline
 } from './timeline'
 import { createUpdatedViewerOptions, createViewerOptions, validateViewerOptions } from './timelineOptions'
+import { diceLookOptions } from './diceLook'
 import type {
-	DisplayMode,
 	DisplayRenderer,
 	DisplayRequest,
 	DisplayResult,
 	DisplayTimelineRequest,
 	DisplayTimelineResult,
+	ParticleBurstMoment,
 	RequiredViewerOptions,
 	ViewerOptions
 } from './types'
+
+const PARTICLE_BURST_MOMENTS: readonly ParticleBurstMoment[] = ['impact', 'collision', 'settle', 'aura', 'explode', 'critical']
 
 export class DiceResultViewer {
 	readonly canvas: HTMLCanvasElement
 	#options: RequiredViewerOptions
 	readonly #themes: ThemeRepository
 	#renderer: DisplayRenderer | undefined
-	#rendererMode: DisplayMode | undefined
+	#rendererReady: Promise<DisplayRenderer> | undefined
 	#active: AbortController | undefined
 	#resizeHandler: (() => void) | undefined
 	#resizeObserver: ResizeObserver | undefined
@@ -44,7 +47,7 @@ export class DiceResultViewer {
 		this.#assertUsable()
 		if(this.#initialized) return this
 		await Promise.all([
-			this.#ensureRenderer(this.#options.mode),
+			this.#ensureRenderer(),
 			...[this.#options.theme, ...this.#options.preloadThemes].map(theme => this.#themes.load(theme))
 		])
 		this.#resizeHandler = (): void => this.resize()
@@ -65,13 +68,14 @@ export class DiceResultViewer {
 		if(bodyCount > this.#options.maxDice) {
 			throw new Error(`Display exceeds maxDice (${this.#options.maxDice}). Requested ${bodyCount} visual bodies.`)
 		}
-		this.clear()
+		// The renderer fades the previous dice out while the new throw starts.
+		this.#cancelActive()
 		const controller = new AbortController()
 		this.#active = controller
 		const startedAt = performance.now()
 		try {
 			if(!this.#initialized) await this.init()
-			const renderer = await this.#ensureRenderer(normalized.mode)
+			const renderer = await this.#ensureRenderer()
 			if(controller.signal.aborted) throw new DisplayCancelledError()
 			await renderer.display(normalized, controller.signal)
 		} catch(error) {
@@ -99,15 +103,15 @@ export class DiceResultViewer {
 		const plan = planDiceTimeline(
 			normalized,
 			this.#options.timeline,
-			normalized.mode === 'physics' ? this.#options.settleTimeout : this.#options.duration
+			this.#options.settleTimeout
 		)
-		this.clear()
+		this.#cancelActive()
 		const controller = new AbortController()
 		this.#active = controller
 		const startedAt = performance.now()
 		try {
 			if(!this.#initialized) await this.init()
-			const renderer = await this.#ensureRenderer(normalized.mode)
+			const renderer = await this.#ensureRenderer()
 			if(controller.signal.aborted) throw new DisplayCancelledError()
 			if(plan.degraded) {
 				const flat = normalizeDisplayRequest({
@@ -142,9 +146,14 @@ export class DiceResultViewer {
 	}
 
 	clear(): void {
+		this.#cancelActive()
+		this.#renderer?.clear()
+	}
+
+	/** Cancels the running presentation without touching what is on screen. */
+	#cancelActive(): void {
 		this.#active?.abort()
 		this.#active = undefined
-		this.#renderer?.clear()
 	}
 
 	async updateOptions(options: ViewerOptions): Promise<void> {
@@ -154,6 +163,25 @@ export class DiceResultViewer {
 		this.#themes.updateOptions(this.#options)
 		await this.#renderer?.updateOptions(this.#options)
 		if(options.theme) await this.#themes.load(options.theme)
+	}
+
+	/**
+	 * Applies a complete look (color, skin, particles and glow), e.g. a JSON
+	 * file exported by the workshop. Invalid looks throw before anything changes.
+	 */
+	async applyLook(look: unknown): Promise<void> {
+		await this.updateOptions(diceLookOptions(look))
+	}
+
+	/**
+	 * Plays a particle moment now on the dice on the table (all of them, or the
+	 * given die ids), ignoring the emitters' `when` conditions. Uses the current
+	 * `particles` option; does nothing without one.
+	 */
+	playParticles(moment: ParticleBurstMoment, options: { readonly dice?: readonly string[] } = {}): void {
+		this.#assertUsable()
+		if(!PARTICLE_BURST_MOMENTS.includes(moment)) throw new Error(`playParticles moment must be one of ${PARTICLE_BURST_MOMENTS.join(', ')}.`)
+		this.#renderer?.playParticles?.(moment, options.dice)
 	}
 
 	resize(): void {
@@ -173,29 +201,24 @@ export class DiceResultViewer {
 		this.#disposed = true
 	}
 
-	async #ensureRenderer(mode: DisplayMode): Promise<DisplayRenderer> {
-		if(this.#renderer && this.#rendererMode === mode) return this.#renderer
-		this.#renderer?.dispose()
-		const renderer = mode === 'physics'
-			? new (await import('./renderers/PhysicsRenderer')).PhysicsRenderer()
-			: new KinematicRenderer()
+	/** One renderer (and WebGL context) per viewer, created on first use. */
+	#ensureRenderer(): Promise<DisplayRenderer> {
+		if(this.#rendererReady) return this.#rendererReady
+		const renderer = new SceneRenderer()
 		this.#renderer = renderer
-		this.#rendererMode = mode
-		try {
-			await renderer.init({
-				canvas: this.canvas,
-				options: this.#options,
-				loadTheme: theme => this.#themes.load(theme)
-			})
-			return renderer
-		} catch(error) {
+		this.#rendererReady = renderer.init({
+			canvas: this.canvas,
+			options: this.#options,
+			loadTheme: theme => this.#themes.load(theme)
+		}).then(() => renderer, (error: unknown) => {
 			renderer.dispose()
 			if(this.#renderer === renderer) {
 				this.#renderer = undefined
-				this.#rendererMode = undefined
+				this.#rendererReady = undefined
 			}
 			throw error
-		}
+		})
+		return this.#rendererReady
 	}
 
 	#assertUsable(): void {

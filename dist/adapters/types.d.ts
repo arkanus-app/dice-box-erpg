@@ -1,5 +1,8 @@
 export type DiceSides = 2 | 4 | 6 | 8 | 10 | 12 | 20 | 100;
-export type DisplayMode = 'kinematic' | 'physics';
+/** v3 presents every result with the physics engine. */
+export type DisplayMode = 'physics';
+/** @deprecated v3 removed the kinematic renderer; `'kinematic'` is accepted and presented physically. */
+export type LegacyDisplayMode = 'kinematic';
 export interface CoinFaceTheme {
     readonly value: 1 | 2;
     readonly texture: string;
@@ -25,7 +28,8 @@ export interface DisplayRequest {
     readonly id: string;
     readonly dice: readonly ResolvedDie[];
     readonly seed?: string;
-    readonly mode?: DisplayMode;
+    /** @deprecated Every presentation is physical in v3; kept for v2 compatibility. */
+    readonly mode?: DisplayMode | LegacyDisplayMode;
 }
 export interface DisplayResult {
     readonly id: string;
@@ -49,6 +53,7 @@ export interface TimelineRerollEffectOptions extends TimelineEffectOptions {
     readonly hopHeight?: number;
 }
 export interface TimelineBadgeEffectOptions extends TimelineEffectOptions {
+    /** @deprecated v3 draws no badges; the die pulses in the effect color. Accepted and ignored. */
     readonly showBadge?: boolean;
 }
 export interface TimelineCriticalEffectOptions extends TimelineEffectOptions {
@@ -171,7 +176,8 @@ export interface DisplayTimelineRequest {
     readonly dice: readonly TimelineDieDefinition[];
     readonly events: readonly DiceTimelineEvent[];
     readonly seed?: string;
-    readonly mode?: DisplayMode;
+    /** @deprecated Every presentation is physical in v3; kept for v2 compatibility. */
+    readonly mode?: DisplayMode | LegacyDisplayMode;
 }
 export interface DisplayTimelineResult extends DisplayResult {
     readonly eventCount: number;
@@ -218,6 +224,12 @@ export interface ThemeFaceAtlasConfig {
     readonly width: number;
     readonly height: number;
     readonly model?: string;
+    /**
+     * Optional JSON (relative to the theme) with the local "up" direction of
+     * each face artwork, per die type and value. Used to present symbolic faces
+     * upright whenever the die's symmetry allows it.
+     */
+    readonly orientation?: string;
 }
 export interface ThemeSymbolDefinition {
     readonly label: string;
@@ -244,6 +256,140 @@ export interface ThemeConfig {
     readonly coin?: CoinTheme;
     readonly [key: string]: unknown;
 }
+/** How the skin image combines with the die color underneath (image editor layer modes). */
+export type DiceSkinBlend = 'normal' | 'multiply' | 'screen' | 'overlay';
+/**
+ * Custom surface for the dice body, layered like an image editor: the die
+ * color (`themeColor`) is the base layer and the image goes on top with a
+ * blend mode and an opacity — e.g. a blue die with a marble layer in
+ * `multiply` becomes blue marble. The image is wrapped around each die with a
+ * triplanar projection (independent of the face atlas), and the theme's
+ * numbers and symbols stay above both layers. Applies to themes of material
+ * type `color`; full-color atlases (`standard`) keep their own artwork.
+ */
+export interface DiceSkinOptions {
+    /** Image URL; `data:` and `blob:` URLs (e.g. an uploaded file) are accepted. */
+    readonly texture: string;
+    /** Repetitions of the image across one die. Default `1`. */
+    readonly scale?: number;
+    /** Blend of the image over the die color. Default `normal` (the image alone). */
+    readonly blend?: DiceSkinBlend;
+    /** Opacity of the image layer, 0..1 (0 = only the color). Default `1`. */
+    readonly opacity?: number;
+    /** Color of numbers and symbols; `auto` picks by the image brightness. Default `auto`. */
+    readonly labels?: 'auto' | 'light' | 'dark';
+}
+export type ParticleBlend = 'add' | 'alpha';
+/**
+ * Sprite of a particle: `soft` round glow, `spark` streak along the motion,
+ * `star` four-point twinkle, `ring` hollow circle, `confetti` spinning
+ * paper, `smoke` soft irregular puff.
+ */
+export type ParticleShape = 'soft' | 'spark' | 'star' | 'ring' | 'confetti' | 'smoke';
+/** Moments of a roll an effect can react to. */
+export type ParticleMoment = 'trail' | 'ground' | 'impact' | 'collision' | 'settle' | 'aura' | 'explode' | 'critical';
+/** Moments that play once per event (the ones `playParticles` can trigger). */
+export type ParticleBurstMoment = 'impact' | 'collision' | 'settle' | 'aura' | 'explode' | 'critical';
+/**
+ * When an emitter plays. Every condition given must hold; faces and sides
+ * refer to the whole die (a d100 is one die with values 1..100).
+ */
+export interface ParticleCondition {
+    /** Impact and collision: minimum hit force (impact speed × mass; soft touches ~1, hard throws 8..15). */
+    readonly minForce?: number;
+    /** Trail and ground: minimum die speed in world units per second. */
+    readonly minSpeed?: number;
+    /** Only dice with these numbers of sides (e.g. `[20]`). */
+    readonly sides?: readonly number[];
+    /** Only these results: `max` (highest face), `min` (lowest) or a list of values. */
+    readonly faces?: 'max' | 'min' | readonly number[];
+    /** Probability of each event, 0..1 (continuous moments decide once per die and roll). Default `1`. */
+    readonly chance?: number;
+    /** Impact and collision: minimum seconds between two bursts of the same die. */
+    readonly cooldown?: number;
+}
+/** One particle emitter. Ranges are `[min, max]`, distances in world units, times in seconds. */
+export interface ParticleEmitterOptions {
+    /** Trails and auras: particles per second (trails scale with the die speed). Bursts: particles per event. */
+    readonly amount: number;
+    readonly life: readonly [number, number];
+    /** Particle diameter. */
+    readonly size: readonly [number, number];
+    readonly speed: readonly [number, number];
+    /** Initial direction: `up` cone, `out` along the table, `sphere` any way, `back` against the motion. Default `sphere`. */
+    readonly direction?: 'up' | 'out' | 'sphere' | 'back';
+    /** Positive falls, negative rises. Default `0`. */
+    readonly gravity?: number;
+    /** Velocity loss per second. Default `0`. */
+    readonly drag?: number;
+    /** Turns around the vertical axis per second (radians). Default `0`. */
+    readonly swirl?: number;
+    /** Color stops over the particle life (`#rgb`, `#rrggbb` or `#rrggbbaa`). */
+    readonly colors: readonly string[];
+    /** `add` glows (fire, sparkles); `alpha` covers (smoke, dust). Default `add`. */
+    readonly blend?: ParticleBlend;
+    /** Size factor at the end of life. Default `0.3`. */
+    readonly grow?: number;
+    /** Random twinkle, 0..1. Default `0`. */
+    readonly flicker?: number;
+    /** Sprite drawn for each particle. Default `soft`. */
+    readonly shape?: ParticleShape;
+    /** Rotation speed in radians per second (confetti, stars). Sparks follow their motion instead. */
+    readonly spin?: number;
+    /** Each particle takes one of these colors; `colors` then only fades it over its life. */
+    readonly palette?: readonly string[];
+    /** Conditions for playing (force, speed, faces, sides, chance, cooldown). Default: always. */
+    readonly when?: ParticleCondition;
+}
+/** A particle effect: each emitter reacts to one moment of the roll. */
+export interface ParticleEffectDefinition {
+    /** While a die travels. */
+    readonly trail?: ParticleEmitterOptions;
+    /** Marks left on the table along the path while a die rolls; `amount` is per unit of distance. */
+    readonly ground?: ParticleEmitterOptions;
+    /** A die landing hard on the table. */
+    readonly impact?: ParticleEmitterOptions;
+    /** Two dice hitting each other (the burst appears between them). */
+    readonly collision?: ParticleEmitterOptions;
+    /** When a die comes to rest. */
+    readonly settle?: ParticleEmitterOptions;
+    /** Around resting dice, fading out over `auraSeconds`. */
+    readonly aura?: ParticleEmitterOptions;
+    /** An explosion child bursting from its parent. */
+    readonly explode?: ParticleEmitterOptions;
+    /** Critical success or failure. */
+    readonly critical?: ParticleEmitterOptions;
+    /** How long the aura lasts after a die rests. Default `2.5`. */
+    readonly auraSeconds?: number;
+}
+export type DiceParticlePreset = 'sparkle' | 'fire' | 'arcane' | 'frost' | 'dust' | 'confetti' | 'electric' | 'smoke' | 'lava' | 'storm' | 'holy' | 'shadow' | 'poison' | 'nature' | 'cosmic';
+export interface DiceParticleOptions {
+    /** Built-in effect. Ignored when `effect` is given. */
+    readonly preset?: DiceParticlePreset;
+    /** Custom effect definition. */
+    readonly effect?: ParticleEffectDefinition;
+    /** Multiplies every emission (0..3). Default `1`. */
+    readonly intensity?: number;
+    /** Recolors every emitter with this hue, keeping its bright-to-dark ramp. */
+    readonly color?: string;
+    /** Draws every emitter with this sprite. */
+    readonly shape?: ParticleShape;
+    /** Particle size multiplier (0.2..4). Default `1`. */
+    readonly size?: number;
+    /** Moments to play; all are on unless set to `false` (e.g. `{ ground: false }`). */
+    readonly moments?: Readonly<Partial<Record<ParticleMoment, boolean>>>;
+}
+/** The dice emit their own light: a self-lit surface, a halo and a pool of light on the table. */
+export interface DiceGlowOptions {
+    /** Light color; each die's own color when omitted. */
+    readonly color?: string;
+    /** 0..3. Default `1`. */
+    readonly intensity?: number;
+    /** Pool of light cast on the table around each die. Default `true`. */
+    readonly light?: boolean;
+    /** Slow breathing of the light. Default `false`. */
+    readonly pulse?: boolean;
+}
 export interface CollisionEvent {
     readonly action: 'collision';
     readonly body0Id?: string;
@@ -255,7 +401,8 @@ export interface ViewerOptions {
     readonly container?: string | HTMLElement | null;
     readonly assetPath?: string;
     readonly origin?: string;
-    readonly mode?: DisplayMode;
+    /** @deprecated Every presentation is physical in v3; kept for v2 compatibility. */
+    readonly mode?: DisplayMode | LegacyDisplayMode;
     readonly theme?: string;
     readonly preloadThemes?: readonly string[];
     readonly externalThemes?: Readonly<Record<string, string>>;
@@ -263,10 +410,12 @@ export interface ViewerOptions {
     readonly maxDice?: number;
     readonly enableShadows?: boolean;
     readonly shadowTransparency?: number;
+    /** @deprecated v3 uses soft contact shadows without a shadow map; ignored. */
     readonly shadowResolution?: number;
     readonly lightIntensity?: number;
     readonly antialias?: boolean;
     readonly scale?: number;
+    /** @deprecated Travel time of the v2 kinematic mode; ignored in v3. */
     readonly duration?: number;
     readonly delay?: number;
     readonly gravity?: number;
@@ -289,7 +438,14 @@ export interface ViewerOptions {
     readonly linearDamping?: number;
     readonly angularDamping?: number;
     readonly settleTimeout?: number;
+    /** @deprecated v3 physics is plain JavaScript (no WebAssembly); ignored. */
     readonly physicsWasmUrl?: string;
+    /** Custom texture for the dice body (`null` = theme surface). */
+    readonly skin?: DiceSkinOptions | null;
+    /** Particle effect played with the rolls (`null` = none). */
+    readonly particles?: DiceParticleOptions | null;
+    /** Light emitted by the dice (`null` = none). */
+    readonly glow?: DiceGlowOptions | null;
     readonly onCollision?: (event: CollisionEvent) => void;
     readonly onThemeConfigLoaded?: (theme: ResolvedThemeConfig) => void;
     readonly onThemeLoaded?: (theme: ResolvedThemeConfig) => void;
@@ -322,6 +478,8 @@ export interface DisplayRenderer {
     display(request: NormalizedDisplayRequest, signal: AbortSignal): Promise<void>;
     displayTimeline(plan: import('./timeline').DiceTimelinePlan, signal: AbortSignal): Promise<void>;
     updateOptions(options: Readonly<RequiredViewerOptions>): Promise<void> | void;
+    /** Plays a particle moment on the dice on the table now (conditions are ignored). */
+    playParticles?(moment: ParticleBurstMoment, dieIds?: readonly string[]): void;
     resize(width: number, height: number): void;
     clear(): void;
     dispose(): void;

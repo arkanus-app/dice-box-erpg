@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-09-23T06:10:14.968Z",
+  "environment": {
+    "node": "24.18.0",
+    "v8": "13.6.233.17-node.50",
+    "platform": "win32-x64",
+    "runs": 7
+  },
+  "v2": {
+    "kinematic": {
+      "files": 2,
+      "rawBytes": 2120423,
+      "gzipBytes": 438335,
+      "brotliBytes": 328781,
+      "compileMs": 29
+    },
+    "physics": {
+      "files": 5,
+      "rawBytes": 4481022,
+      "gzipBytes": 1158986,
+      "brotliBytes": 879619,
+      "compileMs": 34,
+      "wasmCompileMs": 5.6
+    }
+  },
+  "v3": {
+    "core": {
+      "files": 1,
+      "rawBytes": 127656,
+      "gzipBytes": 43608,
+      "brotliBytes": 38022,
+      "compileMs": 6.8
+    },
+    "withEffects": {
+      "files": 3,
+      "rawBytes": 157537,
+      "gzipBytes": 51494,
+      "brotliBytes": 44927,
+      "compileMs": 8.3
+    }
+  }
+}

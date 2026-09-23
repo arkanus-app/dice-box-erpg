@@ -2,65 +2,78 @@
 
 [← Voltar ao README](../README.md)
 
-Esta entrega substitui o antigo limite agregado de 8 MiB por medições que
-representam os caminhos realmente carregados pelo consumidor. Ainda não há uma
-meta percentual: o primeiro resultado confiável fica versionado em
-[`bundle-baseline.json`](../benchmarks/bundle-baseline.json).
-
-O custo por frame do renderer físico é medido separadamente no
-[benchmark do hot path físico](PHYSICS_PERFORMANCE.md); ele não deve ser
-inferido pelo tamanho dos chunks.
+A v3 é um único módulo ES sem dependências de runtime: renderizador WebGL,
+motor de física, timeline, skins, temas e adaptadores. O motor de partículas e
+seus presets são o único chunk à parte, importado dinamicamente só quando a
+opção `particles` é usada. Os números versionados estão em
+[`bundle-baseline.json`](../benchmarks/bundle-baseline.json); os da v2 foram
+preservados em [`bundle-baseline-v2.json`](../benchmarks/bundle-baseline-v2.json)
+para comparação.
 
 ## Como medir
 
-Gere todos os entrypoints e execute:
-
 ```bash
 npm run build:bundles
-npm run bundle:metrics
+npm run bundle:metrics            # imprime
+node scripts/bundle-metrics.mjs --write
 npm run bundle:check
 ```
 
-`bundle:metrics` informa bytes raw, gzip e Brotli e quantidade de arquivos para:
+`bundle:metrics` informa bytes raw, gzip (nível 9) e Brotli e a quantidade de
+arquivos para a biblioteca, o entrypoint `adapters`, os assets, `dist` e o
+pacote npm (`npm pack --dry-run`).
 
-- grafo inicial dos builds legado e `external`;
-- incrementos de física, profiling opt-in, sombras e highlight/timeline;
-- runtime Havok JS separado do chunk do renderer físico;
-- JavaScript completo de cada distribuição;
-- entrypoint `adapters`;
-- Havok WASM, assets, diretório `dist` e pacote npm.
+`bundle:check` valida a topologia e os orçamentos:
 
-`bundle:check` valida a topologia, não uma porcentagem arbitrária: o build
-legado precisa continuar autocontido; `external` precisa preservar imports bare
-de Babylon/Havok; `adapters` não pode referenciar renderer, Babylon ou Havok; e
-física, profiling, sombras e highlight não podem vazar para o grafo inicial. O
-check também rejeita um payload WASM base64 dentro do chunk Havok legado.
+- a biblioteca é um único módulo; o único chunk é o de partículas, carregado por `import()` e fora do grafo estático;
+- nenhum JavaScript referencia Babylon, Havok ou `.wasm`, e `dist` não contém WebAssembly;
+- `package.json` não declara dependências de runtime e todos os exports existem;
+- `adapters` não contém código de renderização;
+- biblioteca até 45 KB gzip, motor de partículas até 6 KB, presets até 5 KB e `adapters` até 3 KB gzip;
+- o motor de partículas não importa os presets estaticamente: um efeito dado como definição completa (um visual da oficina) não baixa os presets.
+
+O build compacta a saída: o Vite mantém os espaços em builds ES de biblioteca
+(por causa das anotações `/* @__PURE__ */`), mas a biblioteca é um único módulo
+sem tree-shaking a preservar, então `vite.config.ts` remove espaços dos chunks
+finais e comentários/indentação dos shaders GLSL. O shader de partículas viaja
+com o chunk de partículas e só é compilado no primeiro efeito.
+
+## Resultado da 3.0.0-alpha.0
+
+| Artefato | Arquivos | Raw | Gzip | Brotli |
+|---|---:|---:|---:|---:|
+| biblioteca (`dice3dview.es.js`) | 1 | 127.656 B | 43.608 B | 38.022 B |
+| motor de partículas (sob demanda) | 1 | 10.945 B | 4.328 B | 3.868 B |
+| 15 presets de partículas (sob demanda) | 1 | 18.936 B | 3.558 B | 3.037 B |
+| `adapters` | 1 | 4.416 B | 1.494 B | 1.354 B |
+| assets (temas, modelos, atlas) | 25 | 401.020 B | 196.250 B | 182.059 B |
+
+O pacote npm tem 52 arquivos: 332.309 B compactado e 826.489 B descompactado
+(a v2.6.0 tinha 125 arquivos, 1.612.802 B e 5.979.069 B).
+
+## Comparação com a v2
+
+| Primeira carga | v2 | v3 | Redução |
+|---|---:|---:|---:|
+| modo físico (Babylon + Havok JS + WASM), gzip | 1.158.986 B | 43.608 B | 26,6× |
+| modo físico, Brotli | 879.619 B | 38.022 B | 23,1× |
+| só o modo cinemático da v2, gzip | 438.335 B | 43.608 B | 10,1× |
+
+Compilação e CPU estão em [Benchmarks: v2 × v3](BENCHMARKS.md).
+
+Na v2, o modo físico ainda baixava o `HavokPhysics.wasm` (2.094.566 B raw) por
+URL e compilava WebAssembly antes do primeiro arremesso. Na v3 a física faz
+parte do mesmo módulo: não há segunda requisição nem compilação de WASM antes do
+primeiro dado aparecer.
 
 ## Interpretação
 
-O grafo inicial é o custo de importar e iniciar o caminho cinemático sem sombras
-e sem timeline. As métricas incrementais contam apenas arquivos que ainda não
-estavam nesse grafo. Havok JS aparece separado do renderer físico e o WASM é
-medido como arquivo próprio, porque seu download acontece por URL em runtime.
-Mesmo no build legado autocontido, o pacote leva uma única cópia estável do
-WASM; ela não é repetida como base64 no JavaScript.
+A comparação usa a v2 no mesmo formato de medição (gzip nível 9 e Brotli dos
+arquivos que o navegador realmente baixa na primeira apresentação). O tamanho de
+`dist` inclui assets compartilhados e não representa bytes transferidos por uma
+aplicação: os temas são carregados sob demanda, um por vez.
 
-O tamanho total de `dist` inclui três distribuições e assets compartilhados;
-portanto ele não representa bytes transferidos por uma aplicação. O build
-`external` é a referência para npm/bundlers. O build raiz é a referência de
-compatibilidade para carregamento direto por CDN.
-
-O baseline de navegador e do build móvel do frontend deve ser renovado no mesmo
-ambiente sempre que os limites de regressão forem definidos. Registre execuções
-frias e quentes, bytes transferidos, requests e tempos de import, `init()` e
-primeira apresentação; não compare números coletados com hardware, cache ou
-compressão diferentes como se fossem equivalentes.
-
-Na integração do frontend, `npm run build:mobile:web` gera o manifesto e
-`npm run dice3dview:mobile:check` mede o fechamento do renderer. O check falha se
-encontrar Babylon aninhado sob `@erpg/dice3dview` ou se física, profiling,
-sombras ou highlight entrarem no grafo inicial. No build web,
-`npm run dice3dview:brotli:check` valida que `HavokPhysics-*.wasm.br` existe, é
-menor e descomprime byte a byte para o WASM original. O Worker entrega esse
-arquivo somente quando `Accept-Encoding` aceita `br`, preservando fallback para
-o WASM original.
+Registre execuções frias e quentes, bytes transferidos, requests e tempos de
+import, `init()` e primeira apresentação no mesmo ambiente quando comparar
+integrações; números coletados com hardware, cache ou compressão diferentes não
+são equivalentes.

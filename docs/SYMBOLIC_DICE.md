@@ -285,6 +285,7 @@ pelos perfis e pela emissão, mas não recolore a superfície diffuse.
 Cada `theme.config.json` inclui:
 
 - `faceAtlas.layoutId`: compatibilidade com o layout UV `erpg-default-v1`;
+- `faceAtlas.orientation`: direção de leitura de cada glifo (`glyph-orientation.json`), usada pela v3 para apresentar os símbolos em pé;
 - `faceMetadata.mappingId`: versão semântica do mapa;
 - `faceMetadata.symbols`: nomes legíveis;
 - `faceMetadata.dice`: símbolos de cada valor.

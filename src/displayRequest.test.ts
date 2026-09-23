@@ -31,7 +31,7 @@ describe('display-only request contract', () => {
 				{ id: 'd20', sides: 20, value: 17, discarded: true }
 			]
 		}, defaults)
-		assert.equal(request.mode, 'kinematic')
+		assert.equal(request.mode, 'physics')
 		assert.equal(request.seed, 'visual-seed')
 		assert.deepEqual(request.dice.map(die => die.value), [2, 17])
 		assert.equal(request.dice[1]?.discarded, true)
@@ -39,13 +39,20 @@ describe('display-only request contract', () => {
 		assert.equal(Object.isFrozen(request.dice), true)
 	})
 
-	it('supports the lazy physics mode', () => {
-		const request = normalizeDisplayRequest({
-			id: 'physics-1',
-			mode: 'physics',
+	it('presents the removed v2 kinematic mode physically', () => {
+		for(const mode of ['physics', 'kinematic'] as const) {
+			const request = normalizeDisplayRequest({
+				id: `${mode}-1`,
+				mode,
+				dice: [{ id: 'coin', sides: 2, value: 1 }]
+			}, defaults)
+			assert.equal(request.mode, 'physics')
+		}
+		assert.throws(() => normalizeDisplayRequest({
+			id: 'bad-mode',
+			mode: 'teleport' as 'physics',
 			dice: [{ id: 'coin', sides: 2, value: 1 }]
-		}, defaults)
-		assert.equal(request.mode, 'physics')
+		}, defaults), /Invalid display mode/)
 	})
 
 	it('counts a semantic d100 as two visual bodies', () => {

@@ -4,6 +4,126 @@ Todas as mudanças relevantes deste projeto são registradas aqui. O formato seg
 
 ## [Não publicado]
 
+## [3.0.0-alpha.0] - 2026-09-23
+
+Upgrade major: mesma API pública, sem Babylon.js e sem Havok. Veja o
+[guia de migração](docs/MIGRATION_V3.md) e o [devlog da v3](DEVLOG_V3.md).
+
+### Adicionado
+
+- renderizador WebGL próprio (WebGL2 com fallback WebGL1) que reproduz os
+  materiais da v2: cor com máscara de textura, `standard`, bump, specular e
+  moedas com arte ou cor do tema;
+- motor de física determinístico para dados: casco convexo a partir do collider
+  do tema, contatos especulativos, SAT com manifold recortado, pilhas, paredes
+  e explosões que nascem do dado-pai;
+- resultado exato por rotação de simetria do poliedro aplicada só ao desenho,
+  sem guiar o dado; a mesma `seed` gera quadros idênticos em qualquer navegador;
+- rerolagens (`hop`, `spin`, `edge`) e explosões tardias simuladas, com os
+  demais dados como obstáculos imóveis;
+- cálculo da trajetória em fatias de 8 ms, sem travar a página em lances grandes;
+- `faceAtlas.orientation` e `glyph-orientation.json` para apresentar glifos em
+  pé; `npm run themes:align` alinha atlas SVG simbólicos às faces;
+- transições da timeline: anel de choque no chão em explosões, rerolagens e
+  críticos; antecipação (brilho e tremor) antes de rerolagens e explosões
+  tardias; filhos de explosão saindo de dentro do pai; fade dos dados anteriores
+  quando uma nova apresentação começa;
+- `skin`: textura personalizada no corpo dos dados (URL, data: ou blob: de um
+  upload), projetada por mapeamento triplanar e combinada com `themeColor` como
+  camada (`normal`, `multiply`, `screen`, `overlay` e opacidade), com cor e
+  contorno automáticos para os números;
+- `particles`: efeitos de partículas nos momentos da rolagem (voo, rastro na
+  mesa, impacto na mesa, colisão entre dados, repouso, aura, explosões e
+  críticos), com 15 presets que reagem a todos os momentos — `sparkle`,
+  `fire`, `arcane`, `frost`, `electric`, `confetti`, `smoke`, `dust` e os
+  combinados `lava`, `storm`, `holy`, `shadow`, `poison`, `nature` e
+  `cosmic` — ou definições declarativas próprias; o motor e os presets são
+  dois chunks carregados sob demanda, e `loadParticlePresets()` expõe as
+  definições para editores próprios;
+- emissores com seis formas (`soft`, `spark` alinhada ao movimento, `star`,
+  `ring`, `confetti` e `smoke`), rotação (`spin`), paleta por partícula e
+  condições `when` (força mínima, velocidade mínima, tipos de dado, faces,
+  chance e intervalo por dado);
+- ajustes rápidos de `particles`: `color` (recolore mantendo a rampa de
+  brilho), `shape`, `size` e `moments`; trocar o efeito vale na hora para o
+  que ainda está emitindo;
+- `viewer.playParticles(moment, { dice })` toca um momento na hora nos dados
+  da mesa;
+- `glow`: luz própria dos dados (corpo iluminado, halo e luz na mesa), com cor,
+  intensidade e pulsação;
+- visuais (`DiceLook`): cor, skin, partículas e brilho num arquivo JSON
+  versionado, com `createDiceLook()`, `diceLookOptions()` (validação com o
+  campo culpado) e `viewer.applyLook()`;
+- marcador de impacto na mesa emitido pela simulação;
+- página de teste `demo/` com campo de notação resolvido pelo `@erpg/dicecore`,
+  18 skins procedurais, upload de textura, editor completo de partículas (por
+  momento, com condições, teste na hora e JSON) e controles de brilho;
+- oficina de visuais (`demo/oficina.html`): 15 visuais prontos, mistura de
+  momentos de efeitos diferentes, condições por momento, teste em rolagens
+  reais e exportação/importação do arquivo JSON;
+- `npm run benchmark:physics` com cenários de d20 a 120d6, e comparação com a
+  v2 (`npm run benchmark:compare`: download e compilação;
+  `npm run benchmark:browser`: página que roda v2 e v3 no mesmo navegador).
+
+### Alterado
+
+- toda apresentação é física; o renderer cinemático foi removido e
+  `mode: 'kinematic'` é aceito e apresentado com física (aviso único);
+- `DisplayMode` passa a ser `'physics'`; os campos `mode` aceitam também o
+  literal legado `'kinematic'`, marcado como deprecated;
+- licença: a partir da 3.0.0 o pacote usa a Licença de Uso Aberto e
+  Autorizado ERPG (livre para projetos de código aberto, autorização por
+  escrito para os demais usos); as partes do `@3d-dice/dice-box` seguem sob a
+  licença MIT original (`THIRD_PARTY_NOTICES.md`) e as versões 1.x e 2.x
+  continuam MIT;
+- a biblioteca é um único módulo ES de 44 KB gzip (saída compactada), sem dependências de runtime
+  nem WebAssembly (v2 no modo físico: ~1,16 MB gzip); só as partículas
+  opcionais ficam num chunk à parte;
+- `@erpg/dice3dview/external` passa a ser alias do entrypoint raiz;
+- waves de lançamento de lances grandes são espaçadas pela velocidade real de
+  lançamento (120 dados: ~12 s em vez de ~19 s);
+- efeitos da timeline usam um contorno de brilho e um tom contido na superfície
+  no lugar do HighlightLayer;
+- sombras são sombras de contato suaves sob cada dado;
+- dados descartados (keep/drop, absorção do compound e `discarded: true`)
+  perdem a saturação em vez de ficarem translúcidos; em keep/drop os que
+  sobraram brilham, e a duração padrão de `keep`/`drop` passou para 450 ms;
+- os atlas de Vampiro V5, Assimilação e Fate foram realinhados às faces;
+- dados Fate e Assimilação (perfis neutros) seguem a cor do tema em vez de um
+  azul fixo; Vampiro V5 e Daggerheart mantêm as cores que carregam significado.
+
+### Removido
+
+- Babylon.js, Havok e `HavokPhysics.wasm` (a pasta `assets/dice-box/havok/`
+  não é mais necessária);
+- badges `Σ` (compound) e `−n` (penetrate) da timeline;
+- chunks lazy de física, sombras, profiling e highlight, e o profiler
+  `__DICE3DVIEW_PHYSICS_PROFILE__`.
+
+### Descontinuado
+
+- `mode: 'kinematic'`, `duration`, `physicsWasmUrl`, `shadowResolution` e
+  `showBadge`: aceitos para compatibilidade e ignorados.
+
+### Corrigido
+
+- dados esmaecidos não mostram mais as faces internas;
+- o brilho dos efeitos não lava mais a face do dado;
+- filhos de explosão apareciam por um quadro no centro da tela e subiam
+  atravessando a mesa;
+- um quadro lento (primeiro uso de shader, main thread ocupada) fazia os dados
+  saltarem: o relógio da animação avança no máximo 50 ms por quadro;
+- moedas recebem a skin e a luz da cena como os dados (antes a cor era
+  chapada, sem iluminação, e a textura não aparecia), e a marca da moeda fica
+  legível em corpos claros;
+- o brilho próprio e os destaques da timeline apareciam só como um fio na
+  borda das moedas: o halo agora cresce a moeda inteira, como a casca dos dados;
+- animações podiam parar no meio: a simulação era cortada no `settleTimeout`
+  (arremesso inicial) ou em 3,5 s (rerolagens e explosões tardias), e filhos de
+  cadeias longas de explosões nunca nasciam. O tempo agora é um orçamento:
+  passado dele, os dados perdem energia aos poucos até repousar, e cada filho
+  de explosão ganha o próprio orçamento a partir do nascimento.
+
 ## [2.6.0] - 2026-08-08
 
 ### Adicionado

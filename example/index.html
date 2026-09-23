@@ -333,13 +333,6 @@
 
         <div class="row">
           <div class="field">
-            <label for="mode">Apresentação</label>
-            <select id="mode" name="mode">
-              <option value="kinematic">Cinemática</option>
-              <option value="physics">Física (Havok)</option>
-            </select>
-          </div>
-          <div class="field">
             <label for="seed">Seed (opcional)</label>
             <input id="seed" name="seed" placeholder="aleatória" autocomplete="off" />
           </div>
@@ -380,7 +373,6 @@
 
       const form = document.querySelector('#roll-form')
       const notationInput = document.querySelector('#notation')
-      const modeInput = document.querySelector('#mode')
       const seedInput = document.querySelector('#seed')
       const rollButton = document.querySelector('#roll-button')
       const clearButton = document.querySelector('#clear-button')
@@ -444,7 +436,6 @@
       const rollAndDisplay = async () => {
         const notation = notationInput.value.trim()
         const seed = seedInput.value.trim()
-        const mode = modeInput.value
 
         if(!notation) {
           setStatus('Informe uma fórmula para rolar.', 'error')
@@ -468,12 +459,11 @@
           if(visualDice.length === 0) return
 
           const requestId = crypto.randomUUID()
-          setStatus(`Apresentando ${visualDice.length} dado(s) em modo ${mode === 'physics' ? 'físico' : 'cinemático'}…`)
+          setStatus(`Apresentando ${visualDice.length} dado(s)…`)
 
           await viewer.displayTimeline({
             id: requestId,
             seed: requestId,
-            mode,
             dice: visualDice.map(die => ({
               id: die.id,
               sides: die.sides

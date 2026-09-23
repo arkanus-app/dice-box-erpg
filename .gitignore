@@ -23,3 +23,6 @@ public-stash
 notes.txt
 stats.html
 .history
+
+# v2 build extracted for the browser benchmark (npm run benchmark:compare)
+benchmarks/compare/v2/

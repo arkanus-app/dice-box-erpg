@@ -150,7 +150,7 @@ export const normalizeDisplayTimelineRequest = (
 		dice: Object.freeze(dice),
 		events: Object.freeze(request.events.map(event => Object.freeze({ ...event }))),
 		seed: typeof request.seed === 'string' ? request.seed : id,
-		mode: normalizeDisplayMode(request.mode, defaults.mode)
+		mode: normalizeDisplayMode(request.mode ?? defaults.mode)
 	})
 }
 
@@ -642,14 +642,3 @@ export const createTimelineProgressTracker = (plan: DiceTimelinePlan): TimelineP
 	})
 }
 
-export const getTimelineTransformBadge = (
-	action: TimelineTransformAction,
-	options: NormalizedTimelineOptions
-): string | null => {
-	if(action.effect === 'compound') {
-		return options.effects.compound.showBadge ? `Σ ${action.to}` : null
-	}
-	if(!options.effects.penetrate.showBadge) return null
-	const difference = Math.abs(action.from - action.to)
-	return difference > 0 ? `−${difference}` : null
-}

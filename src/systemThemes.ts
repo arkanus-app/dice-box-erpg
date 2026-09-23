@@ -1,5 +1,10 @@
 import type { DiceSides, DisplayMode, DisplayRequest, ResolvedDie } from './types'
 
+/**
+ * 3D presentation of each system die. Profiles with a `themeColor` carry a
+ * color with meaning (V5 normal vs. hunger, Daggerheart hope vs. fear); the
+ * others (Fate, Assimilação) follow the requested color, then the viewer's.
+ */
 export const SYSTEM_THEME_PROFILES = Object.freeze({
 	'vampire-v5-normal-d10': Object.freeze({
 		theme: 'vampire-v5-normal',
@@ -13,22 +18,18 @@ export const SYSTEM_THEME_PROFILES = Object.freeze({
 	}),
 	'assimilation-d6': Object.freeze({
 		theme: 'assimilation',
-		themeColor: '#123b4a',
 		sides: 6
 	}),
 	'assimilation-d10': Object.freeze({
 		theme: 'assimilation',
-		themeColor: '#123b4a',
 		sides: 10
 	}),
 	'assimilation-d12': Object.freeze({
 		theme: 'assimilation',
-		themeColor: '#123b4a',
 		sides: 12
 	}),
 	'fate-df': Object.freeze({
 		theme: 'fate',
-		themeColor: '#315d9b',
 		sides: 6
 	}),
 	'daggerheart-hope-d12': Object.freeze({
@@ -52,6 +53,8 @@ export interface SystemDiePresentationInput {
 	readonly value: number
 	readonly profileId: string
 	readonly discarded?: boolean
+	/** Explicit color for this die (wins over every profile color). */
+	readonly themeColor?: string
 }
 
 export interface SystemDicePresentationOptions {
@@ -61,6 +64,11 @@ export interface SystemDicePresentationOptions {
 	 */
 	readonly keptIds?: readonly string[]
 	readonly themeColors?: Readonly<Partial<Record<SystemDiceProfileId, string>>>
+	/**
+	 * Color for profiles without a meaningful color (Fate, Assimilação). When
+	 * absent, those dice take the viewer's `themeColor`.
+	 */
+	readonly themeColor?: string
 }
 
 export interface SystemDisplayRequestInput extends SystemDicePresentationOptions {
@@ -90,7 +98,6 @@ export interface MixedDicePresentationOptions extends SystemDicePresentationOpti
 	 */
 	readonly unsupportedDice?: 'omit' | 'error'
 	readonly theme?: string
-	readonly themeColor?: string
 }
 
 export interface MixedDisplayRequestInput extends MixedDicePresentationOptions {
@@ -154,13 +161,17 @@ const resolveSystemDie = (
 	const discarded = kept === undefined
 		? Boolean(die.discarded)
 		: !kept.has(id) && (die.sourceDieId === undefined || !kept.has(die.sourceDieId))
+	// A meaningful profile color (V5, Daggerheart) holds unless this die or its
+	// profile is recolored; neutral profiles follow the request, then the viewer.
+	const meaningful = 'themeColor' in profile ? profile.themeColor : undefined
+	const themeColor = die.themeColor ?? options.themeColors?.[profileId] ?? meaningful ?? options.themeColor
 	return Object.freeze({
 		id,
 		sides: profile.sides as DiceSides,
 		value: die.value,
 		discarded,
 		theme: profile.theme,
-		themeColor: options.themeColors?.[profileId] ?? profile.themeColor
+		...(themeColor ? { themeColor } : {})
 	})
 }
 
@@ -277,7 +288,8 @@ export const toMixedResolvedDice = (
 				sides: typeof die.sides === 'number' ? die.sides : Number.NaN,
 				value,
 				profileId: die.profileId,
-				discarded: die.discarded
+				discarded: die.discarded,
+				...(die.themeColor ? { themeColor: die.themeColor } : {})
 			}, options, kept))
 			continue
 		}

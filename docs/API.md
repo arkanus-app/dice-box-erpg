@@ -1,8 +1,8 @@
-# Referência da API v2
+# Referência da API v3
 
 [← Voltar ao README](../README.md)
 
-Esta referência descreve a API pública de `@erpg/dice3dview` 2.6.0. A biblioteca é destinada ao navegador: a criação exige DOM; a inicialização do renderer exige WebGL.
+Esta referência descreve a API pública de `@erpg/dice3dview` 3.0.0-alpha.0. A biblioteca é destinada ao navegador: a criação exige DOM; a inicialização do renderer exige WebGL (WebGL2, com fallback para WebGL1).
 
 ## Exports públicos
 
@@ -10,20 +10,35 @@ Esta referência descreve a API pública de `@erpg/dice3dview` 2.6.0. A bibliote
 export default DiceResultViewer
 
 export {
+  createDiceLook,
   createMixedDisplayRequest,
   createSystemDisplayRequest,
-  DiceResultViewer,
   DEFAULT_TIMELINE_OPTIONS,
+  DICE_LOOK_FORMAT,
+  DICE_LOOK_VERSION,
+  diceLookOptions,
+  DiceResultViewer,
   DISPLAY_CANCELLED_CODE,
   DisplayCancelledError,
-  isDisplayCancelledError
+  isDisplayCancelledError,
+  loadParticlePresets,
+  PARTICLE_MOMENTS,
+  PARTICLE_PRESET_NAMES,
+  PARTICLE_SHAPES
 }
 
 export type {
   CoinFaceTheme,
   CoinTheme,
   CollisionEvent,
+  DiceGlowOptions,
+  DiceLook,
+  DiceLookOptions,
+  DiceParticleOptions,
+  DiceParticlePreset,
   DiceSides,
+  DiceSkinBlend,
+  DiceSkinOptions,
   DisplayMode,
   DisplayRequest,
   DisplayResult,
@@ -33,6 +48,13 @@ export type {
   MixedDicePresentationOptions,
   MixedDiePresentationInput,
   MixedDisplayRequestInput,
+  ParticleBlend,
+  ParticleBurstMoment,
+  ParticleCondition,
+  ParticleEffectDefinition,
+  ParticleEmitterOptions,
+  ParticleMoment,
+  ParticleShape,
   ResolvedDie,
   ResolvedThemeConfig,
   ThemeConfig,
@@ -54,11 +76,10 @@ O CSS é um subpath público separado:
 import '@erpg/dice3dview/style.css'
 ```
 
-Para aplicações npm com bundler, use `@erpg/dice3dview/external` para a mesma
-API pública do entrypoint raiz sem incorporar Babylon/Havok. Os adaptadores
-puros também estão disponíveis em `@erpg/dice3dview/adapters`, que não importa
-o renderer nem suas dependências gráficas. O entrypoint raiz permanece o build
-autocontido para compatibilidade e CDN.
+O pacote não tem dependências de runtime. `@erpg/dice3dview/external` continua
+publicado como alias do entrypoint raiz para quem já o importava na v2. Os
+adaptadores puros estão em `@erpg/dice3dview/adapters`, que não importa o
+renderer.
 
 ## `DiceResultViewer`
 
@@ -87,13 +108,13 @@ tema, material e moeda inválidas.
 
 ### `init()`
 
-Inicializa o renderer do modo padrão, carrega o tema principal e os temas de `preloadThemes`, instala a observação de tamanho e devolve a própria instância. Chamadas repetidas são idempotentes.
+Cria o contexto WebGL, carrega o tema principal e os temas de `preloadThemes`, instala a observação de tamanho e devolve a própria instância. Chamadas repetidas são idempotentes.
 
 `display()` chama `init()` automaticamente quando necessário.
 
 ### `display(request)`
 
-Valida e normaliza os resultados, cancela qualquer apresentação ativa, seleciona o renderer e inicia a apresentação.
+Valida e normaliza os resultados, cancela qualquer apresentação ativa, simula o arremesso e o reproduz.
 
 O retorno contém clones normalizados e congelados. Os números recebidos são preservados, mas os objetos não mantêm identidade referencial com os objetos de entrada.
 
@@ -117,9 +138,9 @@ const result = await viewer.display({
 // }
 ```
 
-`durationMs` inclui inicialização lazy, carregamento de temas e animação.
+`durationMs` inclui inicialização lazy, carregamento de temas, simulação e animação.
 
-Depois que a entrada foi validada, falhas gráficas, de asset ou físicas são
+Depois que a entrada foi validada, falhas gráficas ou de asset são
 best-effort em `display()`: são registradas e o resultado externo normalizado
 continua sendo devolvido. A biblioteca nunca recalcula ou substitui uma face.
 
@@ -142,11 +163,23 @@ const result = await viewer.displayTimeline({
 })
 ```
 
-O retorno acrescenta `eventCount`, `phaseCount` e `degraded` ao contrato de `DisplayResult`. `dice` contém faces físicas válidas e estado final de descarte; totais `compound` e ajustes `penetrate` aparecem como badges, nunca como faces inexistentes.
+O retorno acrescenta `eventCount`, `phaseCount` e `degraded` ao contrato de `DisplayResult`. `dice` contém faces físicas válidas e estado final de descarte. Totais `compound` e ajustes `penetrate` nunca viram faces inexistentes: o dado mantém a face física e pulsa na cor do efeito.
 
-Ao contrário de `display()`, `displayTimeline()` propaga falhas gráficas, de
-asset e físicas. Uma timeline parcialmente executada não é reportada como
-sucesso.
+Ao contrário de `display()`, `displayTimeline()` propaga falhas gráficas e de
+asset. Uma timeline parcialmente executada não é reportada como sucesso.
+
+Como cada fase é apresentada:
+
+| Fase | Apresentação |
+|---|---|
+| explosões iniciais | os filhos nascem dentro da mesma simulação do arremesso, assim que o pai estabiliza: o pai dá um flash, um anel se expande no chão e o filho sai de dentro dele crescendo |
+| explosões tardias | os pais brilham e tremem (antecipação); nova simulação em que o filho nasce do pai (ou entra pela borda) e os dados já na mesa são obstáculos imóveis |
+| `reroll`, `unique` | o dado brilha e treme, decola com um anel no chão e é relançado a partir de onde está; os demais ficam imóveis |
+| `compound`, `penetrate` | pulso na cor do efeito |
+| `keep`, `drop`, absorção do compound | os descartados perdem a saturação (a opacidade não muda); em keep/drop, os que sobraram respondem com um brilho na cor de `keep` |
+| classificações e críticos | pulsos na cor do efeito (`pulses` nos críticos); críticos também emitem um anel no chão |
+
+Dados com `discarded: true` em `display()` usam o mesmo visual dos descartados da timeline. Uma nova apresentação tira os dados anteriores com um fade de 280 ms enquanto o próximo arremesso entra; `clear()` continua removendo tudo de imediato. O relógio da animação avança no máximo 50 ms por quadro: um travamento momentâneo atrasa o movimento em vez de fazer os dados saltarem.
 
 Configure `onTimelineProgress` no viewer para sincronizar a interface com a
 estabilização visual, sem estimar tempos no consumidor:
@@ -162,9 +195,9 @@ const viewer = new DiceResultViewer({
 ```
 
 O callback recebe `initial` quando a apresentação dos dados-raiz começa, `phase`
-durante a progressão semântica e `complete` ao final. No renderer físico, uma
-explosão emite seu snapshot e libera o dado-filho assim que o dado-pai estabiliza,
-mesmo que outros dados da mesma fase ainda estejam em movimento. Cada snapshot informa `id`,
+durante a progressão semântica e `complete` ao final. Uma explosão emite seu
+snapshot e libera o dado-filho assim que o dado-pai estabiliza, mesmo que outros
+dados da mesma fase ainda estejam em movimento. Cada snapshot informa `id`,
 `phaseIndex` zero-based (ou `null`), `phaseCount`, `phaseId`, `effect`,
 `revealedDieIds`, os dados visíveis `{ id, value, discarded }` e
 `completedEventSequences` cumulativo. Em uma apresentação degradada/plana,
@@ -173,29 +206,40 @@ e nunca cancelam a animação.
 
 ### `clear()`
 
-Cancela a apresentação ativa, para o render loop e devolve meshes/moedas aos pools. A Promise da apresentação cancelada rejeita com `DisplayCancelledError`.
+Cancela a apresentação ativa, para o laço de renderização e limpa a cena. A Promise da apresentação cancelada rejeita com `DisplayCancelledError`.
 
 ### `updateOptions(options)`
 
-Mescla opções com a configuração atual, atualiza o repositório de temas e aplica opções compatíveis ao renderer.
+Mescla opções com a configuração atual, atualiza o repositório de temas e aplica as opções ao renderer. Luz e sombra valem no próximo quadro; opções de arremesso e de timeline, na próxima apresentação.
 
-Para alterar `container`, `id`, `antialias`, `shadowResolution`, `gravity`, `physicsWasmUrl` ou a raiz/definição de assets já carregados, descarte a instância e crie outra. `preloadThemes` só é consumido por `init()`.
+Para alterar `container`, `id`, `antialias` (atributo do contexto WebGL) ou a raiz/definição de assets já carregados, descarte a instância e crie outra. `preloadThemes` só é consumido por `init()`.
+
+### `applyLook(look)`
+
+Aplica um visual completo (cor, skin, partículas e brilho), como um arquivo JSON exportado pela oficina. Equivale a `updateOptions(diceLookOptions(look))`: o arquivo é validado antes e, se for inválido, nada muda. Veja [Visuais](#visuais-arquivos-da-oficina).
+
+### `playParticles(moment, options?)`
+
+Toca na hora um momento de partículas (`impact`, `collision`, `settle`, `aura`, `explode` ou `critical`) nos dados que estão na mesa, ou só em `options.dice` (ids). Ignora as condições `when` dos emissores e usa o efeito atual de `particles`; sem efeito configurado, não faz nada. Serve para a aplicação comemorar um resultado que ela mesma decidiu.
+
+```ts
+viewer.playParticles('critical')
+viewer.playParticles('settle', { dice: ['d-1', 'd-3'] })
+```
 
 ### `resize()`
 
-Recalcula o tamanho usando o canvas ou o elemento pai. Depois de `init()`, a instância observa automaticamente o container com `ResizeObserver` e também responde a `window.resize` como fallback.
-
-Nos dois modos, o novo tamanho recalcula a área útil do palco. Em `physics`, piso e paredes são reconstruídos e corpos ativos que ficaram fora dos novos limites são confinados novamente.
+Recalcula o tamanho usando o canvas ou o elemento pai. Depois de `init()`, a instância observa automaticamente o container com `ResizeObserver` e também responde a `window.resize` como fallback. A resolução do canvas acompanha o `devicePixelRatio`, limitada a 2×, e o palco da próxima apresentação é calculado pelo novo tamanho.
 
 ### `dispose()`
 
-Cancela a apresentação, remove o listener, libera renderer e recursos, e remove o canvas. `dispose()` é idempotente. Depois dele, não reutilize a instância; `init()`, `display()` e `updateOptions()` impedem explicitamente o reuso.
+Cancela a apresentação, remove o listener, libera texturas, buffers e o contexto WebGL, e remove o canvas. `dispose()` é idempotente. Depois dele, não reutilize a instância; `init()`, `display()` e `updateOptions()` impedem explicitamente o reuso.
 
 ## Contratos de dados
 
 ```ts
 type DiceSides = 2 | 4 | 6 | 8 | 10 | 12 | 20 | 100
-type DisplayMode = 'kinematic' | 'physics'
+type DisplayMode = 'physics'
 
 interface ResolvedDie {
   readonly id: string
@@ -210,7 +254,8 @@ interface DisplayRequest {
   readonly id: string
   readonly dice: readonly ResolvedDie[]
   readonly seed?: string
-  readonly mode?: DisplayMode
+  /** @deprecated Toda apresentação é física na v3. */
+  readonly mode?: DisplayMode | 'kinematic'
 }
 
 interface DisplayResult {
@@ -246,7 +291,7 @@ essa omissão em erro. IDs duplicados no lote são rejeitados.
 
 - `request.id` deve ser uma string não vazia;
 - `dice` deve conter ao menos um item;
-- os únicos modos são `kinematic` e `physics`;
+- `mode` pode ser omitido, `'physics'` ou o legado `'kinematic'`, que é apresentado com física e gera um aviso único no console; outros valores são rejeitados;
 - os únicos lados são d2, d4, d6, d8, d10, d12, d20 e d100;
 - `value` deve ser inteiro finito entre `1` e `sides`;
 - d2 aceita exclusivamente `1` ou `2`;
@@ -265,13 +310,13 @@ Na moeda d2, a frente cuja normal local é `+Y` representa o valor `1` e usa qua
 
 ### Timeline
 
-`timeline.enabled` usa `true`; `maxEvents`, `maxDurationMs` e `phaseGapMs` usam `500`, `12000` e `180`. Cada efeito aceita `enabled`, `delayMs`, `durationMs`, `intensity` (`0..1`) e `color`. Opções especializadas:
+`timeline.enabled` usa `true`; `maxEvents`, `maxDurationMs` e `phaseGapMs` usam `500`, `12000` e `180`. Cada efeito aceita `enabled`, `delayMs`, `durationMs`, `intensity` (`0..1`) e `color`. Nos efeitos físicos (`explode`, `reroll`, `unique`), `durationMs` controla o pulso de aviso; o movimento dura o que a física precisar. Opções especializadas:
 
 | Efeito | Opções adicionais | Default |
 |---|---|---|
 | `explode` | `origin: 'source' \| 'edge'`, `burstHeight`, `spread` | `source`, `1.6`, `0.8` |
 | `reroll`, `unique` | `style: 'hop' \| 'edge' \| 'spin'`, `hopHeight` | `hop`, `2.2` |
-| `compound`, `penetrate` | `showBadge` | `true` |
+| `compound`, `penetrate` | `showBadge` (deprecated, ignorado) | `true` |
 | `criticalSuccess`, `criticalFailure` | `pulses` | `2` |
 
 Também existem `keep`, `drop`, `success`, `failure` e `neutral`. Todos vêm ativos; `neutral` usa intensidade reduzida. Configurações inválidas são rejeitadas no construtor ou em `updateOptions()` sem substituir a configuração válida anterior.
@@ -282,14 +327,14 @@ await viewer.updateOptions({
     maxDurationMs: 16_000,
     effects: {
       criticalSuccess: { enabled: false },
-      reroll: { style: 'edge', durationMs: 650 },
-      compound: { showBadge: false }
+      reroll: { style: 'edge' },
+      explode: { origin: 'edge' }
     }
   }
 })
 ```
 
-O merge é profundo por efeito: no exemplo, mudar `durationMs` não apaga `style`, `enabled`, cor ou intensidade. `timeline.enabled: false` e estouros de orçamento usam a apresentação plana final e retornam `degraded: true`.
+O merge é profundo por efeito: no exemplo, mudar `style` não apaga `enabled`, cor, duração ou intensidade. `timeline.enabled: false` e estouros de orçamento usam a apresentação plana final e retornam `degraded: true`.
 
 ### Núcleo e temas
 
@@ -299,7 +344,7 @@ O merge é profundo por efeito: no exemplo, mudar `durationMs` não apaga `style
 | `container` | `string \| HTMLElement \| null` | `null` | obrigatório na prática; construção |
 | `assetPath` | `string` | `/assets/dice-box/` | raiz pública dos assets |
 | `origin` | `string` | `window.location.origin` | origem para assets internos |
-| `mode` | `DisplayMode` | `kinematic` | fallback quando o request não define modo |
+| `mode` | `DisplayMode` | `physics` | deprecated: toda apresentação é física |
 | `theme` | `string` | `default` | tema padrão |
 | `preloadThemes` | `readonly string[]` | `[]` | carregados durante `init()` |
 | `externalThemes` | `Record<string, string>` | `{}` | mapa tema → URL base |
@@ -310,105 +355,175 @@ O merge é profundo por efeito: no exemplo, mudar `durationMs` não apaga `style
 
 | Opção | Tipo | Default | Observação |
 |---|---|---:|---|
-| `enableShadows` | `boolean` | `true` | ativa cast/receive shadows |
-| `shadowTransparency` | `number` | `0.8` | escuridão do shadow map |
-| `shadowResolution` | `number` | `1024` | construção do shadow generator |
+| `enableShadows` | `boolean` | `true` | sombras de contato suaves sob cada dado |
+| `shadowTransparency` | `number` | `0.8` | intensidade das sombras |
 | `lightIntensity` | `number` | `1` | multiplicador das luzes |
-| `antialias` | `boolean` | `true` | construção da engine Babylon |
+| `antialias` | `boolean` | `true` | atributo do contexto WebGL; construção |
 | `scale` | `number` | `5` | escala dos objetos |
-| `duration` | `number` | `1100` ms | duração cinemática base |
-| `delay` | `number` | `10` ms | intervalo de liberação por corpo nos dois modos |
+| `delay` | `number` | `10` ms | intervalo de liberação por corpo |
 | `wallPadding` | `number` | `0.25` | recuo interno entre a borda visível e a área útil, em unidades do palco |
 | `spawnSpacing` | `number` | `1.72` | separação mínima solicitada para o packing de lanes na extremidade comum |
 | `spawnHeightStep` | `number` | `0` | offset vertical opcional entre as primeiras entradas; zero mantém o grupo no mesmo plano |
 | `spawnOverscan` | `number` | `0.15` | margem extra fora da projeção, como fração do raio, além do raio completo necessário para ocultar o corpo |
+| `shadowResolution` | `number` | — | deprecated: sem shadow map na v3; ignorada |
+| `duration` | `number` | — | deprecated: duração do modo cinemático da v2; ignorada |
 
-A duração cinemática efetiva é `max(250, duration) + maior launchDelayMs`. O atraso de cada corpo inclui `index × max(0, delay)` e, quando a capacidade simultânea se esgota, um intervalo automático entre waves suficiente para o wave anterior desocupar o portal.
+Cada apresentação escolhe pela `seed` uma única borda comum entre esquerda, direita, topo e baixo. O vetor principal sempre aponta para dentro dentro de um cone de 45 graus. O packing usa o raio real do collider para calcular o espaçamento efetivo, nunca menor que `spawnSpacing`, e preenche lanes tangenciais com até duas rows sucessivas atrás da borda recortada. Quando esses slots acabam, novos corpos entram em waves; na v3 cada wave sai assim que a anterior liberou o portal, pela velocidade real de lançamento.
 
-`wallPadding` é aplicado aos lançamentos e pousos dos dois modos. Cada apresentação escolhe pela `seed` uma única borda comum entre esquerda, direita, topo e baixo, independentemente da proporção do canvas. O vetor principal sempre aponta para dentro dentro de um cone de 45 graus. O packing usa o raio real do collider para calcular o espaçamento efetivo, nunca menor que `spawnSpacing`, e preenche lanes tangenciais com até duas rows sucessivas atrás da borda recortada. Quando esses slots acabam, novos corpos entram em waves posteriores. Corpos da mesma wave não se sobrepõem no spawn; waves só reutilizam slots depois do intervalo necessário para liberar o portal. Por padrão não há degraus verticais; quando `spawnHeightStep` é positivo, ele adiciona offsets limitados às primeiras posições do grupo sem mudar a direção comum.
-
-O centro inicial é colocado além da projeção no plano da altura de lançamento por `raio × (1 + max(0, spawnOverscan))`. Assim, `spawnOverscan: 0.15` posiciona o corpo um raio completo mais 15% do raio para fora do recorte, garantindo que nenhuma parte dele esteja visível antes de entrar.
-
-`delay` escalona a entrada nos dois renderers. Em `kinematic`, o node só é habilitado na sua vez, gira livremente durante os primeiros 84% da trajetória e começa o settle para a face solicitada apenas nos 16% finais. Em `physics`, o corpo pendente permanece invisível, `ANIMATED` e sem velocidade. Na liberação ele se torna `DYNAMIC`, recebe de uma vez as velocidades linear e angular pré-calculadas e já colide com outros dados, com o piso e com as três paredes que não são o portal. Somente a parede de lançamento fica excluída até o collider inteiro cruzar para dentro da área útil. O timeout físico individual começa apenas depois da liberação.
-
-No renderer físico, as faces internas das quatro paredes acompanham o recuo; o piso cobre a mesma área responsiva. As barreiras são invisíveis e seu collider de `0.25` unidade cresce para fora, portanto a face interna continua exatamente no limite calculado.
+O centro inicial é colocado além da projeção no plano da altura de lançamento por `raio × (1 + max(0, spawnOverscan))`. Assim, nenhuma parte do dado está visível antes de entrar. Somente a parede de lançamento é ignorada até o corpo cruzar a borda; piso, outros dados e as três paredes restantes colidem desde a liberação.
 
 ### Física
 
 | Opção | Tipo | Default | Observação |
 |---|---|---:|---|
-| `gravity` | `number` | `1.3` | multiplica a gravidade `-9.81`; inicialização física |
+| `gravity` | `number` | `1.3` | multiplica a gravidade `9.81` (a escala do mundo da v3 foi recalibrada) |
 | `mass` | `number` | `1.08` | massa base, multiplicada pelo perfil do dado |
-| `startingHeight` | `number` | `7.6` | plano real e fixo de liberação; após offsets opcionais, a altura efetiva é limitada a `2.8–8.1` |
-| `spinForce` | `number` | `5.8` | escala o plano angular seedado; no default produz as voltas por geometria descritas abaixo |
-| `throwForce` | `number` | `6.4` | intensidade do kick linear imediato; coeficiente base `0.22`, cap base `17.5` e cap final `19.5` após a dinâmica da apresentação |
-| `aggressiveThrowChance` | `number` | `0.12` | chance seedada por apresentação, entre `0` e `1`, de usar a cauda de maior energia e variação direcional; não seleciona paredes |
-| `wallBounceChance` | `number` | alias deprecated | compatibilidade para `aggressiveThrowChance`; não garante nem solicita contato com parede |
-| `colliderScale` | `number` | `1.02` | escala do collider e da altura de apoio dos poliedros; não altera a moeda |
-| `friction` | `number` | `0.54` | fricção do piso e dos dados; não altera o material próprio das paredes |
-| `restitution` | `number` | `0.29` | elasticidade do piso e dos dados; não altera o material próprio das paredes |
-| `linearDamping` | `number` | `0.10` | amortecimento linear inicial |
-| `angularDamping` | `number` | `0.08` | amortecimento angular aplicado depois do primeiro impacto; o preflight usa zero |
-| `settleTimeout` | `number` | `4200` ms | janela de segurança, mínimo efetivo de 1000 ms; nunca decide o valor |
-| `physicsWasmUrl` | `string` | `''` | URL explícita do WASM; inicialização física |
+| `startingHeight` | `number` | `7.6` | plano de liberação; após offsets opcionais, a altura efetiva é limitada a `2.8–8.1` |
+| `spinForce` | `number` | `5.8` | velocidade angular de liberação |
+| `throwForce` | `number` | `6.4` | alcance do lançamento e força das explosões |
+| `aggressiveThrowChance` | `number` | `0.12` | chance seedada por apresentação, entre `0` e `1`, de usar a cauda de maior energia; não seleciona paredes |
+| `wallBounceChance` | `number` | alias deprecated | compatibilidade para `aggressiveThrowChance` |
+| `colliderScale` | `number` | `1.02` | escala do collider dos poliedros; não altera a moeda |
+| `friction` | `number` | `0.54` | atrito do piso |
+| `restitution` | `number` | `0.29` | elasticidade do piso |
+| `linearDamping` | `number` | `0.10` | amortecimento linear |
+| `angularDamping` | `number` | `0.08` | amortecimento angular |
+| `settleTimeout` | `number` | `4200` ms | orçamento de acomodação depois da última liberação (e de cada filho de explosão, a partir do nascimento); passado o orçamento, os dados perdem energia aos poucos até repousar, nunca são cortados; nunca decide o valor |
+| `physicsWasmUrl` | `string` | — | deprecated: a v3 não usa WebAssembly; ignorada |
 
-### Pipeline físico orientado ao resultado
+### Motor físico da v3
 
-A v2.0.4 adiciona `spawnOverscan` e `aggressiveThrowChance` e muda a execução de `mode: 'physics'`. `wallBounceChance` continua aceito somente como alias deprecated. Como o request já contém o valor autoritativo, o renderer usa essa informação somente para coreografar o movimento:
+A trajetória inteira é calculada antes da reprodução, em fatias de 8 ms que não bloqueiam a página:
 
-`startingHeight` não é mais um teto aplicado sobre uma altura aleatória inferior. Ele define diretamente o plano base de liberação nos dois renderers. Com os defaults, todos os corpos começam em `y = 7.6`; `spawnHeightStep: 0` evita a antiga diferença de altura entre entradas. Overrides continuam aceitos, mas o plano efetivo é confinado a `2.8–8.1` depois de aplicar o offset, protegendo o enquadramento e a perspectiva.
+1. o plano de lançamento da v2 (borda, lanes, rows, waves, pouso disperso e velocidade natural) define posições, atrasos e velocidades; na física, cada dado mira parcialmente o centro do grupo e recebe ±22% de energia;
+2. o casco convexo de cada dado vem do collider do tema; os contatos usam planos para piso e paredes e teste de eixos separadores com manifold recortado entre dados;
+3. os contatos são especulativos (um dado rápido não atravessa outro) e a restituição roda em um passe separado; a penetração residual é corrigida em posição;
+4. um dado adormece quando fica parado numa janela de tempo; em repouso sobre uma face ele adormece rápido, inclinado precisa ficar parado mais tempo;
+5. quando todos estão parados, cada dado recebe a rotação de simetria *G* que leva a face do resultado à face que ficou para cima. *G* mapeia o casco sobre si mesmo, então é aplicada ao desenho durante toda a trajetória sem alterar silhueta, contatos ou movimento;
+6. se algum dado terminar inclinado, fora do palco ou sem leitura, a coreografia é recalculada com `seed#n`. Os valores nunca mudam.
 
-1. pré-calcula a face local, a altura de apoio e a duração balística;
-2. cria um kick linear imediato, sem ease-in, e usa o torque excêntrico para determinar o sentido predominante do tumble;
-3. limita o plano angular por número de voltas e velocidade média, então deriva uma pose inicial que ainda não expõe a face resolvida;
-4. executa a trajetória quaternion móvel `q(t)` em plateau até 72% do voo e desacelera somente no trecho final, com integral exata compartilhada pelo preflight;
-5. preserva twist/yaw em torno da face planejada e corrige somente o tilt causado por perturbações;
-6. aplica ao grupo uma variação contínua de energia e direção; `aggressiveThrowChance` apenas seleciona a cauda mais intensa dessa distribuição;
-7. aproxima a face com uma inclinação segura de aresta/canto, limita a velocidade vertical descendente e converge `x/z` no pouso disperso antes do primeiro contato;
-8. habilita `angularDamping` depois do primeiro impacto e inicia a acomodação física guiada sem sobrescrever a resposta horizontal produzida por contatos reais.
+A política varia com a quantidade de corpos:
 
-Com `throwForce: 6.4`, a velocidade horizontal base usa `distance × force × 0.22`, respeita um impulso mínimo e é limitada a `17.5`. A variação contínua de energia/direção da apresentação e um pequeno fator por corpo podem elevá-la até o cap final `19.5`. Forças maiores aumentam o alcance projetado, sem transformar contato com parede em requisito. A gravidade continua acelerando a descida depois da liberação. O trecho inicial fora da projeção não altera o resultado planejado: ele apenas antecipa o ponto físico de spawn para que a entrada seja percebida como arremesso, e não como surgimento dentro do canvas.
+| Corpos | Tentativas | Passo | Dados inclinados aceitos |
+|---:|---:|---:|---|
+| até 16 | até 6 | 1/120 s, 12 iterações | nenhum |
+| 17–40 | até 2 | 1/120 s, 10 iterações | até 6% |
+| mais de 40 | 1 | 1/90 s, 8 iterações | pilha livre; dados parados passam a sustentar os seguintes |
 
-`aggressiveThrowChance` é sorteado uma vez para a apresentação inteira. Quando selecionado, ele amplia a cauda de energia e o envelope angular compartilhado; cada corpo recebe apenas jitter contínuo menor. Aim e landing continuam confinados dentro das barreiras. Na distribuição de teste com o default, 75–93% das trajetórias projetadas são diretas. As demais podem projetar alcance até parede adjacente, parede oposta ou canto, mas o vetor não codifica uma categoria de impacto e somente o Havok decide se o corpo realmente toca uma barreira. Se as duas opções forem fornecidas, `aggressiveThrowChance` tem precedência sobre o alias `wallBounceChance`.
+Em rerolagens, o dado parte do repouso, então *G* não pode existir desde o primeiro quadro. O motor registra a janela em que o dado está no ar (sem contato) e mistura *G* apenas nesse intervalo, sem salto visível.
 
-Depois de calcular o ETA balístico, o preflight deriva a viagem angular diretamente da velocidade planejada: `(vx × ETA, Δy, vz × ETA)`. Isso mantém tumble e inclinação de contato coerentes com o vetor real, inclusive quando sua projeção deixa de ser direta.
+O laço usa apenas `+ − × ÷` e `√`: com a mesma `seed`, os mesmos dados e o mesmo tamanho de palco, os quadros são idênticos em qualquer navegador.
 
-A auditoria da v1.0.6 mediu velocidades angulares instantâneas de aproximadamente `40–100 rad/s`. Esse regime não é copiado literalmente porque se mostrou instável na cena Havok atual. Com `spinForce: 5.8`, a v2.0.4 expressa o tumble por um número previsível de voltas e limita a velocidade angular média:
+### Skin, partículas e brilho
 
-| Geometria | Voltas planejadas | Velocidade média máxima |
-|---|---:|---:|
-| d2 | 2,5 | 22 rad/s |
-| d20 | 2,45 | 20 rad/s |
-| demais poliedros | 2,35 | 20 rad/s |
+As três são opcionais (`null` por padrão) e podem ser trocadas por `updateOptions()`. A skin vale a partir da próxima apresentação; partículas e brilho mudam na hora (o que ainda está emitindo passa a usar o novo efeito).
 
-O eixo resultante é predominantemente horizontal e transversal à viagem, reproduzindo o efeito do impulso fora do centro. Pequenas parcelas seedadas na direção da viagem e no eixo vertical preservam variação visual. As voltas são deliberadamente não inteiras: ao inverter o plano no preflight, a orientação inicial fica afastada do resultado e evita que a face resolvida já apareça no topo antes do primeiro frame físico.
+```ts
+type DiceSkinBlend = 'normal' | 'multiply' | 'screen' | 'overlay'
 
-A velocidade permanece em plateau até `72%` do voo. Somente nos `28%` finais ela desacelera por uma curva suave cuja integral analítica também normaliza o ângulo usado no preflight; assim, `q(1)` continua exatamente compatível com a pose de contato. O spin feed-forward planejado no contato é limitado a `2.6 rad/s`. Durante a aproximação, o freio linear nunca reduz o plano horizontal abaixo de `max(2.2, 0.4 × velocidade horizontal inicial)`.
+interface DiceSkinOptions {
+  readonly texture: string        // URL, data: ou blob:
+  readonly scale?: number         // repetições por dado (0.05–20), padrão 1
+  readonly blend?: DiceSkinBlend  // camada sobre themeColor, padrão normal
+  readonly opacity?: number       // 0–1, padrão 1 (0 = só a cor)
+  readonly labels?: 'auto' | 'light' | 'dark'
+}
 
-Durante os primeiros 60% da acomodação, uma sustentação angular limitada e decrescente preserva a sensação de rolagem. Ela nunca reduz uma velocidade maior causada por uma colisão. Depois de qualquer contato com parede, piso ou outro dado, o soft landing deixa de reescrever `x/z` e preserva a resposta linear calculada pelo Havok; o damping normal da fase de settle continua podendo dissipá-la gradualmente. Depois desse trecho, os amortecimentos convergem progressivamente até seus valores de assentamento.
+type DiceParticlePreset =
+  | 'sparkle' | 'fire' | 'arcane' | 'frost' | 'dust' | 'confetti' | 'electric' | 'smoke'
+  | 'lava' | 'storm' | 'holy' | 'shadow' | 'poison' | 'nature' | 'cosmic'
+type ParticleShape = 'soft' | 'spark' | 'star' | 'ring' | 'confetti' | 'smoke'
+type ParticleMoment = 'trail' | 'ground' | 'impact' | 'collision' | 'settle' | 'aura' | 'explode' | 'critical'
 
-| Dado | Início do freio | Descida máxima | Duração do guidance | Lock normal elegível após |
-|---|---:|---:|---:|---:|
-| d2 | 80% | 1.4 | 1.450 ms | 1.900 ms |
-| d4 | 83% | 2.0 | 1.900 ms | 2.400 ms |
-| d6 | 86% | 2.5 | 1.850 ms | 2.300 ms |
-| d8 | 86% | 2.6 | 1.800 ms | 2.300 ms |
-| d10 | 85% | 2.2 | 1.750 ms | 2.300 ms |
-| d12 | 86% | 2.6 | 1.800 ms | 2.300 ms |
-| d20 | 92% | 3.6 | 1.700 ms | 2.400 ms |
-| d100 | 85% | 2.2 | 1.750 ms | 2.300 ms |
+interface DiceParticleOptions {
+  readonly preset?: DiceParticlePreset
+  readonly effect?: ParticleEffectDefinition  // tem precedência sobre preset
+  readonly intensity?: number                 // 0–3, padrão 1 (multiplica a quantidade)
+  readonly size?: number                      // 0.2–4, padrão 1 (multiplica o tamanho)
+  readonly color?: string                     // recolore todos os emissores mantendo a rampa de brilho
+  readonly shape?: ParticleShape              // mesma forma para todos os emissores
+  readonly moments?: Partial<Record<ParticleMoment, boolean>>  // false desliga o momento
+}
 
-O guidance pós-impacto possui limites próprios de velocidade e aceleração angular por geometria. O lock normal exige face dentro da tolerância, apoio e baixa velocidade durante a janela mínima acima. Dentro da zona morta natural (`0,024` radiano; `0,018` para d2), o motor deixa de corrigir tilt. Um contato tardio ou baixo com outro dado pode fornecer apoio; enquanto ainda é recente e instável ele bloqueia o lock, mas contato sustentado e estável é aceito.
+interface ParticleEffectDefinition {
+  readonly trail?: ParticleEmitterOptions     // voo (proporcional à velocidade, cheio a 6 u/s)
+  readonly ground?: ParticleEmitterOptions    // rastro na mesa; amount por unidade percorrida
+  readonly impact?: ParticleEmitterOptions    // dado batendo forte na mesa
+  readonly collision?: ParticleEmitterOptions // dados se chocando (a 70% da força, entre os dois)
+  readonly settle?: ParticleEmitterOptions    // repouso
+  readonly aura?: ParticleEmitterOptions      // dados parados, por auraSeconds
+  readonly explode?: ParticleEmitterOptions   // filho de explosão nascendo
+  readonly critical?: ParticleEmitterOptions  // críticos da timeline
+  readonly auraSeconds?: number               // padrão 2,5
+}
 
-Ao iniciar o lock normal, o renderer preserva a posição e o quaternion físicos atuais; não existe alinhamento exato de yaw/pose nem correção de altura no fim. A única exigência visual é manter a face recebida segura no topo. O caminho normal zera as velocidades nessa pose física e segue diretamente para `STATIC`, sem mudar o corpo para `ANIMATED` nem interpolá-lo através de vizinhos. Isso preserva pilhas e permite que dados já acomodados sirvam de suporte estável. Somente o fallback de timeout usa um `finalLock` `ANIMATED` de pelo menos 220 ms para corrigir até dentro do cone seguro, mantendo inclinação residual.
+interface ParticleEmitterOptions {
+  readonly amount: number                     // por segundo (trail, aura), por unidade (ground) ou por evento
+  readonly life: readonly [number, number]    // segundos
+  readonly size: readonly [number, number]    // diâmetro, unidades do mundo
+  readonly speed: readonly [number, number]
+  readonly direction?: 'up' | 'out' | 'sphere' | 'back'
+  readonly gravity?: number                   // positivo cai, negativo sobe
+  readonly drag?: number
+  readonly swirl?: number                     // radianos por segundo
+  readonly colors: readonly string[]          // #rgb, #rrggbb ou #rrggbbaa ao longo da vida
+  readonly palette?: readonly string[]        // cada partícula sorteia uma cor; colors só esmaece
+  readonly blend?: ParticleBlend              // add (brilho) ou alpha (fumaça, confete)
+  readonly grow?: number                      // tamanho final relativo, padrão 0.3
+  readonly flicker?: number                   // cintilação 0–1
+  readonly shape?: ParticleShape              // padrão soft; spark segue o movimento
+  readonly spin?: number                      // rotação do sprite, rad/s
+  readonly when?: ParticleCondition           // quando o emissor toca (padrão: sempre)
+}
 
-O lançamento ativa o corpo Havok antes de aplicar o impulso, preservando as velocidades planejadas. A resolução é adaptativa: `90 Hz` para um corpo, `180 Hz` para 2–24 e `120 Hz` para grupos maiores. Se o envelope do spawn estiver ocupado no instante previsto, a admissão é reavaliada nos subpassos seguintes sem desabilitar as colisões dos corpos já ativos. O fallback de timeout é executado individualmente, não começa durante colisão recente e volta a `DYNAMIC` quando uma correção animada encontra outro dado.
+interface ParticleCondition {
+  readonly minForce?: number                  // impact/collision: força mínima (velocidade × massa)
+  readonly minSpeed?: number                  // trail/ground: velocidade mínima (u/s)
+  readonly sides?: readonly number[]          // só estes tipos de dado, ex. [20]
+  readonly faces?: 'max' | 'min' | readonly number[]  // só estes resultados do dado inteiro
+  readonly chance?: number                    // 0–1 por evento (momentos contínuos: uma vez por dado e rolagem)
+  readonly cooldown?: number                  // impact/collision: segundos entre disparos do mesmo dado
+}
 
-As paredes usam material interno fixo e independente: fricção `0.10` e restituição `0.54`. Se uma trajetória alcançar uma barreira, esse material permite uma resposta lateral viva sem reduzir a estabilidade do piso configurado pelas opções públicas; ele não força o contato.
+interface DiceGlowOptions {
+  readonly color?: string                     // padrão: a cor de cada dado
+  readonly intensity?: number                 // 0–3, padrão 1
+  readonly light?: boolean                    // luz na mesa, padrão true
+  readonly pulse?: boolean                    // respiração lenta, padrão false
+}
+```
 
-Dados, piso e cada parede usam bits de membership distintos (`DICE`, `FLOOR` e um bit por lado). Durante a entrada, a máscara do dado contém `DICE`, `FLOOR`, as duas paredes adjacentes e a parede oposta, removendo apenas o bit da parede que funciona como portal. Por isso colisões dado-dado já existem desde a liberação. Depois que o collider cruza totalmente a face interna, o bit da parede de lançamento é restaurado. O preset de integração do frontend local acompanha `startingHeight: 7.6`, `throwForce: 6.4`, `spawnSpacing: 1.72`, `aggressiveThrowChance: 0.12` e `spawnOverscan: 0.15`.
+A skin é projetada no corpo do dado por mapeamento triplanar (independente do atlas) e combinada com `themeColor` como camada: `normal` mostra só a imagem, `multiply` escurece (ex.: mármore sobre azul vira mármore azul), `screen` clareia e `overlay` preserva o contraste. Com `labels: 'auto'`, a cor dos números segue o brilho médio resultante e um contorno de contraste é desenhado em volta deles. A imagem é redimensionada para 512² (vale qualquer tamanho, inclusive em WebGL1) e precisa permitir CORS quando vem de outra origem. Skins valem para temas de material `color`.
 
-`TELEPORT` é um caminho de recuperação excepcional para corpo fora do palco ou transformação não finita. Nem o preflight, nem o guidance, nem o timeout leem ou recalculam `value`; a face física é uma saída visual do valor recebido.
+Moedas coloridas recebem a mesma skin na face e na borda; quando o corpo fica claro (pela skin ou pela cor), a marca neutra da moeda é invertida para escuro, como o atlas dos dados.
+
+`faces` e `sides` se referem ao dado inteiro: um d100 é um dado de 100 lados com valores 1–100 (as duas peças contam juntas) e `'max'` significa o valor igual ao número de lados. Numa colisão, basta um dos dois dados atender. `playParticles()` ignora as condições.
+
+O brilho ilumina o corpo em modo *screen* (dados escuros ganham a cor da luz, dados claros não estouram), soma um halo na silhueta e, com `light`, uma poça de luz na mesa que se abre e esmaece com a altura do dado. Dados descartados perdem o brilho junto com a saturação.
+
+As partículas são cosméticas, mas seguem a `seed` da apresentação. O motor (até 4.000 partículas vivas, point sprites) é um chunk importado na primeira apresentação que usa `particles`; os 15 presets são outro chunk, importado só quando um `preset` é usado (`loadParticlePresets()` também os carrega, para editores próprios). Todo preset define os oito momentos. Partículas vivas da rolagem anterior continuam se apagando quando uma nova começa. Opções inválidas são rejeitadas com o caminho do campo (por exemplo `Viewer option particles.effect.trail.colors[0] must be #rgb, #rrggbb or #rrggbbaa.`).
+
+### Visuais (arquivos da oficina)
+
+Um visual junta cor, skin, partículas e brilho num objeto versionado, pronto para virar arquivo JSON:
+
+```ts
+interface DiceLook {
+  readonly format: 'dice3dview-look'          // DICE_LOOK_FORMAT
+  readonly version: 1                         // DICE_LOOK_VERSION
+  readonly name?: string
+  readonly themeColor?: string                // #rrggbb; mantém a cor atual quando ausente
+  readonly skin?: DiceSkinOptions | null
+  readonly particles?: DiceParticleOptions | null
+  readonly glow?: DiceGlowOptions | null
+}
+
+createDiceLook(parts): DiceLook               // valida e acrescenta format e version
+diceLookOptions(look: unknown): DiceLookOptions // valida um objeto ou JSON lido; devolve { themeColor?, skin, particles, glow }
+viewer.applyLook(look): Promise<void>         // diceLookOptions + updateOptions
+```
+
+Partes que o visual não traz são desligadas (`null`), então aplicar um visual sempre substitui o anterior. Erros citam o campo (`Dice look format must be 'dice3dview-look'.`, `Viewer option particles.intensity …`). A oficina da página de teste exporta a textura dentro do arquivo (WebP de até 512 px) e as partículas como definição completa (`effect`), então o arquivo não depende de URLs externas nem do chunk de presets.
 
 ### Callbacks
 
@@ -423,7 +538,7 @@ interface CollisionEvent {
 
 | Callback | Momento |
 |---|---|
-| `onCollision(event)` | colisões no modo físico |
+| `onCollision(event)` | impacto entre dois dados (um evento por par e episódio); `force` é a velocidade de aproximação vezes a menor massa |
 | `onThemeConfigLoaded(theme)` | configuração resolvida quando ainda não estava no cache |
 | `onThemeLoaded(theme)` | uma vez por tema distinto usado na apresentação |
 
@@ -441,7 +556,7 @@ import {
 
 `DISPLAY_CANCELLED_CODE` vale `DISPLAY_CANCELLED`.
 
-Uma nova apresentação ou `clear()` aborta a anterior. O helper reconhece tanto uma instância da classe quanto um objeto externo que contenha o mesmo código:
+Uma nova apresentação ou `clear()` aborta a anterior, inclusive durante o cálculo da trajetória. O helper reconhece tanto uma instância da classe quanto um objeto externo que contenha o mesmo código:
 
 ```ts
 try {
@@ -454,11 +569,11 @@ try {
 
 ## Falhas e autoridade do resultado
 
-Existem três categorias:
+Existem quatro categorias:
 
 1. **Entrada inválida:** rejeita antes da apresentação.
 2. **Cancelamento:** rejeita com `DisplayCancelledError`.
-3. **Falha gráfica, de asset ou física em `display()`:** registra o erro e devolve o resultado normalizado.
+3. **Falha gráfica ou de asset em `display()`:** registra o erro e devolve o resultado normalizado.
 4. **Falha durante `displayTimeline()`:** propaga o erro para impedir sucesso parcial.
 
 Em nenhum caso a biblioteca sorteia um valor substituto. O resultado do chamador continua autoritativo.
@@ -470,7 +585,6 @@ Por padrão:
 ```text
 tema interno:  ${origin}${assetPath}themes/${theme}/theme.config.json
 modelo padrão: ${origin}${assetPath}themes/default/default.json
-Havok WASM:    ${origin}${assetPath}havok/HavokPhysics.wasm
 ```
 
 Exemplo com CDN:
@@ -480,14 +594,13 @@ const viewer = new DiceResultViewer({
   container: '#dice-stage',
   origin: 'https://static.example.com',
   assetPath: '/erpg/dice-box/',
-  physicsWasmUrl: 'https://static.example.com/erpg/dice-box/havok/HavokPhysics.wasm',
   externalThemes: {
     bronze: 'https://static.example.com/themes/bronze'
   }
 })
 ```
 
-O servidor deve permitir CORS para temas externos e servir `.wasm` preferencialmente como `application/wasm`.
+O servidor deve permitir CORS para temas externos: modelos e texturas são lidos pelo WebGL.
 
 ## SSR e frameworks
 
@@ -495,7 +608,7 @@ O módulo pode ser referenciado por tipos em código universal, mas a instância
 
 ```ts
 if(typeof window !== 'undefined') {
-  const { DiceResultViewer } = await import('@erpg/dice3dview/external')
+  const { DiceResultViewer } = await import('@erpg/dice3dview')
   const viewer = new DiceResultViewer({ container: '#dice-stage' })
   await viewer.init()
 }

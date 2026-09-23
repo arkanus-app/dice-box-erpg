@@ -32,8 +32,9 @@ try {
 		enableShadows: true
 	}))
 	await coldPage.evaluate(() => window.diceSmoke.runTimeline())
+	await coldPage.evaluate(() => window.diceSmoke.runTimelineEffects())
 	await coldPage.evaluate(() => window.diceSmoke.runCancellation())
-	await coldPage.evaluate(() => window.diceSmoke.runDisplay({ sides: 20, values: [17], mode: 'physics' }))
+	await coldPage.evaluate(() => window.diceSmoke.runDisplay({ sides: 100, values: [37] }))
 	const cold = await coldPage.evaluate(() => ({
 		importMs: window.diceSmoke.importMs,
 		...window.diceSmoke.resourceMetrics()
@@ -55,7 +56,7 @@ try {
 		cold: { ...cold, initMs: d20.initMs, firstDisplayMs: d20.displayMs },
 		warm: { ...warm, initMs: warmD20.initMs, firstDisplayMs: warmD20.displayMs }
 	}, null, 2))
-	console.log('Chromium smoke passed: d20, 12d6, shadows off/on, timeline, physics, cancellation, and disposal.')
+	console.log('Chromium smoke passed: d20, 12d6, d100, shadows off/on, timeline (explosion, reroll), cancellation, and disposal.')
 } finally {
 	await browser?.close()
 	await server.close()

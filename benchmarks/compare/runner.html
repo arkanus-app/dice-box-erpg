@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>benchmark runner</title>
+    <style>
+      html, body { margin: 0; width: 100%; height: 100%; background: #0b0d16; overflow: hidden; }
+      #stage { position: fixed; inset: 0; }
+    </style>
+  </head>
+  <body>
+    <div id="stage"></div>
+    <script type="module">
+      // One library per page load: ?lib=v2|v3&mode=physics|kinematic&repeats=3
+      const params = new URLSearchParams(location.search)
+      const lib = params.get('lib') === 'v2' ? 'v2' : 'v3'
+      const mode = params.get('mode') === 'kinematic' ? 'kinematic' : 'physics'
+      const repeats = Math.max(1, Number(params.get('repeats') ?? 3))
+      const base = lib === 'v2' ? '/benchmarks/compare/v2' : '/dist'
+      const SCENARIOS = {
+        d20: [[1, 20]],
+        '4d6': [[4, 6]],
+        'd4–d20': [[1, 4], [1, 6], [1, 8], [1, 10], [1, 12], [1, 20]],
+        '12d6': [[12, 6]],
+        '30d6': [[30, 6]]
+      }
+
+      const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
+      const median = values => { const sorted = [...values].sort((a, b) => a - b); return sorted[Math.floor(sorted.length / 2)] ?? 0 }
+      const percentile = (values, p) => { const sorted = [...values].sort((a, b) => a - b); return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))] ?? 0 }
+      const round = value => Math.round(value * 10) / 10
+
+      // Frame pacing: rAF intervals while a presentation runs.
+      const intervals = []
+      let recording = false
+      let last = performance.now()
+      const loop = now => {
+        if(recording) intervals.push(now - last)
+        last = now
+        requestAnimationFrame(loop)
+      }
+      requestAnimationFrame(loop)
+      const longTasks = []
+      try {
+        new PerformanceObserver(list => { for(const entry of list.getEntries()) if(recording) longTasks.push(entry.duration) }).observe({ entryTypes: ['longtask'] })
+      } catch {}
+
+      const dice = sets => sets.flatMap(([count, sides], set) => Array.from({ length: count }, (_, index) => ({
+        id: `s${set}-${index}`,
+        sides,
+        value: 1 + (index * 7 + set * 3) % sides
+      })))
+
+      const measure = async (name, rep) => {
+        intervals.length = 0
+        longTasks.length = 0
+        recording = true
+        const started = performance.now()
+        await viewer.display({ id: `bench-${name}-${rep}`, seed: `bench-${name}-${rep}`, dice: dice(SCENARIOS[name]), ...(lib === 'v2' ? { mode } : {}) })
+        const wallMs = performance.now() - started
+        recording = false
+        const frames = intervals.slice(1)
+        return {
+          wallMs,
+          frames: frames.length,
+          meanFrameMs: frames.reduce((sum, value) => sum + value, 0) / Math.max(1, frames.length),
+          p95FrameMs: percentile(frames, 0.95),
+          worstFrameMs: Math.max(0, ...frames),
+          droppedFrames: frames.filter(value => value > 25).length,
+          longTasks: longTasks.length,
+          longTaskMs: longTasks.reduce((sum, value) => sum + value, 0)
+        }
+      }
+
+      const report = {}
+      try {
+        report.lib = lib
+        report.mode = mode
+        const importStart = performance.now()
+        const module = await import(`${base}/dice3dview.es.js`)
+        report.importMs = round(performance.now() - importStart)
+        const style = document.createElement('link')
+        style.rel = 'stylesheet'
+        style.href = `${base}/dice3dview.css`
+        document.head.append(style)
+        const initStart = performance.now()
+        var viewer = new module.DiceResultViewer({
+          container: '#stage',
+          assetPath: `${base}/assets/dice-box/`,
+          theme: 'default',
+          themeColor: '#2e8555',
+          scale: 4.6,
+          ...(lib === 'v2' ? { mode } : {})
+        })
+        await viewer.init()
+        report.initMs = round(performance.now() - initStart)
+        // Cold start: the first presentation also loads the theme (and v2 physics: Havok WASM).
+        const cold = await measure('d20', 'cold')
+        report.firstDisplayMs = round(cold.wallMs)
+        report.scenarios = {}
+        for(const name of Object.keys(SCENARIOS)) {
+          const runs = []
+          for(let rep = 0; rep < repeats; rep++) {
+            runs.push(await measure(name, rep))
+            await sleep(250)
+          }
+          report.scenarios[name] = {
+            wallMs: round(median(runs.map(run => run.wallMs))),
+            meanFrameMs: round(median(runs.map(run => run.meanFrameMs))),
+            p95FrameMs: round(median(runs.map(run => run.p95FrameMs))),
+            worstFrameMs: round(Math.max(...runs.map(run => run.worstFrameMs))),
+            droppedFrames: round(median(runs.map(run => run.droppedFrames))),
+            longTasks: round(median(runs.map(run => run.longTasks))),
+            longTaskMs: round(median(runs.map(run => run.longTaskMs)))
+          }
+        }
+        report.heapMb = performance.memory ? round(performance.memory.usedJSHeapSize / 1048576) : null
+        report.transferKb = round(performance.getEntriesByType('resource')
+          .filter(entry => entry.name.includes(base))
+          .reduce((sum, entry) => sum + (entry.transferSize || entry.encodedBodySize || 0), 0) / 1024)
+      } catch(error) {
+        report.error = error instanceof Error ? `${error.message}\n${error.stack ?? ''}` : String(error)
+      }
+      parent.postMessage({ type: 'dice3dview-benchmark', report }, '*')
+    </script>
+  </body>
+</html>
