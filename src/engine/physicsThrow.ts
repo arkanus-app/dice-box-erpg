@@ -1,4 +1,5 @@
 import { DisplayCancelledError } from '../errors'
+import { dcos, dsin } from './dmath'
 import { createSeededRandom } from '../random'
 import { LAUNCH_EDGE_WALL } from './launch'
 import { simulateSteps, type SimulationBody, type SimulationOptions, type SimulationResult } from './simulation'
@@ -288,7 +289,7 @@ export function* followUpThrowSteps(input: FollowUpThrow, seed: string, options:
 			return {
 				...base, ...readUp,
 				value: body.value,
-				velocity: [Math.cos(heading) * drift, up, Math.sin(heading) * drift],
+				velocity: [dcos(heading) * drift, up, dsin(heading) * drift],
 				angularVelocity: [axis[0] * tumble, axis[1] * tumble + yaw, axis[2] * tumble],
 				portal: -1,
 				retoss: true

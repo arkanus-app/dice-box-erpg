@@ -26,6 +26,14 @@ describe('viewer and theme configuration boundaries', () => {
 		}
 	})
 
+	it('follows the system for reduced motion unless told otherwise', () => {
+		assert.equal(createViewerOptions({}).reducedMotion, 'auto')
+		for(const reducedMotion of ['auto', 'always', 'never'] as const) {
+			assert.doesNotThrow(() => validateViewerOptions(createViewerOptions({ reducedMotion })))
+		}
+		assert.throws(() => validateViewerOptions(createViewerOptions({ reducedMotion: 'sometimes' as 'auto' })), /reducedMotion/)
+	})
+
 	it('keeps the last valid options when a merged update is rejected', () => {
 		const current = createViewerOptions({ scale: 5, gravity: 1.3 })
 		validateViewerOptions(current)

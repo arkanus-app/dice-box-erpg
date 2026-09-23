@@ -294,48 +294,93 @@ ${fragment ? '#define DERIVATIVES\nout highp vec4 fragColor;\n' : ''}${source
 export class DiceGL {
 	readonly gl: AnyGL
 	readonly webgl2: boolean
-	readonly #derivatives: boolean
-	readonly #uint32: boolean
-	readonly #anisotropy: EXT_texture_filter_anisotropic | null
-	readonly #surface: Program
-	readonly #halo: Program
-	readonly #shadow: Program
-	readonly #ring: Program
-	readonly #light: Program
+	// Everything below belongs to the current context and is rebuilt by #setup after a restore.
+	#derivatives = false
+	#uint32 = false
+	#anisotropy: EXT_texture_filter_anisotropic | null = null
+	/** Instanced drawing (WebGL2, or ANGLE_instanced_arrays on WebGL1); particles need it. */
+	#instancing: {
+		readonly divisor: (location: number, divisor: number) => void
+		readonly draw: (mode: number, first: number, count: number, instances: number) => void
+	} | null = null
+	#surface!: Program
+	#halo!: Program
+	#shadow!: Program
+	#ring!: Program
+	#light!: Program
 	/** Compiled on the first particle draw (the shaders come with the particle chunk). */
 	#particle: Program | null = null
-	readonly #particleBuffer: WebGLBuffer
+	#particleBuffer!: WebGLBuffer
 	#particleBytes = 0
-	readonly #maxPoint: number
-	readonly #quad: WebGLBuffer
+	#quad!: WebGLBuffer
 	#lost = false
+	// Redundant state skipped between draws: frame uniforms per program, the
+	// current surface material and the mesh bound for a program.
+	#surfaceFrame: FrameSetup | null = null
+	#haloFrame: FrameSetup | null = null
+	#surfaceMaterial: SurfaceMaterial | null = null
+	#boundMesh: GLMesh | null = null
+	#boundProgram: Program | null = null
+	readonly #rotation = new Float32Array(9)
 
-	constructor(canvas: HTMLCanvasElement, antialias: boolean) {
+	/** `onRestore` runs after a lost context comes back and the programs are rebuilt. */
+	constructor(canvas: HTMLCanvasElement, antialias: boolean, onRestore?: () => void) {
 		const attributes: WebGLContextAttributes = { alpha: true, antialias, premultipliedAlpha: true, preserveDrawingBuffer: false, depth: true }
 		const webgl2 = canvas.getContext('webgl2', attributes)
 		const gl = webgl2 ?? canvas.getContext('webgl', attributes) ?? canvas.getContext('experimental-webgl', attributes) as WebGLRenderingContext | null
 		if(!gl) throw new Error('WebGL is unavailable in this browser.')
 		this.gl = gl
 		this.webgl2 = Boolean(webgl2)
+		this.#setup()
+		canvas.addEventListener('webglcontextlost', event => {
+			event.preventDefault()
+			this.#lost = true
+		})
+		canvas.addEventListener('webglcontextrestored', () => {
+			this.#setup()
+			this.#lost = false
+			onRestore?.()
+		})
+	}
+
+	/** Extensions, programs and buffers of the current context. */
+	#setup(): void {
+		const gl = this.gl
 		this.#derivatives = this.webgl2 || Boolean(gl.getExtension('OES_standard_derivatives'))
 		this.#uint32 = this.webgl2 || Boolean(gl.getExtension('OES_element_index_uint'))
 		this.#anisotropy = gl.getExtension('EXT_texture_filter_anisotropic')
 			?? gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic') as EXT_texture_filter_anisotropic | null
+		if(this.webgl2) {
+			const gl2 = gl as WebGL2RenderingContext
+			this.#instancing = {
+				divisor: (location, divisor) => gl2.vertexAttribDivisor(location, divisor),
+				draw: (mode, first, count, instances) => gl2.drawArraysInstanced(mode, first, count, instances)
+			}
+		} else {
+			const extension = gl.getExtension('ANGLE_instanced_arrays')
+			this.#instancing = extension
+				? {
+					divisor: (location, divisor) => extension.vertexAttribDivisorANGLE(location, divisor),
+					draw: (mode, first, count, instances) => extension.drawArraysInstancedANGLE(mode, first, count, instances)
+				}
+				: null
+		}
 		this.#surface = this.#compile(VERTEX, FRAGMENT)
 		this.#halo = this.#compile(VERTEX, HALO_FRAGMENT)
 		this.#shadow = this.#compile(QUAD_VERTEX, SHADOW_FRAGMENT)
 		this.#ring = this.#compile(QUAD_VERTEX, RING_FRAGMENT)
 		this.#light = this.#compile(QUAD_VERTEX, LIGHT_FRAGMENT)
+		this.#particle = null
 		const particleBuffer = gl.createBuffer()
 		if(!particleBuffer) throw new Error('Unable to create a WebGL buffer.')
 		this.#particleBuffer = particleBuffer
-		const pointRange = gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE) as Float32Array | null
-		this.#maxPoint = Math.max(1, pointRange?.[1] ?? 64)
+		this.#particleBytes = 0
 		this.#quad = this.#buffer(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]))
-		canvas.addEventListener('webglcontextlost', event => {
-			event.preventDefault()
-			this.#lost = true
-		})
+		this.#surfaceFrame = null
+		this.#haloFrame = null
+		this.#surfaceMaterial = null
+		this.#boundMesh = null
+		this.#boundProgram = null
 	}
 
 	get lost(): boolean {
@@ -381,6 +426,7 @@ export class DiceGL {
 		if(!buffer) throw new Error('Unable to create a WebGL buffer.')
 		gl.bindBuffer(target, buffer)
 		gl.bufferData(target, data as unknown as BufferSource, gl.STATIC_DRAW)
+		this.#boundProgram = null
 		return buffer
 	}
 
@@ -410,6 +456,8 @@ export class DiceGL {
 		const height = 'height' in source ? Number(source.height) : 1
 		const powerOfTwo = (width & (width - 1)) === 0 && (height & (height - 1)) === 0
 		const mipmap = (options.mipmap ?? true) && (this.webgl2 || powerOfTwo)
+		// Binding a texture changes the unit the cached material relies on.
+		this.#surfaceMaterial = null
 		gl.bindTexture(gl.TEXTURE_2D, texture)
 		gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
 		gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false)
@@ -425,11 +473,13 @@ export class DiceGL {
 	}
 
 	deleteTexture(texture: GLTexture): void {
+		this.#surfaceMaterial = null
 		this.gl.deleteTexture(texture.texture)
 	}
 
 	deleteMesh(mesh: GLMesh): void {
 		const gl = this.gl
+		this.#boundProgram = null
 		for(const buffer of [mesh.position, mesh.normal, mesh.uv, mesh.index]) gl.deleteBuffer(buffer)
 	}
 
@@ -441,11 +491,12 @@ export class DiceGL {
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	}
 
-	drawShadows(frame: FrameSetup, shadows: readonly { readonly x: number; readonly z: number; readonly size: number; readonly alpha: number }[]): void {
-		if(!shadows.length) return
+	/** One flat quad per item on the table (shadows, rings and pools of light share it). */
+	#drawQuads(frame: FrameSetup, program: Program, height: number, items: readonly { readonly x: number; readonly z: number; readonly size: number; readonly alpha: number; readonly color?: ReadonlyVec3 }[]): void {
+		if(!items.length) return
 		const gl = this.gl
-		const { program, attributes, uniforms } = this.#shadow
-		gl.useProgram(program)
+		const { attributes, uniforms } = program
+		gl.useProgram(program.program)
 		gl.disable(gl.DEPTH_TEST)
 		gl.disable(gl.CULL_FACE)
 		gl.depthMask(false)
@@ -453,42 +504,36 @@ export class DiceGL {
 		gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
 		gl.uniformMatrix4fv(uniforms.uViewProj ?? null, false, frame.viewProjection)
 		this.#bindQuad(attributes.aCorner)
-		for(const shadow of shadows) {
-			gl.uniform3f(uniforms.uCenter ?? null, shadow.x, 0.002, shadow.z)
-			gl.uniform2f(uniforms.uSize ?? null, shadow.size, shadow.size)
-			gl.uniform1f(uniforms.uAlpha ?? null, shadow.alpha)
+		for(const item of items) {
+			gl.uniform3f(uniforms.uCenter ?? null, item.x, height, item.z)
+			gl.uniform2f(uniforms.uSize ?? null, item.size, item.size)
+			gl.uniform1f(uniforms.uAlpha ?? null, item.alpha)
+			if(item.color) gl.uniform3f(uniforms.uColor ?? null, item.color[0], item.color[1], item.color[2])
 			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
 		}
+	}
+
+	drawShadows(frame: FrameSetup, shadows: readonly { readonly x: number; readonly z: number; readonly size: number; readonly alpha: number }[]): void {
+		this.#drawQuads(frame, this.#shadow, 0.002, shadows)
 	}
 
 	/** Pools of light cast on the table by glowing dice (drawn before the shadows). */
 	drawLights(frame: FrameSetup, lights: readonly { readonly x: number; readonly z: number; readonly size: number; readonly alpha: number; readonly color: ReadonlyVec3 }[]): void {
-		if(!lights.length) return
-		const gl = this.gl
-		const { program, attributes, uniforms } = this.#light
-		gl.useProgram(program)
-		gl.disable(gl.DEPTH_TEST)
-		gl.disable(gl.CULL_FACE)
-		gl.depthMask(false)
-		gl.enable(gl.BLEND)
-		gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
-		gl.uniformMatrix4fv(uniforms.uViewProj ?? null, false, frame.viewProjection)
-		this.#bindQuad(attributes.aCorner)
-		for(const light of lights) {
-			gl.uniform3f(uniforms.uCenter ?? null, light.x, 0.001, light.z)
-			gl.uniform2f(uniforms.uSize ?? null, light.size, light.size)
-			gl.uniform1f(uniforms.uAlpha ?? null, light.alpha)
-			gl.uniform3fv(uniforms.uColor ?? null, f3(light.color))
-			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
-		}
+		this.#drawQuads(frame, this.#light, 0.001, lights)
+	}
+
+	drawRings(frame: FrameSetup, rings: readonly { readonly x: number; readonly z: number; readonly size: number; readonly alpha: number; readonly color: ReadonlyVec3 }[]): void {
+		this.#drawQuads(frame, this.#ring, 0.004, rings)
 	}
 
 	/**
-	 * Draws `count` particles packed as x, y, z, size, r, g, b, a (premultiplied), shape, angle.
-	 * `pointScale` converts a world size at depth w into pixels (viewport height / 2 / tan(fov / 2)).
+	 * Draws `count` particles packed as x, y, z, size, r, g, b, a (premultiplied),
+	 * shape, angle, as instanced quads (no point-size limit of the GPU).
+	 * `pixelScale` converts a world size at depth w into pixels (viewport height / 2 / tan(fov / 2)).
 	 */
-	drawParticles(frame: FrameSetup, data: Float32Array, count: number, additive: boolean, pointScale: number, shaders: ParticleShaders): void {
-		if(count <= 0) return
+	drawParticles(frame: FrameSetup, data: Float32Array, count: number, additive: boolean, pixelScale: number, shaders: ParticleShaders): void {
+		const instancing = this.#instancing
+		if(count <= 0 || !instancing) return
 		const gl = this.gl
 		this.#particle ??= this.#compile(shaders.vertex, shaders.fragment)
 		const { program, attributes, uniforms: u } = this.#particle
@@ -500,9 +545,10 @@ export class DiceGL {
 		if(additive) gl.blendFunc(gl.ONE, gl.ONE)
 		else gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
 		gl.uniformMatrix4fv(u.uViewProj ?? null, false, frame.viewProjection)
-		gl.uniform1f(u.uPointScale ?? null, pointScale)
-		gl.uniform1f(u.uMaxPoint ?? null, this.#maxPoint)
+		gl.uniform1f(u.uPixelScale ?? null, pixelScale)
+		gl.uniform2f(u.uViewport ?? null, gl.drawingBufferWidth, gl.drawingBufferHeight)
 		gl.uniform1f(u.uAdditive ?? null, additive ? 1 : 0)
+		this.#bindQuad(attributes.aCorner)
 		gl.bindBuffer(gl.ARRAY_BUFFER, this.#particleBuffer)
 		const view = data.subarray(0, count * PARTICLE_FLOATS)
 		if(view.byteLength > this.#particleBytes) {
@@ -511,81 +557,72 @@ export class DiceGL {
 		}
 		gl.bufferSubData(gl.ARRAY_BUFFER, 0, view as unknown as BufferSource)
 		const stride = PARTICLE_FLOATS * 4
-		const layout: Array<[string, number, number]> = [['aPos', 3, 0], ['aSize', 1, 12], ['aColor', 4, 16], ['aShape', 1, 32], ['aAngle', 1, 36]]
-		for(const [name, size, offset] of layout) {
+		const locations: number[] = []
+		for(const [name, size, offset] of PARTICLE_LAYOUT) {
 			const location = attributes[name]
 			if(location === undefined || location < 0) continue
 			gl.enableVertexAttribArray(location)
 			gl.vertexAttribPointer(location, size, gl.FLOAT, false, stride, offset)
+			instancing.divisor(location, 1)
+			locations.push(location)
 		}
-		gl.drawArrays(gl.POINTS, 0, count)
-		for(const [name] of layout) {
-			const location = attributes[name]
-			if(location !== undefined && location >= 0) gl.disableVertexAttribArray(location)
-		}
-	}
-
-	drawRings(frame: FrameSetup, rings: readonly { readonly x: number; readonly z: number; readonly size: number; readonly alpha: number; readonly color: ReadonlyVec3 }[]): void {
-		if(!rings.length) return
-		const gl = this.gl
-		const { program, attributes, uniforms } = this.#ring
-		gl.useProgram(program)
-		gl.disable(gl.DEPTH_TEST)
-		gl.disable(gl.CULL_FACE)
-		gl.depthMask(false)
-		gl.enable(gl.BLEND)
-		gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
-		gl.uniformMatrix4fv(uniforms.uViewProj ?? null, false, frame.viewProjection)
-		this.#bindQuad(attributes.aCorner)
-		for(const ring of rings) {
-			gl.uniform3f(uniforms.uCenter ?? null, ring.x, 0.004, ring.z)
-			gl.uniform2f(uniforms.uSize ?? null, ring.size, ring.size)
-			gl.uniform1f(uniforms.uAlpha ?? null, ring.alpha)
-			gl.uniform3fv(uniforms.uColor ?? null, f3(ring.color))
-			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+		instancing.draw(gl.TRIANGLE_STRIP, 0, 4, count)
+		// Divisors are global attribute state: leave them as the other programs expect.
+		for(const location of locations) {
+			instancing.divisor(location, 0)
+			gl.disableVertexAttribArray(location)
 		}
 	}
 
 	drawSurface(frame: FrameSetup, mesh: GLMesh, material: SurfaceMaterial, state: DrawState): void {
 		const gl = this.gl
-		const { program, attributes, uniforms: u } = this.#surface
-		gl.useProgram(program)
+		const surface = this.#surface
+		const u = surface.uniforms
+		gl.useProgram(surface.program)
 		gl.enable(gl.DEPTH_TEST)
 		gl.enable(gl.CULL_FACE)
 		gl.frontFace(mesh.frontFace)
 		gl.cullFace(gl.BACK)
-		gl.uniformMatrix4fv(u.uViewProj ?? null, false, frame.viewProjection)
-		gl.uniformMatrix3fv(u.uRot ?? null, false, rotationMatrix(state.rotation))
-		gl.uniform3fv(u.uPos ?? null, f3(state.position))
+		if(this.#surfaceFrame !== frame) {
+			this.#surfaceFrame = frame
+			gl.uniformMatrix4fv(u.uViewProj ?? null, false, frame.viewProjection)
+			gl.uniform3f(u.uEye ?? null, frame.eye[0], frame.eye[1], frame.eye[2])
+			gl.uniform3f(u.uLightDir ?? null, frame.lightDirection[0], frame.lightDirection[1], frame.lightDirection[2])
+			gl.uniform1f(u.uDirI ?? null, frame.directionalIntensity)
+			gl.uniform1f(u.uHemiI ?? null, frame.hemisphericIntensity)
+			gl.uniform1f(u.uInflate ?? null, 0)
+		}
+		if(this.#surfaceMaterial !== material) {
+			this.#surfaceMaterial = material
+			gl.uniform3f(u.uColor ?? null, material.color[0], material.color[1], material.color[2])
+			gl.uniform3f(u.uEmissive ?? null, material.emissive[0], material.emissive[1], material.emissive[2])
+			gl.uniform3f(u.uSpecular ?? null, material.specular[0], material.specular[1], material.specular[2])
+			gl.uniform1f(u.uUnlit ?? null, material.unlit ? 1 : 0)
+			gl.uniform1f(u.uColorMask ?? null, material.colorMask ? 1 : 0)
+			gl.uniform1f(u.uDiffuseLevel ?? null, material.diffuseLevel ?? 1)
+			this.#bindTexture(0, material.diffuse, u.uDiffuse, u.uHasDiffuse)
+			this.#bindTexture(1, this.#derivatives ? material.bump : undefined, u.uBump, u.uHasBump)
+			gl.uniform1f(u.uBumpLevel ?? null, material.bumpLevel ?? 1)
+			this.#bindTexture(2, material.specularMap, u.uSpecularMap, u.uHasSpecularMap)
+			this.#bindTexture(3, material.skin, u.uSkin, u.uHasSkin)
+			gl.uniform1f(u.uSkinScale ?? null, material.skinScale ?? 1)
+			gl.uniform1f(u.uSkinBlend ?? null, material.skinBlend ?? 0)
+			gl.uniform1f(u.uSkinOpacity ?? null, material.skinOpacity ?? 1)
+			gl.uniform1f(u.uHasOutline ?? null, material.outline ? 1 : 0)
+			const outline = material.outline ?? NO_EMISSION
+			gl.uniform3f(u.uOutline ?? null, outline[0], outline[1], outline[2])
+			gl.uniform2f(u.uDiffuseTexel ?? null, 1 / Math.max(1, material.diffuse?.width ?? 1024), 1 / Math.max(1, material.diffuse?.height ?? 1024))
+		}
+		gl.uniformMatrix3fv(u.uRot ?? null, false, writeRotation(this.#rotation, state.rotation))
+		gl.uniform3f(u.uPos ?? null, state.position[0], state.position[1], state.position[2])
 		gl.uniform1f(u.uScale ?? null, state.scale)
-		gl.uniform1f(u.uInflate ?? null, 0)
-		gl.uniform3fv(u.uEye ?? null, f3(frame.eye))
-		gl.uniform3fv(u.uLightDir ?? null, f3(frame.lightDirection))
-		gl.uniform1f(u.uDirI ?? null, frame.directionalIntensity)
-		gl.uniform1f(u.uHemiI ?? null, frame.hemisphericIntensity)
-		gl.uniform3fv(u.uColor ?? null, f3(material.color))
-		gl.uniform3fv(u.uEmissive ?? null, f3(material.emissive))
-		gl.uniform3fv(u.uSpecular ?? null, f3(material.specular))
-		gl.uniform1f(u.uUnlit ?? null, material.unlit ? 1 : 0)
 		gl.uniform1f(u.uAlpha ?? null, state.alpha)
-		gl.uniform3fv(u.uGlow ?? null, f3(state.glow))
+		gl.uniform3f(u.uGlow ?? null, state.glow[0], state.glow[1], state.glow[2])
 		gl.uniform1f(u.uGlowStrength ?? null, state.glowStrength)
 		gl.uniform1f(u.uSaturation ?? null, state.saturation)
-		gl.uniform3fv(u.uEmission ?? null, f3(state.emission ?? NO_EMISSION))
-		gl.uniform1f(u.uColorMask ?? null, material.colorMask ? 1 : 0)
-		gl.uniform1f(u.uDiffuseLevel ?? null, material.diffuseLevel ?? 1)
-		this.#bindTexture(0, material.diffuse, u.uDiffuse, u.uHasDiffuse)
-		this.#bindTexture(1, this.#derivatives ? material.bump : undefined, u.uBump, u.uHasBump)
-		gl.uniform1f(u.uBumpLevel ?? null, material.bumpLevel ?? 1)
-		this.#bindTexture(2, material.specularMap, u.uSpecularMap, u.uHasSpecularMap)
-		this.#bindTexture(3, material.skin, u.uSkin, u.uHasSkin)
-		gl.uniform1f(u.uSkinScale ?? null, material.skinScale ?? 1)
-		gl.uniform1f(u.uSkinBlend ?? null, material.skinBlend ?? 0)
-		gl.uniform1f(u.uSkinOpacity ?? null, material.skinOpacity ?? 1)
-		gl.uniform1f(u.uHasOutline ?? null, material.outline ? 1 : 0)
-		gl.uniform3fv(u.uOutline ?? null, f3(material.outline ?? [0, 0, 0]))
-		gl.uniform2f(u.uDiffuseTexel ?? null, 1 / Math.max(1, material.diffuse?.width ?? 1024), 1 / Math.max(1, material.diffuse?.height ?? 1024))
-		this.#bindMesh(mesh, attributes)
+		const emission = state.emission ?? NO_EMISSION
+		gl.uniform3f(u.uEmission ?? null, emission[0], emission[1], emission[2])
+		this.#bindMesh(mesh, surface)
 		if(state.alpha >= 0.999) {
 			gl.disable(gl.BLEND)
 			gl.depthMask(true)
@@ -615,8 +652,9 @@ export class DiceGL {
 	drawHalo(frame: FrameSetup, mesh: GLMesh, state: DrawState, inflate: number, grow = 0, weight = 1): void {
 		if(state.glowStrength <= 0.001) return
 		const gl = this.gl
-		const { program, attributes, uniforms: u } = this.#halo
-		gl.useProgram(program)
+		const halo = this.#halo
+		const u = halo.uniforms
+		gl.useProgram(halo.program)
 		gl.enable(gl.DEPTH_TEST)
 		gl.enable(gl.CULL_FACE)
 		gl.frontFace(mesh.frontFace)
@@ -624,15 +662,18 @@ export class DiceGL {
 		gl.depthMask(false)
 		gl.enable(gl.BLEND)
 		gl.blendFunc(gl.ONE, gl.ONE)
-		gl.uniformMatrix4fv(u.uViewProj ?? null, false, frame.viewProjection)
-		gl.uniformMatrix3fv(u.uRot ?? null, false, rotationMatrix(state.rotation))
-		gl.uniform3fv(u.uPos ?? null, f3(state.position))
-		gl.uniform3fv(u.uGlow ?? null, f3(state.glow))
-		this.#bindMesh(mesh, attributes)
-		for(const [layer, share] of [[1, 0.55], [2, 0.3], [3, 0.15]] as const) {
+		if(this.#haloFrame !== frame) {
+			this.#haloFrame = frame
+			gl.uniformMatrix4fv(u.uViewProj ?? null, false, frame.viewProjection)
+		}
+		gl.uniformMatrix3fv(u.uRot ?? null, false, writeRotation(this.#rotation, state.rotation))
+		gl.uniform3f(u.uPos ?? null, state.position[0], state.position[1], state.position[2])
+		gl.uniform3f(u.uGlow ?? null, state.glow[0], state.glow[1], state.glow[2])
+		this.#bindMesh(mesh, halo)
+		for(let layer = 1; layer <= 3; layer++) {
 			gl.uniform1f(u.uScale ?? null, state.scale * (1 + grow * layer))
 			gl.uniform1f(u.uInflate ?? null, inflate * layer)
-			gl.uniform1f(u.uAlpha ?? null, Math.min(1, state.glowStrength * share * weight) * state.alpha)
+			gl.uniform1f(u.uAlpha ?? null, Math.min(1, state.glowStrength * HALO_SHARES[layer - 1]! * weight) * state.alpha)
 			gl.drawElements(gl.TRIANGLES, mesh.count, mesh.indexType, 0)
 		}
 		gl.cullFace(gl.BACK)
@@ -646,8 +687,11 @@ export class DiceGL {
 		gl.uniform1f(flag ?? null, texture ? 1 : 0)
 	}
 
-	#bindMesh(mesh: GLMesh, attributes: Record<string, number>): void {
+	/** Vertex arrays of a mesh for a program; skipped when they are already bound (dice of a type share a mesh). */
+	#bindMesh(mesh: GLMesh, program: Program): void {
+		if(this.#boundMesh === mesh && this.#boundProgram === program) return
 		const gl = this.gl
+		const { attributes } = program
 		const bind = (buffer: WebGLBuffer, location: number | undefined, size: number): void => {
 			if(location === undefined || location < 0) return
 			gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
@@ -658,10 +702,13 @@ export class DiceGL {
 		bind(mesh.normal, attributes.aNormal, 3)
 		bind(mesh.uv, attributes.aUv, 2)
 		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.index)
+		this.#boundMesh = mesh
+		this.#boundProgram = program
 	}
 
 	#bindQuad(location: number | undefined): void {
 		const gl = this.gl
+		this.#boundProgram = null
 		if(location === undefined || location < 0) return
 		gl.bindBuffer(gl.ARRAY_BUFFER, this.#quad)
 		gl.enableVertexAttribArray(location)
@@ -677,8 +724,11 @@ export class DiceGL {
 	}
 }
 
-const f3 = (v: ReadonlyVec3): Float32Array => new Float32Array(v)
 const NO_EMISSION: ReadonlyVec3 = [0, 0, 0]
+/** Alpha share of each halo layer, inner to outer. */
+const HALO_SHARES = [0.55, 0.3, 0.15]
+/** Per-instance attributes of a particle: name, floats, byte offset. */
+const PARTICLE_LAYOUT: readonly (readonly [string, number, number])[] = [['aPos', 3, 0], ['aSize', 1, 12], ['aColor', 4, 16], ['aShape', 1, 32], ['aAngle', 1, 36]]
 
 /** Positive when the outward faces (per vertex normals) wind counter-clockwise. */
 const windingOf = (positions: ArrayLike<number>, normals: ArrayLike<number>, indices: ArrayLike<number>): number => {
@@ -694,14 +744,16 @@ const windingOf = (positions: ArrayLike<number>, normals: ArrayLike<number>, ind
 	return sum
 }
 
-export const rotationMatrix = (q: ReadonlyQuat): Float32Array => {
-	const [x, y, z, w] = q
-	return new Float32Array([
-		1 - 2 * (y * y + z * z), 2 * (x * y + w * z), 2 * (x * z - w * y),
-		2 * (x * y - w * z), 1 - 2 * (x * x + z * z), 2 * (y * z + w * x),
-		2 * (x * z + w * y), 2 * (y * z - w * x), 1 - 2 * (x * x + y * y)
-	])
+/** Column-major 3×3 rotation of a quaternion, written into `out` (no allocation per draw). */
+const writeRotation = (out: Float32Array, q: ReadonlyQuat): Float32Array => {
+	const x = q[0], y = q[1], z = q[2], w = q[3]
+	out[0] = 1 - 2 * (y * y + z * z); out[1] = 2 * (x * y + w * z); out[2] = 2 * (x * z - w * y)
+	out[3] = 2 * (x * y - w * z); out[4] = 1 - 2 * (x * x + z * z); out[5] = 2 * (y * z + w * x)
+	out[6] = 2 * (x * z + w * y); out[7] = 2 * (y * z - w * x); out[8] = 1 - 2 * (x * x + y * y)
+	return out
 }
+
+export const rotationMatrix = (q: ReadonlyQuat): Float32Array => writeRotation(new Float32Array(9), q)
 
 export const perspective = (fovy: number, aspect: number, near: number, far: number): Float32Array => {
 	const f = 1 / Math.tan(fovy / 2), nf = 1 / (near - far)

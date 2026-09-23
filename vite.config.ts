@@ -29,7 +29,7 @@ const minifyWhitespace = (): Plugin => ({
 	async generateBundle(_, bundle) {
 		for(const output of Object.values(bundle)) {
 			if(output.type !== 'chunk') continue
-			output.code = (await transform(output.code, { minifyWhitespace: true, format: 'esm', target: 'es2020', legalComments: 'none', charset: 'utf8' })).code
+			output.code = (await transform(output.code, { minifyWhitespace: true, format: 'esm', target: 'es2022', legalComments: 'none', charset: 'utf8' })).code
 		}
 	}
 })
@@ -61,7 +61,9 @@ export default defineConfig(({ mode }): UserConfig => {
 			emptyOutDir: !adaptersBuild,
 			copyPublicDir: !adaptersBuild,
 			manifest: 'manifest.json',
-			target: 'es2020',
+			// ES2022 keeps native private fields: lowered to WeakMap helpers they made
+			// the particle loop 10x slower (1.36 ms vs 0.13 ms per frame at 2,400 particles).
+			target: 'es2022',
 			lib: {
 				entry,
 				name: adaptersBuild ? 'dice3dviewAdapters' : 'dice3dview',

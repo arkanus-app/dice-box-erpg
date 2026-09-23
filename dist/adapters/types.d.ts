@@ -446,6 +446,12 @@ export interface ViewerOptions {
     readonly particles?: DiceParticleOptions | null;
     /** Light emitted by the dice (`null` = none). */
     readonly glow?: DiceGlowOptions | null;
+    /**
+     * Reduced motion: the dice appear at rest with a short fade, without the
+     * throw, trembles, rings, particles or pulsing light. `auto` follows the
+     * system setting (`prefers-reduced-motion`). Default `auto`.
+     */
+    readonly reducedMotion?: 'auto' | 'always' | 'never';
     readonly onCollision?: (event: CollisionEvent) => void;
     readonly onThemeConfigLoaded?: (theme: ResolvedThemeConfig) => void;
     readonly onThemeLoaded?: (theme: ResolvedThemeConfig) => void;

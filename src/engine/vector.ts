@@ -1,11 +1,13 @@
 /**
  * Minimal vector and quaternion math on plain tuples.
  *
- * The simulation path only uses +, -, *, / and Math.sqrt, which IEEE 754
- * defines exactly; the same seed therefore produces bit-identical keyframes in
- * every JavaScript engine. Trigonometric helpers are reserved for presentation
- * (kinematic trajectories and render-time interpolation).
+ * Everything here only uses +, -, *, / and Math.sqrt, which IEEE 754 defines
+ * exactly; trigonometry goes through the deterministic dmath functions. The
+ * same seed therefore produces bit-identical keyframes in every JavaScript
+ * engine, from the throw planning to the last physics step.
  */
+import { dacos, dcos, dsin } from './dmath'
+
 export type Vec3 = [number, number, number]
 export type Quat = [number, number, number, number]
 export type ReadonlyVec3 = Readonly<Vec3>
@@ -92,15 +94,15 @@ export const quatFromUnitVectors = (a: ReadonlyVec3, b: ReadonlyVec3): Quat => {
 
 export const quatFromAxisAngle = (axis: ReadonlyVec3, angle: number): Quat => {
 	const n = normalize(axis)
-	const s = Math.sin(angle / 2)
-	return [n[0] * s, n[1] * s, n[2] * s, Math.cos(angle / 2)]
+	const s = dsin(angle / 2)
+	return [n[0] * s, n[1] * s, n[2] * s, dcos(angle / 2)]
 }
 
 /** Same composition as Babylon's Quaternion.RotationYawPitchRoll. */
 export const quatFromYawPitchRoll = (yaw: number, pitch: number, roll: number): Quat => {
-	const sr = Math.sin(roll / 2), cr = Math.cos(roll / 2)
-	const sp = Math.sin(pitch / 2), cp = Math.cos(pitch / 2)
-	const sy = Math.sin(yaw / 2), cy = Math.cos(yaw / 2)
+	const sr = dsin(roll / 2), cr = dcos(roll / 2)
+	const sp = dsin(pitch / 2), cp = dcos(pitch / 2)
+	const sy = dsin(yaw / 2), cy = dcos(yaw / 2)
 	return [
 		cy * sp * cr + sy * cp * sr,
 		sy * cp * cr - cy * sp * sr,
@@ -119,10 +121,10 @@ export const qslerp = (a: ReadonlyQuat, b: ReadonlyQuat, t: number): Quat => {
 		a[2] + (end[2] - a[2]) * t,
 		a[3] + (end[3] - a[3]) * t
 	])
-	const angle = Math.acos(cos)
-	const sin = Math.sin(angle)
-	const wa = Math.sin((1 - t) * angle) / sin
-	const wb = Math.sin(t * angle) / sin
+	const angle = dacos(cos)
+	const sin = dsin(angle)
+	const wa = dsin((1 - t) * angle) / sin
+	const wb = dsin(t * angle) / sin
 	return [a[0] * wa + end[0] * wb, a[1] * wa + end[1] * wb, a[2] * wa + end[2] * wb, a[3] * wa + end[3] * wb]
 }
 

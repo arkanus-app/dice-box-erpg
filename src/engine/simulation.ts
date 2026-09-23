@@ -706,9 +706,12 @@ export function* simulateSteps(inputs: readonly SimulationBody[], options: Simul
 			let jn = c.jn + (c.bias - vn) * c.mn
 			if(jn < 0) jn = 0
 			const dn = jn - c.jn
-			applyImpulse(c, c.nx * dn, c.ny * dn, c.nz * dn)
+			if(dn !== 0) applyImpulse(c, c.nx * dn, c.ny * dn, c.nz * dn)
 			c.jn = jn
 			const limit = c.mu * jn
+			// A speculative contact without force has no friction to apply (every
+			// impulse would be zero): most contacts of a pile, skipped exactly.
+			if(limit === 0 && c.jt1 === 0 && c.jt2 === 0) continue
 			relativeVelocity(c)
 			let jt = c.jt1 - (RX * c.t1x + RY * c.t1y + RZ * c.t1z) * c.mt1
 			jt = jt < -limit ? -limit : jt > limit ? limit : jt

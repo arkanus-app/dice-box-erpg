@@ -178,6 +178,7 @@ export const createViewerOptions = (options: ViewerOptions): RequiredViewerOptio
 	skin: options.skin ?? null,
 	particles: options.particles ?? null,
 	glow: options.glow ?? null,
+	reducedMotion: options.reducedMotion ?? 'auto',
 	onCollision: options.onCollision ?? noop,
 	onThemeConfigLoaded: options.onThemeConfigLoaded ?? noop,
 	onThemeLoaded: options.onThemeLoaded ?? noop,
@@ -269,5 +270,6 @@ export const validateViewerOptions = (options: RequiredViewerOptions): void => {
 	validateSkinOptions(options.skin)
 	validateParticleOptions(options.particles)
 	validateGlowOptions(options.glow)
+	if(!['auto', 'always', 'never'].includes(options.reducedMotion)) throw new Error('Viewer option reducedMotion must be auto, always or never.')
 	validateTimelineOptions(options.timeline)
 }

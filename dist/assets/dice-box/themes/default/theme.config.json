@@ -15,6 +15,12 @@
 		"bumpLevel": 0.5
 	},
 	"diceAvailable": ["d2","d4","d6","d8","d10","d12","d20","d100"],
+	"faceAtlas": {
+		"layoutId": "erpg-default-v1",
+		"width": 1024,
+		"height": 1024,
+		"orientation": "glyph-orientation.json"
+	},
 	"coin": {
 		"front": { "value": 1, "texture": "coin-1.svg" },
 		"back": { "value": 2, "texture": "coin-2.svg" },

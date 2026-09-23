@@ -292,8 +292,9 @@ export class AssetLibrary {
 	}
 
 	/**
-	 * Optional face-artwork orientation (`faceAtlas.orientation`): the "up"
-	 * direction of each glyph, used to pick the most readable symmetry.
+	 * Face-artwork orientation (`faceAtlas.orientation`): the "up" direction
+	 * of each label, used to present it upright whenever the die's symmetry
+	 * allows. Themes without the file keep the physical orientation.
 	 */
 	glyphOrientation(config: ResolvedThemeConfig): Promise<ReadonlyMap<string, ReadonlyMap<number, Vec3>>> {
 		const file = typeof config.faceAtlas?.orientation === 'string' ? config.faceAtlas.orientation : undefined
@@ -395,6 +396,19 @@ export class AssetLibrary {
 		this.#shapes.clear()
 		this.#coinGeometry.clear()
 		this.#orientations.clear()
+	}
+
+	/**
+	 * Forgets every GPU resource after the WebGL context was lost (they died
+	 * with it and must not be deleted); the next requests rebuild them. Physics
+	 * shapes and label orientations are plain data and stay.
+	 */
+	reset(): void {
+		this.#textures.clear()
+		this.#skins.clear()
+		this.#models.clear()
+		this.#materials.clear()
+		this.#coinGeometry.clear()
 	}
 }
 

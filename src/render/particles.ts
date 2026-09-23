@@ -96,6 +96,9 @@ export class ParticleSystem {
 	readonly #groundDebt = new WeakMap<object, number>()
 	readonly #additive = new Float32Array(PARTICLE_CAPACITY * PARTICLE_STRIDE)
 	readonly #alpha = new Float32Array(PARTICLE_CAPACITY * PARTICLE_STRIDE)
+	/** Alpha-blended particles of the frame, drawn from the lowest (farthest from the camera) up. */
+	readonly #alphaOrder = new Uint32Array(PARTICLE_CAPACITY)
+	readonly #byHeight = (a: number, b: number): number => this.#py[a]! - this.#py[b]!
 	#random: SeededRandom = createSeededRandom('particles')
 	#effect: ParticleEffectDefinition | null = null
 	#intensity = 1
@@ -241,42 +244,53 @@ export class ParticleSystem {
 		}
 	}
 
-	/** Writes the render batches (additive glow and alpha-blended smoke). */
+	/** Writes the render batches: additive glow, and alpha-blended smoke sorted far to near. */
 	build(): ParticleBatches {
-		let additiveCount = 0, alphaCount = 0
+		let additiveCount = 0, alphaCount = 0, alphaIndices = 0
 		for(let i = 0; i < this.#count; i++) {
 			const emitter = this.#emitters[this.#emitterOf[i]!]!
-			const t = this.#age[i]! / this.#life[i]!
-			const stops = emitter.stops, segments = stops.length / 4 - 1
-			const position = t * segments
-			const index = Math.min(segments - 1, Math.floor(position)), frac = segments > 0 ? position - index : 0
-			const o0 = Math.max(0, index) * 4, o1 = Math.min(segments, index + 1) * 4
-			let a = stops[o0 + 3]! + (stops[o1 + 3]! - stops[o0 + 3]!) * frac
-			a *= Math.min(1, t / 0.06)
-			if(emitter.flicker > 0) a *= 1 - emitter.flicker * 0.5 * (1 + Math.sin(this.#age[i]! * 26 + this.#phase[i]!))
-			if(a <= 0.004) continue
-			let r: number, g: number, b: number
-			if(emitter.palette.length) {
-				r = this.#tint[i * 3]!; g = this.#tint[i * 3 + 1]!; b = this.#tint[i * 3 + 2]!
-			} else {
-				r = stops[o0]! + (stops[o1]! - stops[o0]!) * frac
-				g = stops[o0 + 1]! + (stops[o1 + 1]! - stops[o0 + 1]!) * frac
-				b = stops[o0 + 2]! + (stops[o1 + 2]! - stops[o0 + 2]!) * frac
-			}
-			const target = emitter.additive ? this.#additive : this.#alpha
-			const offset = (emitter.additive ? additiveCount++ : alphaCount++) * PARTICLE_STRIDE
-			target[offset] = this.#px[i]!
-			target[offset + 1] = this.#py[i]!
-			target[offset + 2] = this.#pz[i]!
-			target[offset + 3] = this.#size[i]! * (1 + (emitter.grow - 1) * t)
-			target[offset + 4] = r * a
-			target[offset + 5] = g * a
-			target[offset + 6] = b * a
-			target[offset + 7] = a
-			target[offset + 8] = emitter.shape
-			target[offset + 9] = this.#angle[i]!
+			if(!emitter.additive) this.#alphaOrder[alphaIndices++] = i
+			else if(this.#write(this.#additive, additiveCount * PARTICLE_STRIDE, i, emitter)) additiveCount++
+		}
+		// The camera looks down, so the lowest particles are the farthest.
+		if(alphaIndices > 1) this.#alphaOrder.subarray(0, alphaIndices).sort(this.#byHeight)
+		for(let k = 0; k < alphaIndices; k++) {
+			const i = this.#alphaOrder[k]!
+			if(this.#write(this.#alpha, alphaCount * PARTICLE_STRIDE, i, this.#emitters[this.#emitterOf[i]!]!)) alphaCount++
 		}
 		return { additive: this.#additive, additiveCount, alpha: this.#alpha, alphaCount }
+	}
+
+	/** One particle of a batch at `offset`; false when it is invisible this frame. */
+	#write(target: Float32Array, offset: number, i: number, emitter: Emitter): boolean {
+		const t = this.#age[i]! / this.#life[i]!
+		const stops = emitter.stops, segments = stops.length / 4 - 1
+		const position = t * segments
+		const index = Math.min(segments - 1, Math.floor(position)), frac = segments > 0 ? position - index : 0
+		const o0 = Math.max(0, index) * 4, o1 = Math.min(segments, index + 1) * 4
+		let a = stops[o0 + 3]! + (stops[o1 + 3]! - stops[o0 + 3]!) * frac
+		a *= Math.min(1, t / 0.06)
+		if(emitter.flicker > 0) a *= 1 - emitter.flicker * 0.5 * (1 + Math.sin(this.#age[i]! * 26 + this.#phase[i]!))
+		if(a <= 0.004) return false
+		let r: number, g: number, b: number
+		if(emitter.palette.length) {
+			r = this.#tint[i * 3]!; g = this.#tint[i * 3 + 1]!; b = this.#tint[i * 3 + 2]!
+		} else {
+			r = stops[o0]! + (stops[o1]! - stops[o0]!) * frac
+			g = stops[o0 + 1]! + (stops[o1 + 1]! - stops[o0 + 1]!) * frac
+			b = stops[o0 + 2]! + (stops[o1 + 2]! - stops[o0 + 2]!) * frac
+		}
+		target[offset] = this.#px[i]!
+		target[offset + 1] = this.#py[i]!
+		target[offset + 2] = this.#pz[i]!
+		target[offset + 3] = this.#size[i]! * (1 + (emitter.grow - 1) * t)
+		target[offset + 4] = r * a
+		target[offset + 5] = g * a
+		target[offset + 6] = b * a
+		target[offset + 7] = a
+		target[offset + 8] = emitter.shape
+		target[offset + 9] = this.#angle[i]!
+		return true
 	}
 
 	#stream(debts: WeakMap<object, number>, key: object, options: ParticleEmitterOptions, amount: number, position: ReadonlyVec3, velocity: ReadonlyVec3, radius: number, flat = false): void {

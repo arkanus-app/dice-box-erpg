@@ -2,30 +2,36 @@
  * Particle shaders, shipped with the lazy particle engine (the core renderer
  * compiles them on the first particle draw).
  *
- * Point sprites with premultiplied colors, drawn as one of six shapes and
- * rotated by their angle; the camera looks straight down, so world x/z are
- * screen x/y. The vertex stage also derives the confetti flip, which turns at
- * its own rate so a strip tumbles instead of only spinning. In sprite space
- * (`q`) x runs along the particle's heading.
+ * Each particle is an instanced screen-facing quad (point sprites are capped
+ * by the GPU, as low as 64 px on some phones) with premultiplied colors,
+ * drawn as one of six shapes and rotated by its angle; the camera looks
+ * straight down, so world x/z are screen x/y. The vertex stage also derives
+ * the confetti flip, which turns at its own rate so a strip tumbles instead
+ * of only spinning. In sprite space (`q`) x runs along the particle's heading.
  */
 export const PARTICLE_VERTEX = `
+attribute vec2 aCorner;
 attribute vec3 aPos;
 attribute float aSize;
 attribute vec4 aColor;
 attribute float aShape;
 attribute float aAngle;
 uniform mat4 uViewProj;
-uniform float uPointScale;
-uniform float uMaxPoint;
+uniform float uPixelScale;
+uniform vec2 uViewport;
 varying vec4 vColor;
 varying float vShape;
 varying vec3 vTurn;
+varying vec2 vCoord;
 void main() {
-	gl_Position = uViewProj * vec4(aPos, 1.0);
-	gl_PointSize = clamp(aSize * uPointScale / gl_Position.w, 1.0, uMaxPoint);
+	vec4 clip = uViewProj * vec4(aPos, 1.0);
+	float pixels = max(1.0, aSize * uPixelScale / clip.w);
+	clip.xy += aCorner * pixels / uViewport * clip.w;
+	gl_Position = clip;
 	vColor = aColor;
 	vShape = aShape;
 	vTurn = vec3(cos(aAngle), sin(aAngle), abs(cos(aAngle * 1.7 + 0.6)));
+	vCoord = vec2(aCorner.x, -aCorner.y);
 }`
 
 // Shapes: 0 soft glow, 1 spark (thin streak with a hot middle), 2 star (small
@@ -36,9 +42,10 @@ precision mediump float;
 varying vec4 vColor;
 varying float vShape;
 varying vec3 vTurn;
+varying vec2 vCoord;
 uniform float uAdditive;
 void main() {
-	vec2 p = gl_PointCoord * 2.0 - 1.0;
+	vec2 p = vCoord;
 	vec2 q = vec2(p.x * vTurn.x + p.y * vTurn.y, p.y * vTurn.x - p.x * vTurn.y);
 	float r2 = dot(p, p);
 	float a = 0.0;

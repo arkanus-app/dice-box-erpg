@@ -1,4 +1,5 @@
 import { createSeededRandom } from '../random'
+import { datan2, dcos, dsin } from './dmath'
 import {
 	clampHorizontalPosition,
 	clampValue,
@@ -22,7 +23,7 @@ export class Point3 {
 	constructor(public x = 0, public y = 0, public z = 0) {}
 	static Zero(): Point3 { return new Point3() }
 	static Up(): Point3 { return new Point3(0, 1, 0) }
-	static Distance(a: Point3, b: Point3): number { return Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) }
+	static Distance(a: Point3, b: Point3): number { return a.subtract(b).length() }
 	set(x: number, y: number, z: number): this { this.x = x; this.y = y; this.z = z; return this }
 	copyFrom(other: Point3): this { return this.set(other.x, other.y, other.z) }
 	clone(): Point3 { return new Point3(this.x, this.y, this.z) }
@@ -31,7 +32,8 @@ export class Point3 {
 	subtract(other: Point3): Point3 { return new Point3(this.x - other.x, this.y - other.y, this.z - other.z) }
 	scale(s: number): Point3 { return new Point3(this.x * s, this.y * s, this.z * s) }
 	scaleInPlace(s: number): this { return this.set(this.x * s, this.y * s, this.z * s) }
-	length(): number { return Math.hypot(this.x, this.y, this.z) }
+	// Math.sqrt is correctly rounded everywhere; Math.hypot is not, so it would break cross-browser determinism.
+	length(): number { return Math.sqrt(this.lengthSquared()) }
 	lengthSquared(): number { return this.x * this.x + this.y * this.y + this.z * this.z }
 	normalize(): this {
 		const l = this.length()
@@ -154,26 +156,26 @@ export const createNaturalLaunchVelocity = (
 	dynamics: PresentationLaunchDynamics
 ): Point3 => {
 	const base = createThrownLinearVelocity(start, landing, throwForce)
-	const horizontalSpeed = Math.hypot(base.x, base.z)
+	const horizontalSpeed = Math.sqrt(base.x * base.x + base.z * base.z)
 	if(horizontalSpeed <= 1e-6) return base
 	const deltaX = landing.x - start.x
 	const deltaZ = landing.z - start.z
 	const inwardAngle = Math.abs(deltaX) >= Math.abs(deltaZ)
 		? deltaX >= 0 ? 0 : Math.PI
 		: deltaZ >= 0 ? Math.PI / 2 : -Math.PI / 2
-	const baseAngle = Math.atan2(base.z, base.x)
+	const baseAngle = datan2(base.z, base.x)
 	const bodyHeadingJitter = (random.next() + random.next() - 1) * 4 * Math.PI / 180
 	const desiredRelativeAngle = normalizeAngle(baseAngle + dynamics.headingRadians + bodyHeadingJitter - inwardAngle)
 	const maximumInwardAngle = 45 * Math.PI / 180
 	const finalAngle = inwardAngle + clampValue(desiredRelativeAngle, -maximumInwardAngle, maximumInwardAngle)
 	const bodyEnergy = 0.96 + 0.08 * ((random.next() + random.next()) / 2)
 	let finalSpeed = Math.min(19.5, horizontalSpeed * dynamics.energyScale * bodyEnergy)
-	const baseInwardSpeed = Math.cos(normalizeAngle(baseAngle - inwardAngle)) * horizontalSpeed
-	const plannedInwardSpeed = Math.cos(finalAngle - inwardAngle) * finalSpeed
+	const baseInwardSpeed = dcos(normalizeAngle(baseAngle - inwardAngle)) * horizontalSpeed
+	const plannedInwardSpeed = dcos(finalAngle - inwardAngle) * finalSpeed
 	if(plannedInwardSpeed > 1e-6 && plannedInwardSpeed < baseInwardSpeed) {
 		finalSpeed = Math.min(19.5, finalSpeed * baseInwardSpeed / plannedInwardSpeed)
 	}
-	return new Point3(Math.cos(finalAngle) * finalSpeed, base.y, Math.sin(finalAngle) * finalSpeed)
+	return new Point3(dcos(finalAngle) * finalSpeed, base.y, dsin(finalAngle) * finalSpeed)
 }
 
 /** Immediate descending release: the body enters fast and gravity adds speed. */
@@ -205,8 +207,8 @@ export const createScatteredLanding = (
 		: fittedSpacing * Math.sqrt(input.index + 0.65)
 	const angle = input.index * GOLDEN_ANGLE + random.range(-0.38, 0.38)
 	const jitter = fittedSpacing * 0.16
-	const rawX = Math.cos(angle) * radius + random.range(-jitter, jitter)
-	const rawZ = Math.sin(angle) * radius + random.range(-jitter, jitter)
+	const rawX = dcos(angle) * radius + random.range(-jitter, jitter)
+	const rawZ = dsin(angle) * radius + random.range(-jitter, jitter)
 	const maximumRawRadius = input.count === 1
 		? 0.55 + jitter
 		: fittedSpacing * Math.sqrt(input.count - 0.35) + jitter

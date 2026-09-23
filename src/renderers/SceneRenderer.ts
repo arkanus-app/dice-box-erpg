@@ -1,4 +1,5 @@
 import type {
+	DiceSkinOptions,
 	DisplayRenderer,
 	ParticleBurstMoment,
 	NormalizedDisplayRequest,
@@ -24,7 +25,7 @@ import {
 	DISPLAY_HEMISPHERIC_INTENSITY,
 	DISPLAY_LIGHT_DIRECTION
 } from './sceneEnvironment'
-import { DiceGL, lookAt, multiply, perspective, type FrameSetup, type GLMesh, type ParticleShaders, type SurfaceMaterial } from '../render/gl'
+import { DiceGL, lookAt, multiply, perspective, type DrawState, type FrameSetup, type GLMesh, type ParticleShaders, type SurfaceMaterial } from '../render/gl'
 import { AssetLibrary, parseHexColor, type CoinGeometry, type ModelDieType } from '../render/assets'
 import { getCoinAccentColor, getCoinTargetQuaternion } from '../render/coinTheme'
 import { faceTargetQuaternion, type DiceShape } from '../engine/shape'
@@ -58,13 +59,22 @@ type CoinVisual = {
 	readonly edge: SurfaceMaterial
 }
 
+/** How a body's visual was made, so it can be rebuilt after a lost WebGL context. */
+interface VisualRecipe {
+	readonly config: ResolvedThemeConfig
+	readonly themeColor: string
+	readonly skin: DiceSkinOptions | null
+	readonly type: ModelDieType | 'coin'
+}
+
 interface Entry {
 	readonly dieId: string
 	readonly name: string
 	readonly sides: number
 	value: number
 	readonly shape: DiceShape
-	readonly visual: PolyhedronVisual | CoinVisual
+	visual: PolyhedronVisual | CoinVisual
+	readonly recipe: VisualRecipe
 	readonly accentColor: string
 	readonly glyphUps: ReadonlyMap<number, Vec3> | undefined
 	/** The whole die this body shows (shared by both bodies of a d100), for particle conditions. */
@@ -121,6 +131,8 @@ const EXIT_MS = 280
 /** Longest step of the animation clock: a slow frame delays the motion, it never skips it. */
 const MAX_FRAME_MS = 50
 const RING_MS = 650
+/** Reduced motion: dice fade in at rest instead of being thrown. */
+const STILL_FADE_MS = 240
 const clamp01 = (value: number): number => Math.max(0, Math.min(1, value))
 const easeOut = (value: number): number => 1 - (1 - value) * (1 - value)
 const NO_GLOW: { readonly color: Vec3; readonly strength: number } = { color: [0, 0, 0], strength: 0 }
@@ -167,12 +179,14 @@ export class SceneRenderer implements DisplayRenderer {
 	#generation = 0
 	#width = 300
 	#height = 150
+	/** A lost WebGL context is being rebuilt: nothing is drawn meanwhile. */
+	#restoring = false
 
 	async init(context: RendererContext): Promise<void> {
 		if(this.#gl) return
 		this.#context = context
 		this.#options = context.options
-		this.#gl = new DiceGL(context.canvas, context.options.antialias)
+		this.#gl = new DiceGL(context.canvas, context.options.antialias, () => void this.#restore())
 		this.#assets = new AssetLibrary(this.#gl)
 		const width = Math.max(1, context.canvas.clientWidth || context.canvas.parentElement?.clientWidth || 300)
 		const height = Math.max(1, context.canvas.clientHeight || context.canvas.parentElement?.clientHeight || 150)
@@ -317,6 +331,34 @@ export class SceneRenderer implements DisplayRenderer {
 		this.#gl = undefined
 	}
 
+	/** Reduced motion: the `reducedMotion` option, or the system setting when it is `auto`. */
+	#reducedMotion(): boolean {
+		const mode = this.#options?.reducedMotion ?? 'auto'
+		if(mode !== 'auto') return mode === 'always'
+		return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+	}
+
+	/**
+	 * The WebGL context came back (the browser may drop it, e.g. on mobile in
+	 * the background): programs are rebuilt by DiceGL, textures and meshes here,
+	 * and the dice on screen reappear exactly where they were.
+	 */
+	async #restore(): Promise<void> {
+		const assets = this.#assets
+		if(!assets) return
+		this.#restoring = true
+		try {
+			assets.reset()
+			const entries = new Set([...this.#entries, ...(this.#outgoing?.entries ?? [])])
+			for(const entry of entries) entry.visual = await this.#buildVisual(entry.recipe)
+		} catch(error) {
+			console.error('[DiceResultViewer] Could not rebuild the scene after a lost WebGL context:', error)
+		} finally {
+			this.#restoring = false
+			this.#requestRender()
+		}
+	}
+
 	/** Starts a new scene: the previous dice fade out while the next throw begins. */
 	#retire(): void {
 		this.#generation++
@@ -343,7 +385,8 @@ export class SceneRenderer implements DisplayRenderer {
 			this.#particleShaders = { vertex: engine.PARTICLE_VERTEX, fragment: engine.PARTICLE_FRAGMENT }
 		}
 		// A full definition wins; preset names load the preset chunk on first use.
-		const base = options?.effect ?? (options?.preset ? (await loadParticlePresets())[options.preset] : null)
+		// Reduced motion plays no particles at all.
+		const base = this.#reducedMotion() ? null : options?.effect ?? (options?.preset ? (await loadParticlePresets())[options.preset] : null)
 		const effect = options && base && this.#customizeEffect ? this.#customizeEffect(base, options) : null
 		// Options may have changed while the chunks were loading.
 		if(this.#options!.particles !== options) return
@@ -391,34 +434,31 @@ export class SceneRenderer implements DisplayRenderer {
 			scale: 1,
 			saturation: normalized.discarded ? DISCARDED_SATURATION : 1
 		}
+		const recipe = (type: VisualRecipe['type']): VisualRecipe => ({ config, themeColor: normalized.themeColor, skin: options.skin, type })
 		if(normalized.sides === 2) {
-			const geometry = assets.coinGeometry(config.coin, options.scale)
-			const [front, back] = await Promise.all([
-				assets.coinFace(config, 'front', normalized.themeColor, options.skin),
-				assets.coinFace(config, 'back', normalized.themeColor, options.skin)
-			])
-			const edge = await assets.coinEdge(config, normalized.themeColor, options.skin)
+			const coin = recipe('coin')
+			const visual = await this.#buildVisual(coin)
 			entries.push({
 				...base,
 				dieId: normalized.id,
 				name: normalized.id,
 				sides: 2,
 				value: normalized.value,
-				shape: geometry.shape,
-				visual: { kind: 'coin', geometry, front, back, edge },
+				shape: assets.coinGeometry(config.coin, options.scale).shape,
+				visual,
+				recipe: coin,
 				accentColor: getCoinAccentColor(config.coin, normalized.themeColor),
 				glyphUps: undefined
 			})
 			return { die: normalized, config, entries }
 		}
 		const model = await assets.loadModel(config.meshFilePath)
-		const material = await assets.material(config, normalized.themeColor, options.skin)
 		const orientation = await assets.glyphOrientation(config)
 		const values = this.#bodyValues(normalized.sides, normalized.value)
 		const types: ModelDieType[] = normalized.sides === 100 ? ['d100', 'd10'] : [`d${normalized.sides}` as ModelDieType]
-		types.forEach((type, index) => {
-			const geometry = model.geometry.get(type)
-			if(!geometry) throw new Error(`${type} is unavailable in theme '${config.theme}'.`)
+		for(const [index, type] of types.entries()) {
+			if(!model.geometry.get(type)) throw new Error(`${type} is unavailable in theme '${config.theme}'.`)
+			const made = recipe(type)
 			entries.push({
 				...base,
 				dieId: normalized.id,
@@ -426,12 +466,32 @@ export class SceneRenderer implements DisplayRenderer {
 				sides: type === 'd100' ? 100 : Number(type.slice(1)),
 				value: values[index]!,
 				shape: assets.shapeFor(model, type, options.scale * options.colliderScale),
-				visual: { kind: 'polyhedron', mesh: geometry.visual, material, scale: options.scale },
+				visual: await this.#buildVisual(made),
+				recipe: made,
 				accentColor: normalized.themeColor,
 				glyphUps: orientation.get(type)
 			})
-		})
+		}
 		return { die: normalized, config, entries }
+	}
+
+	/** Meshes and materials of a body (also used to rebuild them after a lost context). */
+	async #buildVisual(recipe: VisualRecipe): Promise<PolyhedronVisual | CoinVisual> {
+		const assets = this.#assets!
+		const scale = this.#options!.scale
+		const { config, themeColor, skin } = recipe
+		if(recipe.type === 'coin') {
+			const [front, back, edge] = await Promise.all([
+				assets.coinFace(config, 'front', themeColor, skin),
+				assets.coinFace(config, 'back', themeColor, skin),
+				assets.coinEdge(config, themeColor, skin)
+			])
+			return { kind: 'coin', geometry: assets.coinGeometry(config.coin, scale), front, back, edge }
+		}
+		const [model, material] = await Promise.all([assets.loadModel(config.meshFilePath), assets.material(config, themeColor, skin)])
+		const geometry = model.geometry.get(recipe.type)
+		if(!geometry) throw new Error(`${recipe.type} is unavailable in theme '${config.theme}'.`)
+		return { kind: 'polyhedron', mesh: geometry.visual, material, scale }
 	}
 
 	#canonicalTarget(entry: Entry): Quat {
@@ -496,6 +556,7 @@ export class SceneRenderer implements DisplayRenderer {
 	// ---------- playback ----------
 
 	#play(track: Track, entries: readonly Entry[], signal: AbortSignal, handlers: PlaybackHandlers = {}): Promise<void> {
+		if(this.#reducedMotion()) return this.#playStill(track, entries, signal, handlers)
 		const markers = [...track.markers].sort((left, right) => left.frame - right.frame)
 		let nextMarker = 0
 		const particles = this.#particles
@@ -564,8 +625,49 @@ export class SceneRenderer implements DisplayRenderer {
 		})
 	}
 
+	/**
+	 * Reduced motion: no throw. Dice that change place fade out, the others
+	 * fade in at their resting pose; the timeline still receives every settle
+	 * and explosion, in order.
+	 */
+	async #playStill(track: Track, entries: readonly Entry[], signal: AbortSignal, handlers: PlaybackHandlers): Promise<void> {
+		const last = track.frames.length - 1
+		const moving = entries.filter((entry, index) => !handlers.still?.has(index))
+		const leaving = moving.filter(entry => entry.visible)
+		if(leaving.length) {
+			await this.#run(signal, elapsed => {
+				const t = clamp01(elapsed / (STILL_FADE_MS * 0.6))
+				for(const entry of leaving) entry.alpha = 1 - t
+				return t >= 1
+			})
+		}
+		entries.forEach((entry, index) => {
+			if(handlers.still?.has(index)) return
+			const pose = sampleTrack(track, index, last)
+			entry.visible = pose.visible
+			entry.position = pose.position
+			entry.rotation = pose.rotation
+			entry.scale = 1
+			entry.alpha = 0
+		})
+		for(const marker of [...track.markers].sort((left, right) => left.frame - right.frame)) {
+			if(marker.type === 'settle') handlers.onSettle?.(marker.body)
+			else if(marker.type === 'explode' && marker.other !== undefined) handlers.onExplode?.(marker.body, marker.other)
+		}
+		try {
+			await this.#run(signal, elapsed => {
+				const t = clamp01(elapsed / STILL_FADE_MS)
+				for(const entry of moving) entry.alpha = t
+				return t >= 1
+			})
+		} finally {
+			for(const entry of moving) entry.alpha = 1
+		}
+	}
+
 	/** Explosion cue on a parent: a flash on the die and a shock ring on the table. */
 	#burst(parent: Entry): void {
+		if(this.#reducedMotion()) return
 		const explode = this.#options!.timeline.effects.explode
 		this.#flash([parent], parseHexColor(parent.accentColor), Math.min(260, explode.durationMs * 0.3), explode.intensity)
 		this.#ring(parent, parseHexColor(explode.color, [1, 0.7, 0.2]), explode.intensity)
@@ -731,7 +833,7 @@ export class SceneRenderer implements DisplayRenderer {
 		signal: AbortSignal,
 		colorFor?: (entry: Entry) => Vec3 | undefined
 	): Promise<void> {
-		if(!entries.length || durationMs <= 0) return
+		if(!entries.length || durationMs <= 0 || this.#reducedMotion()) return
 		const effect = this.#options!.timeline.effects[effectName]
 		const transient: Transient = {
 			entries,
@@ -769,11 +871,12 @@ export class SceneRenderer implements DisplayRenderer {
 	/** Shrinks and fades dice away (picked up), then hides them for their next entrance. */
 	async #vanish(entries: readonly Entry[], durationMs: number, signal: AbortSignal): Promise<void> {
 		try {
+			const shrink = this.#reducedMotion() ? 0 : 0.35
 			await this.#run(signal, elapsed => {
 				const progress = clamp01(elapsed / durationMs)
 				for(const entry of entries) {
 					entry.alpha = 1 - progress
-					entry.scale = 1 - 0.35 * easeOut(progress)
+					entry.scale = 1 - shrink * easeOut(progress)
 				}
 				return progress >= 1
 			})
@@ -826,7 +929,7 @@ export class SceneRenderer implements DisplayRenderer {
 	}
 
 	#ring(entry: Entry, color: Vec3, strength: number): void {
-		if(strength <= 0) return
+		if(strength <= 0 || this.#reducedMotion()) return
 		this.#rings.push({ x: entry.position[0], z: entry.position[2], radius: entry.shape.radius, start: performance.now(), color, strength })
 		this.#ambient()
 	}
@@ -926,7 +1029,7 @@ export class SceneRenderer implements DisplayRenderer {
 			this.#ambientRequest = null
 			if(!this.#running) this.#render()
 			// A pulsing glow breathes for as long as dice are on the table.
-			const breathing = Boolean(this.#options?.glow?.pulse && this.#entries.some(entry => entry.visible))
+			const breathing = Boolean(this.#options?.glow?.pulse && !this.#reducedMotion() && this.#entries.some(entry => entry.visible))
 			if(this.#outgoing || this.#rings.length || this.#particles?.count || this.#auras.size || breathing) this.#ambient()
 		})
 	}
@@ -935,7 +1038,8 @@ export class SceneRenderer implements DisplayRenderer {
 		const gl = this.#gl
 		const canvas = this.#context?.canvas
 		const options = this.#options
-		if(!gl || !canvas || !options || gl.lost) return
+		if(!gl || !canvas || !options || gl.lost || this.#restoring) return
+		const reduced = this.#reducedMotion()
 		const now = performance.now()
 		const aspect = canvas.width / Math.max(1, canvas.height)
 		const eye: Vec3 = [0, DISPLAY_CAMERA_HEIGHT, 0]
@@ -966,7 +1070,7 @@ export class SceneRenderer implements DisplayRenderer {
 			const glow = options.glow
 			if(!glow) return NO_GLOW
 			const lit = clamp01((entry.saturation - DISCARDED_SATURATION) / (1 - DISCARDED_SATURATION))
-			const breath = glow.pulse ? 0.7 + 0.3 * Math.sin(now / 1000 * Math.PI * 2 / 2.4 + entry.position[0] * 0.9) : 1
+			const breath = glow.pulse && !reduced ? 0.7 + 0.3 * Math.sin(now / 1000 * Math.PI * 2 / 2.4 + entry.position[0] * 0.9) : 1
 			const strength = (glow.intensity ?? 1) * breath * lit * alphaOf(entry)
 			return strength > 0.001 ? { color: glowColor ?? lightColor(entry.accentColor), strength } : NO_GLOW
 		}
@@ -1023,36 +1127,45 @@ export class SceneRenderer implements DisplayRenderer {
 			}
 			return { color, strength }
 		}
+		// Surfaces first and halos after, so the programs switch twice per frame
+		// instead of twice per die.
+		const halos: Array<{ readonly entry: Entry; readonly state: DrawState }> = []
 		const draw = (entry: Entry): void => {
 			const glow = glowOf(entry)
 			const own = ownGlow(entry)
-			const scale = scaleOf(entry)
-			const state = {
+			const scale = entry.visual.kind === 'polyhedron' ? entry.visual.scale * scaleOf(entry) : scaleOf(entry)
+			const state: DrawState = {
 				position: entry.position,
 				rotation: entry.rotation,
+				scale,
 				alpha: alphaOf(entry),
 				glow: glow.color,
 				glowStrength: glow.strength,
 				saturation: entry.saturation,
-				emission: [own.color[0] * own.strength * 0.55, own.color[1] * own.strength * 0.55, own.color[2] * own.strength * 0.55] as Vec3
+				emission: [own.color[0] * own.strength * 0.55, own.color[1] * own.strength * 0.55, own.color[2] * own.strength * 0.55]
+			}
+			if(entry.visual.kind === 'polyhedron') gl.drawSurface(frame, entry.visual.mesh, entry.visual.material, state)
+			else {
+				const coin = entry.visual
+				gl.drawSurface(frame, coin.geometry.edge, coin.edge, state)
+				gl.drawSurface(frame, coin.geometry.front, coin.front, state)
+				gl.drawSurface(frame, coin.geometry.back, coin.back, state)
 			}
 			// The halo shows the stronger of the timeline effect and the die's own light.
 			const halo = own.strength * 0.8 > glow.strength ? { ...state, glow: own.color, glowStrength: own.strength * 0.8 } : state
-			if(entry.visual.kind === 'polyhedron') {
-				gl.drawSurface(frame, entry.visual.mesh, entry.visual.material, { ...state, scale: entry.visual.scale * scale })
-				gl.drawHalo(frame, entry.visual.mesh, { ...halo, scale: entry.visual.scale * scale }, 0.035)
-			} else {
-				const coin = entry.visual
-				gl.drawSurface(frame, coin.geometry.edge, coin.edge, { ...state, scale })
-				gl.drawSurface(frame, coin.geometry.front, coin.front, { ...state, scale })
-				gl.drawSurface(frame, coin.geometry.back, coin.back, { ...state, scale })
-				// A coin is flat: its halo grows the whole coin (faces and rim), like the shell of a die.
-				for(const mesh of [coin.geometry.front, coin.geometry.back, coin.geometry.edge]) gl.drawHalo(frame, mesh, { ...halo, scale }, 0.02, 0.06, 0.7)
-			}
+			if(halo.glowStrength > 0.001) halos.push({ entry, state: halo })
 		}
 		for(const entry of visible) if(entry.alpha >= 0.999) draw(entry)
 		for(const entry of leaving) draw(entry)
 		for(const entry of visible) if(entry.alpha < 0.999) draw(entry)
+		for(const { entry, state } of halos) {
+			if(entry.visual.kind === 'polyhedron') gl.drawHalo(frame, entry.visual.mesh, state, 0.035)
+			else {
+				// A coin is flat: its halo grows the whole coin (faces and rim), like the shell of a die.
+				const geometry = entry.visual.geometry
+				for(const mesh of [geometry.front, geometry.back, geometry.edge]) gl.drawHalo(frame, mesh, state, 0.02, 0.06, 0.7)
+			}
+		}
 		this.#renderParticles(frame, now, canvas.height)
 	}
 
